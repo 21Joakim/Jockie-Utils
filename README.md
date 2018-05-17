@@ -3,7 +3,7 @@ https://github.com/DV8FromTheWorld/JDA
 </br>https://github.com/google/gson
 </br>https://github.com/google/guava
 
-<h2>Gradle:</h2>
+<h2>Gradle (For dependencies and not the actual project):</h2>
 
 ```
 apply plugin: 'java'
