@@ -1,5 +1,5 @@
 <h2>Libraries:</h2>
-</br>https://github.com/DV8FromTheWorld/JDA
+https://github.com/DV8FromTheWorld/JDA
 </br>https://github.com/google/gson
 </br>https://github.com/google/guava
 
