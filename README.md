@@ -1,8 +1,7 @@
-<p><b>Libraries used:</b>
-</br>https://github.com/DV8FromTheWorld/JDA</b>
+<h2>Libraries:</h2>
+</br>https://github.com/DV8FromTheWorld/JDA
 </br>https://github.com/google/gson
 </br>https://github.com/google/guava
-</p>
 
 <h2>Gradle:</h2>
 
