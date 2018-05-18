@@ -104,5 +104,5 @@ public interface IArgument<Type> {
 	
 	public Type getDefault(MessageReceivedEvent event);
 	
-	public VerifiedArgument<Type> verify(String value);
+	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 }

@@ -6,6 +6,8 @@ import com.jockie.bot.core.command.argument.IArgument;
 import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument.VerifiedType;
 import com.jockie.bot.core.command.argument.IEndlessArgument;
 
+import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+
 public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements IEndlessArgument<Type> {
 	
 	private IArgument<Type> argument;
@@ -81,7 +83,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 	}
 	
 	@SuppressWarnings("unchecked")
-	public VerifiedArgument<Type[]> verify(String value) {
+	public VerifiedArgument<Type[]> verify(MessageReceivedEvent event, String value) {
 		int args = 0;
 			
 		Type[] arguments = (Type[]) Array.newInstance(this.clazz, (this.maxArguments > 0) ? this.maxArguments : (int) value.codePoints().filter(c2 -> c2 == ' ').count() + 1);
@@ -129,7 +131,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 				return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
 			}
 			
-			VerifiedArgument<?> verified = this.argument.verify(content);
+			VerifiedArgument<?> verified = this.argument.verify(event, content);
 			
 			switch(verified.getVerifiedType()) {
 				case INVALID: {
@@ -153,8 +155,6 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		}
 		
 		if(args < this.minArguments || ((this.maxArguments > 0) ? args > this.maxArguments : false)) {
-			System.out.println("?");
-			
 			return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
 		}
 		

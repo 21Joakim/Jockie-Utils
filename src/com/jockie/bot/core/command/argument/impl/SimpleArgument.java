@@ -1,22 +1,23 @@
 package com.jockie.bot.core.command.argument.impl;
 
-import java.util.function.BiFunction;
-
 import com.jockie.bot.core.command.argument.IArgument;
+import com.jockie.bot.core.utility.TriFunction;
+
+import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class SimpleArgument<Type> extends ArgumentImpl<Type> {
 	
 	public static class Builder<Type> extends IArgument.Builder<Type, SimpleArgument<Type>, Builder<Type>> {
 		
-		private BiFunction<SimpleArgument<Type>, String, VerifiedArgument<Type>> function;
+		private TriFunction<MessageReceivedEvent, SimpleArgument<Type>, String, VerifiedArgument<Type>> function;
 		
-		public Builder<Type> setFunction(BiFunction<SimpleArgument<Type>, String, VerifiedArgument<Type>> function) {
+		public Builder<Type> setFunction(TriFunction<MessageReceivedEvent, SimpleArgument<Type>, String, VerifiedArgument<Type>> function) {
 			this.function = function;
 			
 			return this.self();
 		}
 		
-		public BiFunction<SimpleArgument<Type>, String, VerifiedArgument<Type>> getFunction() {
+		public TriFunction<MessageReceivedEvent, SimpleArgument<Type>, String, VerifiedArgument<Type>> getFunction() {
 			return this.function;
 		}
 		
@@ -29,7 +30,7 @@ public class SimpleArgument<Type> extends ArgumentImpl<Type> {
 		}
 	}
 	
-	private BiFunction<SimpleArgument<Type>, String, VerifiedArgument<Type>> function;
+	private TriFunction<MessageReceivedEvent, SimpleArgument<Type>, String, VerifiedArgument<Type>> function;
 	
 	private SimpleArgument(Builder<Type> builder) {
 		super(builder);
@@ -37,7 +38,7 @@ public class SimpleArgument<Type> extends ArgumentImpl<Type> {
 		this.function = builder.getFunction();
 	}
 	
-	public VerifiedArgument<Type> verify(String value) {
-		return this.function.apply(this, value);
+	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value) {
+		return this.function.apply(event, this, value);
 	}
 }

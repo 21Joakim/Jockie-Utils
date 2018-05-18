@@ -44,5 +44,5 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 		return this.description;
 	}
 	
-	public abstract VerifiedArgument<Type> verify(String value);
+	public abstract VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 }

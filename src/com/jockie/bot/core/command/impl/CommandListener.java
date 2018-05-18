@@ -235,7 +235,7 @@ public class CommandListener extends ListenerAdapter {
 								continue COMMANDS;
 							}
 							
-							verified = argument.verify(msg);
+							verified = argument.verify(event, msg);
 							msg = "";
 						}else{
 							String content = null;
@@ -267,7 +267,7 @@ public class CommandListener extends ListenerAdapter {
 								continue COMMANDS;
 							}
 							
-							verified = argument.verify(content);
+							verified = argument.verify(event, content);
 						}
 						
 						switch(verified.getVerifiedType()) {
