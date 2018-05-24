@@ -153,7 +153,7 @@ public class PagedResult<Type> extends Timeoutable<PagedResult<Type>> implements
 			end = this.entries.size() - start;
 		else end = this.entriesPerPage;
 		
-		return this.entries.subList(start, start + end); 
+		return this.entries.subList(start, start + end);
 	}
 	
 	public EmbedBuilder getPageAsEmbed() {

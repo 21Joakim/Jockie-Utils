@@ -56,7 +56,7 @@ public class Timeoutable<T extends Timeoutable<T>> {
 						
 						if(Timeoutable.this.timeoutHandler != null) {
 							TimeoutEvent<T> event = new TimeoutEvent<>();
-							event.calledFrom =  (T) Timeoutable.this;
+							event.calledFrom = (T) Timeoutable.this;
 							event.timeoutTime = Timeoutable.this.timeoutTime;
 							event.timeoutUnit = Timeoutable.this.timeoutUnit;
 							
@@ -82,9 +82,7 @@ public class Timeoutable<T extends Timeoutable<T>> {
 	}
 	
 	/**
-	 * Do not touch
-	 * 
-	 * @param runnable
+	 * <b style="color:red">Do not touch</b>
 	 */
 	public void onTimeoutFinish(Runnable runnable) {
 		this.timeoutFinish = runnable;

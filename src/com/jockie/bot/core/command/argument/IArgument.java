@@ -1,5 +1,10 @@
 package com.jockie.bot.core.command.argument;
 
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+import com.jockie.bot.core.command.impl.CommandEvent;
+
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public interface IArgument<Type> {
@@ -10,7 +15,7 @@ public interface IArgument<Type> {
 		
 		protected String description;
 		
-		protected RT defaultValue;
+		protected BiFunction<MessageReceivedEvent, CommandEvent, RT> defaultValueFunction;
 		
 		public BT setEndless(boolean endless) {
 			this.endless = endless;
@@ -37,7 +42,23 @@ public interface IArgument<Type> {
 		}
 		
 		public BT setDefaultValue(RT defaultValue) {
-			this.defaultValue = defaultValue;
+			this.defaultValueFunction = (event, commandEvent) -> {
+				return defaultValue;
+			};
+			
+			return this.self();
+		}
+		
+		public BT setDefaultValue(Function<MessageReceivedEvent, RT> defaultValueFunction) {
+			this.defaultValueFunction = (event, commandEvent) -> {
+				return defaultValueFunction.apply(event);
+			};
+			
+			return this.self();
+		}
+		
+		public BT setDefaultValue(BiFunction<MessageReceivedEvent, CommandEvent, RT> defaultValueFunction) {
+			this.defaultValueFunction = defaultValueFunction;
 			
 			return this.self();
 		}
@@ -58,8 +79,8 @@ public interface IArgument<Type> {
 			return this.description;
 		}
 		
-		public RT getDefaultValue() {
-			return this.defaultValue;
+		public BiFunction<MessageReceivedEvent, CommandEvent, RT> getDefaultValueFunction() {
+			return this.defaultValueFunction;
 		}
 		
 		public abstract BT self();
@@ -102,7 +123,7 @@ public interface IArgument<Type> {
 	
 	public String getDescription();
 	
-	public Type getDefault(MessageReceivedEvent event);
+	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent);
 	
 	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 }

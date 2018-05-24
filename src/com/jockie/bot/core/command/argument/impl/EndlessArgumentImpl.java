@@ -158,7 +158,6 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 			return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
 		}
 		
-		
 		Type[] objects = (Type[]) Array.newInstance(this.clazz, args);
 		for(int i2 = 0; i2 < objects.length; i2++) {
 			objects[i2] = (Type) arguments[i2];

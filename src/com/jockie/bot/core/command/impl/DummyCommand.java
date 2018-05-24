@@ -21,8 +21,8 @@ public class DummyCommand extends CommandImpl {
 		
 		this.command = command;
 		
-		this.setAliases(command.getAliases());
-		this.setArguments(Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
+		super.setAliases(command.getAliases());
+		super.setArguments(Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
 			public boolean test(IArgument<?> argument) {
 				if(!argument.hasDefault())
 					return true;
@@ -43,14 +43,14 @@ public class DummyCommand extends CommandImpl {
 			}
 		}).toArray(IArgument[]::new));
 		
-		this.setAuthorDiscordPermissionsNeeded(command.getAuthorDiscordPermissionsNeeded());
-		this.setBotDiscordPermissionsNeeded(command.getBotDiscordPermissionsNeeded());
-		this.setBotTriggerable(command.isBotTriggerable());
-		this.setDescription(command.getDescription());
-		this.setDeveloperCommand(command.isDeveloperCommand());
-		this.setGuildTriggerable(command.isGuildTriggerable());
-		this.setHidden(command.isHidden());
-		this.setPrivateTriggerable(command.isPrivateTriggerable());
+		super.setAuthorDiscordPermissionsNeeded(command.getAuthorDiscordPermissionsNeeded());
+		super.setBotDiscordPermissionsNeeded(command.getBotDiscordPermissionsNeeded());
+		super.setBotTriggerable(command.isBotTriggerable());
+		super.setDescription(command.getDescription());
+		super.setDeveloperCommand(command.isDeveloperCommand());
+		super.setGuildTriggerable(command.isGuildTriggerable());
+		super.setHidden(command.isHidden());
+		super.setPrivateTriggerable(command.isPrivateTriggerable());
 	}
 	
 	public ICommand getDummiedCommand() {
@@ -62,7 +62,7 @@ public class DummyCommand extends CommandImpl {
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {
 			if(this.indexes.get(i) != null) {
-				args[i] = this.indexes.get(i).getDefault(event);
+				args[i] = this.indexes.get(i).getDefault(event, commandEvent);
 			}else{
 				args[i] = arguments[offset];
 				offset = offset + 1;

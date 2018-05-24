@@ -1,13 +1,14 @@
 package com.jockie.bot.core.await;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import net.dv8tion.jda.core.events.Event;
 
 public class AwaitManager {
 	
-	private static List<AwaitEvent<?>> awaits = new ArrayList<>();
+	private static List<AwaitEvent<?>> awaits = Collections.synchronizedList(new ArrayList<>());
 	
 	public static void addAwait(AwaitEvent<?> await) {
 		AwaitManager.awaits.add(await);

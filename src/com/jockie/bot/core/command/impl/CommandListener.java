@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -13,20 +12,20 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.IArgument;
 import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument;
 import com.jockie.bot.core.paged.impl.PagedManager;
+import com.jockie.bot.core.utility.TriFunction;
 
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.MessageBuilder.Formatting;
 import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.events.Event;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.core.hooks.ListenerAdapter;
+import net.dv8tion.jda.core.hooks.EventListener;
 
-public class CommandListener extends ListenerAdapter {
+public class CommandListener implements EventListener {
 	
 	private Permission[] genericPermissions = {};
 	
@@ -34,11 +33,35 @@ public class CommandListener extends ListenerAdapter {
 	
 	private Function<MessageReceivedEvent, String[]> prefixFunction;
 	
-	private BiFunction<MessageReceivedEvent, List<ICommand>, EmbedBuilder> helperFunction;
+	private TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> helperFunction;
 	
 	private List<Long> developers = new ArrayList<>();
 	
 	private List<CommandStore> commandStores = new ArrayList<>();
+	
+	private List<CommandEventListener> commandEventListeners = new ArrayList<>();
+	
+	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
+		for(CommandEventListener commandEventListener : commandEventListeners) {
+			if(!this.commandEventListeners.contains(commandEventListener)) {
+				this.commandEventListeners.add(commandEventListener);
+			}
+		}
+		
+		return this;
+	}
+	
+	public CommandListener removeCommandEventListener(CommandEventListener... commandEventListeners) {
+		for(CommandEventListener commandEventListener : commandEventListeners) {
+			this.commandEventListeners.remove(commandEventListener);
+		}
+		
+		return this;
+	}
+	
+	public List<CommandEventListener> getCommandEventListeners() {
+		return Collections.unmodifiableList(this.commandEventListeners);
+	}
 	
 	public List<CommandStore> getCommandStores() {
 		return Collections.unmodifiableList(this.commandStores);
@@ -54,7 +77,7 @@ public class CommandListener extends ListenerAdapter {
 		return this;
 	}
 	
-	public CommandListener removeCommandStores(CommandStore... commandStores) {
+	public CommandListener removeCommandStore(CommandStore... commandStores) {
 		for(CommandStore commandStore : commandStores) {
 			this.commandStores.remove(commandStore);
 		}
@@ -88,6 +111,12 @@ public class CommandListener extends ListenerAdapter {
 		return this;
 	}
 	
+	public CommandListener removeDeveloper(long id) {
+		this.developers.remove(id);
+		
+		return this;
+	}
+	
 	public List<Long> getDevelopers() {
 		return this.developers;
 	}
@@ -106,15 +135,15 @@ public class CommandListener extends ListenerAdapter {
 		return this.getDefaultPrefixes();
 	}
 	
-	public CommandListener setHelp(BiFunction<MessageReceivedEvent, List<ICommand>, EmbedBuilder> function) {
+	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> function) {
 		this.helperFunction = function;
 		
 		return this;
 	}
 	
-	public EmbedBuilder getHelp(MessageReceivedEvent event, String prefix, List<ICommand> commands) {
+	public EmbedBuilder getHelp(MessageReceivedEvent event, CommandEvent commandEvent, List<ICommand> commands) {
 		if(this.helperFunction != null) {
-			return this.helperFunction.apply(event, commands);
+			return this.helperFunction.apply(event, commandEvent, commands);
 		}
 		
 		StringBuilder description = new StringBuilder();
@@ -122,7 +151,7 @@ public class CommandListener extends ListenerAdapter {
 			ICommand command = commands.get(i);
 			
 			description.append("**Usage:** ")
-				.append(prefix)
+				.append(commandEvent.getPrefix())
 				.append(command.getCommand())
 				.append(" ")
 				.append(command.getArgumentInfo());
@@ -143,7 +172,11 @@ public class CommandListener extends ListenerAdapter {
 		return embedBuilder;
 	}
 	
-	public void onGenericEvent(Event event) {
+	public void onEvent(Event event) {
+		if(event instanceof MessageReceivedEvent) {
+			this.onMessageReceived((MessageReceivedEvent) event);
+		}
+		
 		AwaitManager.handleAwait(event);
 	}
 	
@@ -155,21 +188,39 @@ public class CommandListener extends ListenerAdapter {
 		}
 		
 		String[] prefixes = this.getPrefixes(event);
-		if(event.getMessage().getContentRaw().equals(event.getJDA().getSelfUser().getAsMention() + " prefix")) {
-			String prefixesStr = Arrays.deepToString(prefixes);
-			prefixesStr = prefixesStr.substring(1, prefixesStr.length() - 1);
-			
-			event.getChannel().sendMessage(new MessageBuilder().append("My prefix").append(prefixes.length > 1 ? "es are " : " is ").append(prefixesStr, Formatting.BOLD).build()).queue();
-			
-			return;
+		String message = event.getMessage().getContentRaw(), prefix = null, selfMention;
+		
+		if(event.getChannelType().isGuild()) {
+			selfMention = event.getGuild().getSelfMember().getAsMention() + " ";
+		}else{
+			selfMention = event.getJDA().getSelfUser().getAsMention() + " ";
 		}
 		
-		String message = event.getMessage().getContentRaw(), prefix = null;
-		for(String p : prefixes) {
-			if(message.startsWith(p)) {
-				prefix = p;
+		if(message.startsWith(selfMention)) {
+			if(message.equals(selfMention + "prefix") || message.equals(selfMention + "prefixes")) {
+				String allPrefixes = Arrays.deepToString(prefixes);
+				allPrefixes = allPrefixes.substring(1, allPrefixes.length() - 1);
 				
-				break;
+				event.getChannel().sendMessage(new MessageBuilder()
+					.append("My prefix")
+					.append(prefixes.length > 1 ? "es are " : " is ")
+					.append(allPrefixes, Formatting.BOLD)
+					.build()).queue();
+				
+				return;
+			}else{
+				/* I want every bot to have this feature therefore it will be a hard coded one, arguments against it? */
+				prefix = selfMention;
+			}
+		}
+		
+		if(prefix == null) {
+			for(String p : prefixes) {
+				if(message.startsWith(p)) {
+					prefix = p;
+					
+					break;
+				}
 			}
 		}
 		
@@ -204,7 +255,10 @@ public class CommandListener extends ListenerAdapter {
 					continue COMMANDS;
 				}
 				
-				possibleCommands.add(command);
+				/* Optional? */
+				if(!(command instanceof DummyCommand)) {
+					possibleCommands.add(command);
+				}
 				
 				msg = message.substring(cmd.length());
 				
@@ -295,16 +349,14 @@ public class CommandListener extends ListenerAdapter {
 						continue COMMANDS;
 					}
 					
-					CommandEvent commandEvent = new CommandEvent(event, this, prefix, alias);
-					
-					this.executeCommand(command, event, commandEvent, commandStarted, arguments);
+					this.executeCommand(command, event, new CommandEvent(event, this, prefix, alias), commandStarted, arguments);
 					
 					return;
 				}
 			}
 			
 			if(possibleCommands.size() > 0) {
-				if(event.isFromType(ChannelType.TEXT)) {
+				if(event.getChannelType().isGuild()) {
 					Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
 					
 					if(!bot.hasPermission(Permission.MESSAGE_WRITE)) {
@@ -320,14 +372,15 @@ public class CommandListener extends ListenerAdapter {
 					}
 				}
 				
-				event.getChannel().sendMessage(this.getHelp(event, prefix, possibleCommands).build()).queue();
+				event.getChannel().sendMessage(this.getHelp(event, new CommandEvent(event, this, prefix, message), possibleCommands).build()).queue();
 			}
 		}
 	}
 	
 	private boolean checkPermissions(MessageReceivedEvent event, ICommand command) {
-		if(event.isFromType(ChannelType.TEXT)) {
+		if(event.getChannelType().isGuild()) {
 			Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
+			
 			long permissionsNeeded = Permission.getRaw(this.genericPermissions) | Permission.getRaw(command.getBotDiscordPermissionsNeeded());
 			
 			StringBuilder missingPermissions = new StringBuilder();
@@ -341,7 +394,7 @@ public class CommandListener extends ListenerAdapter {
 			if(missingPermissions.length() > 0) {
 				StringBuilder message = new StringBuilder();
 				
-				message.append("Missing permission(s) to execute **")
+				message.append("Missing permission" + (missingPermissions.length() > 1 ? "s" : "") + " to execute **")
 					.append(command.getCommand()).append("** in ")
 					.append(event.getChannel().getName())
 					.append(", ")
@@ -371,20 +424,29 @@ public class CommandListener extends ListenerAdapter {
 			if(this.checkPermissions(event, command)) {
 				try {
 					command.execute(event, commandEvent, arguments);
+					
+					for(CommandEventListener listener : this.commandEventListeners) {
+						listener.onCommandExecuted(command, event, commandEvent);
+					}
 				}catch(Exception e) {
+					for(CommandEventListener listener : this.commandEventListeners) {
+						listener.onCommandExecutionException(command, event, commandEvent, e);
+					}
+					
 					try {
-						Exception exception = e.getClass().getConstructor(String.class).newInstance("Attempted to execute command (" + command.getCommand() + ") with the arguments " + Arrays.deepToString(arguments) + " but it failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
+						Exception exception = e.getClass().getConstructor(String.class).newInstance("Attempted to execute command (" + command.getCommand() + ") with the arguments " +
+							Arrays.deepToString(arguments) + " but it failed" + 
+							((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
+						
 						exception.setStackTrace(e.getStackTrace());
-						
-						throw exception;
-					}catch(Exception e1) {
-						e1.printStackTrace();
-						
-						return;
+						exception.printStackTrace();
+					}catch(Exception e2) {
+						e2.printStackTrace();
 					}
 				}
 				
-				System.out.println("Executed command (" + command.getCommand() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
+				System.out.println("Executed command (" + command.getCommand() + ") with the arguments " 
+					+ Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
 			}
 		}catch(InsufficientPermissionException e) {
 			System.out.println("Attempted to execute command (" + command.getCommand() + ") with arguments " + Arrays.deepToString(arguments) + 

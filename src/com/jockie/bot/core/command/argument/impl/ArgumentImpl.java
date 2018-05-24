@@ -1,12 +1,15 @@
 package com.jockie.bot.core.command.argument.impl;
 
+import java.util.function.BiFunction;
+
 import com.jockie.bot.core.command.argument.IArgument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	
-	private Type defaultValue;
+	private BiFunction<MessageReceivedEvent, CommandEvent, Type> defaultValueFunction;
 	
 	private boolean endless, empty, quote;
 	
@@ -17,15 +20,19 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 		this.empty = builder.isAcceptEmpty();
 		this.quote = builder.isAcceptQuote();
 		this.description = builder.getDescription();
-		this.defaultValue = builder.getDefaultValue();
+		this.defaultValueFunction = builder.getDefaultValueFunction();
 	}
 	
 	public boolean hasDefault() {
-		return this.defaultValue != null;
+		return this.defaultValueFunction != null;
 	}
 	
-	public Type getDefault(MessageReceivedEvent event) {
-		return this.defaultValue;
+	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent) {
+		if(this.defaultValueFunction != null) {
+			return this.defaultValueFunction.apply(event, commandEvent);
+		}
+		
+		return null;
 	}
 	
 	public boolean isEndless() {
