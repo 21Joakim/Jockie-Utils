@@ -1,5 +1,6 @@
 package com.jockie.bot.core.paged.impl;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -8,30 +9,11 @@ import com.jockie.bot.core.paged.IPagedResult;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.core.requests.ErrorResponse;
-import net.dv8tion.jda.core.requests.Request;
-import net.dv8tion.jda.core.requests.Response;
-import net.dv8tion.jda.core.requests.RestAction;
-import net.dv8tion.jda.core.requests.Route;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class PagedManager {
 	
-	private static Map<Long, Map<Long, Map<Long, Pair<JDA, IPagedResult>>>> pagedResults = new HashMap<>();
-	
-	private static RestAction<Message> getMessageIsDeleted(JDA jda, String channelId, String messageId) {
-		return new RestAction<Message>(jda, Route.Messages.GET_MESSAGE.compile(channelId, messageId)) {
-			protected void handleResponse(Response response, Request<Message> request) {
-				if(!response.isOk()) {
-					if(ErrorResponse.fromCode(response.getObject().getInt("code")).equals(ErrorResponse.UNKNOWN_MESSAGE)) {
-						request.onSuccess(null);
-					}else{
-						request.onFailure(response);
-					}
-				}else request.onSuccess(this.api.getEntityBuilder().createMessage(response.getObject(), jda.getTextChannelById(channelId), false));
-			}
-		};
-	}
+	private static Map<Long, Map<Long, Map<Long, Pair<JDA, IPagedResult>>>> pagedResults = Collections.synchronizedMap(new HashMap<>());
 	
 	public static void addPagedResult(MessageReceivedEvent event, JDA jda, IPagedResult pagedResult) {
 		if(!event.getChannelType().isGuild()) {
@@ -56,14 +38,10 @@ public class PagedManager {
 		if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
 			Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
 			
-			RestAction<Message> getMessageIsDeleted = PagedManager.getMessageIsDeleted(jda, event.getTextChannel().getId(), String.valueOf(pair.getRight().getMessageId()));
-			
-			getMessageIsDeleted.queue(message -> {
-				if(message != null) {
-					pair.getRight().stopTimeout();
-					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-				}
-			});
+			event.getTextChannel().getMessageById(pair.getRight().getMessageId()).queue(message -> {
+				pair.getRight().stopTimeout();
+				pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+			}, failure -> {});
 		}
 				
 		jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(pagedResult.getPageAsEmbed().build()).queue(message -> {
@@ -107,14 +85,10 @@ public class PagedManager {
 		if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
 			Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
 			
-			RestAction<Message> getMessageIsDeleted = PagedManager.getMessageIsDeleted(previous.getJDA(), event.getTextChannel().getId(), String.valueOf(pair.getRight().getMessageId()));
-			
-			getMessageIsDeleted.queue(message -> {
-				if(message != null) {
-					pair.getRight().stopTimeout();
-					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-				}
-			});
+			previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(pair.getRight().getMessageId()).queue(message -> {
+				pair.getRight().stopTimeout();
+				pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+			}, failure -> {});
 		}
 		
 		pagedResult.setMessageId(previous.getIdLong());
@@ -176,28 +150,23 @@ public class PagedManager {
 				
 				if(rawMessage.equals("next page") || rawMessage.equals("next") || rawMessage.equals("previous page") || rawMessage.equals("previous") || rawMessage.startsWith("go to page ") || rawMessage.startsWith("go to ") || rawMessage.equals("cancel")) {
 					jda.getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(event.getMessageId()).queue();
-						
-					RestAction<Message> getMessageIsDeleted = PagedManager.getMessageIsDeleted(jda, event.getTextChannel().getId(), originalMessage + "");
+					
 					if(rawMessage.equals("next page") || rawMessage.equals("next")) {
 						if(iPagedResult.nextPage()) {
-							getMessageIsDeleted.queue(message -> {
-								if(message != null) {
-									jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
-								}else{
-									jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
-								}
+							jda.getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(originalMessage).queue(message -> {
+								jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
+							}, failure -> {
+								jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
 							});
 						}else{
 							jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage("There are no more pages").queue();
 						}
 					}else if(rawMessage.equals("previous page") || rawMessage.equals("previous")) {
 						if(iPagedResult.previousPage()) {
-							getMessageIsDeleted.queue(message -> {
-								if(message != null) {
-									jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
-								}else{
-									jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
-								}
+							jda.getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(originalMessage).queue(message -> {
+								jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
+							}, failure -> {
+								jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
 							});
 						}else{
 							jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage("There are no previous pages").queue();
@@ -212,12 +181,10 @@ public class PagedManager {
 							}
 								
 							if(iPagedResult.setPage(page)) {
-								getMessageIsDeleted.queue(message -> {
-									if(message != null) {
-										jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
-									}else{
-										jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
-									}
+								jda.getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(originalMessage).queue(message -> {
+									jda.getTextChannelById(event.getTextChannel().getIdLong()).editMessageById(originalMessage, iPagedResult.getPageAsEmbed().build()).queue();
+								}, failure -> {
+									jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(iPagedResult.getPageAsEmbed().build()).queue(newMessage -> iPagedResult.setMessageId(newMessage.getIdLong()));
 								});
 							}else{
 								jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage("Invalid page number").queue();
