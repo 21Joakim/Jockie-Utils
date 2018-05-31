@@ -7,6 +7,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import beta.com.jockie.bot.core.timeout.TimeoutEvent;
+
 /**
  * Ugh... Works for now I suppose
  * 

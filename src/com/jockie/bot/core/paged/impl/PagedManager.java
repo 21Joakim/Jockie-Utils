@@ -15,6 +15,7 @@ public class PagedManager {
 	
 	private static Map<Long, Map<Long, Map<Long, Pair<JDA, IPagedResult>>>> pagedResults = Collections.synchronizedMap(new HashMap<>());
 	
+	/** Only has JDA parameter to support Jockie Music's use case */
 	public static void addPagedResult(MessageReceivedEvent event, JDA jda, IPagedResult pagedResult) {
 		if(!event.getChannelType().isGuild()) {
 			throw new IllegalArgumentException("The PagedResults only work for guilds");
@@ -136,7 +137,9 @@ public class PagedManager {
 				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).remove(event.getAuthor().getIdLong());
 			}
 		}
-	}	
+	}
+	
+	/* Kind of messy */
 	public static boolean handlePagedResults(MessageReceivedEvent event) {
 		String rawMessage = event.getMessage().getContentRaw().toLowerCase();
 		

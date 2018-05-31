@@ -8,8 +8,8 @@ import java.util.function.Consumer;
 import com.jockie.bot.core.paged.IPagedResult;
 import com.jockie.bot.core.paged.event.UpdateEvent;
 import com.jockie.bot.core.paged.event.UpdateEvent.UpdateType;
-import com.jockie.bot.core.timeout.Timeoutable;
 
+import com.jockie.bot.core.timeout.Timeoutable;
 import net.dv8tion.jda.core.EmbedBuilder;
 
 public class PagedResultText extends Timeoutable<PagedResultText> implements IPagedResult {

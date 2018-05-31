@@ -17,6 +17,7 @@ import net.dv8tion.jda.core.requests.RestAction.EmptyRestAction;
 public class ArgumentUtility {
 	
 	public static final Pattern USER_NAME_PATTERN = Pattern.compile(".{1,}#[0-9]{4}");
+	public static final Pattern ID_PATTERN = Pattern.compile("\\d+");
 	
 	private static String getGroup(Pattern pattern, int group, String value) {
 		Matcher matcher = pattern.matcher(value);
@@ -32,6 +33,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return guild.getRoleById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getRoleById(value);
 		}
 		
 		return null;
@@ -42,6 +45,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return guild.getMemberById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getMemberById(value);
 		}
 		
 		return null;
@@ -52,6 +57,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return guild.getTextChannelById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getTextChannelById(value);
 		}
 		
 		return null;
@@ -62,6 +69,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return guild.getEmoteById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getEmoteById(value);
 		}
 		
 		return null;
@@ -72,6 +81,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return jda.getUserById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return jda.getUserById(value);
 		}
 		
 		return null;
@@ -82,6 +93,8 @@ public class ArgumentUtility {
 		
 		if(id != null) {
 			return jda.retrieveUserById(id);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return jda.retrieveUserById(value);
 		}
 		
 		return new EmptyRestAction<User>(jda, null);

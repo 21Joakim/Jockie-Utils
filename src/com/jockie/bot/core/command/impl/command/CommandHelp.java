@@ -2,13 +2,13 @@ package com.jockie.bot.core.command.impl.command;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
+import com.jockie.bot.core.command.impl.DummyCommand;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.paged.impl.PagedResult;
 
@@ -31,6 +31,7 @@ public class CommandHelp extends CommandImpl {
 					.stream()
 					.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 					.flatMap(List::stream)
+					.filter(c -> !(c instanceof DummyCommand))
 					.filter(c -> !c.isHidden())
 					.sorted((first, second) -> first.getCommand().compareToIgnoreCase(second.getCommand())) 
 					.collect(Collectors.toList());
@@ -46,7 +47,7 @@ public class CommandHelp extends CommandImpl {
 					
 					ICommand command = e.pagedResult.getCurrentPageEntries().get(0);
 					
-					modify(commandEvent, command, builder);
+					getHelp(commandEvent, command, builder);
 				});
 				
 				pagedResult.setPage(commands.size());
@@ -58,6 +59,7 @@ public class CommandHelp extends CommandImpl {
 					.stream()
 					.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 					.flatMap(List::stream)
+					.filter(c -> !(c instanceof DummyCommand))
 					.filter(c -> {						
 						if(c.isCaseSensitive()) {
 							if(c.getCommand().contains(commandRaw)) {
@@ -91,7 +93,7 @@ public class CommandHelp extends CommandImpl {
 					if(commands.size() == 1) {
 						EmbedBuilder builder = new EmbedBuilder();
 						
-						modify(commandEvent, commands.get(0), builder);
+						getHelp(commandEvent, commands.get(0), builder);
 						
 						event.getChannel().sendMessage(builder.build()).queue();
 						
@@ -101,7 +103,7 @@ public class CommandHelp extends CommandImpl {
 					PagedResult<ICommand> pagedResult = new PagedResult<>(commands, c -> c.getUsage(), e -> {
 						EmbedBuilder builder = new EmbedBuilder();
 						
-						modify(commandEvent, e.entry, builder);
+						getHelp(commandEvent, e.entry, builder);
 						
 						event.getChannel().sendMessage(builder.build()).queue();
 					});
@@ -116,6 +118,7 @@ public class CommandHelp extends CommandImpl {
 				.stream()
 				.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 				.flatMap(List::stream)
+				.filter(c -> !(c instanceof DummyCommand))
 				.filter(c -> !c.isHidden())
 				.sorted((first, second) -> first.getCommand().compareToIgnoreCase(second.getCommand())) 
 				.collect(Collectors.toList());
@@ -132,7 +135,7 @@ public class CommandHelp extends CommandImpl {
 			});
 			
 			pagedResult.setListIndexes(false);
-			pagedResult.setTimeout(3, TimeUnit.MINUTES);
+			/* Maybe? pagedResult.setTimeout(3, TimeUnit.MINUTES); */
 			
 			/* Not mobile friendly
 			StringBuilder stringBuilder = new StringBuilder();
@@ -156,7 +159,7 @@ public class CommandHelp extends CommandImpl {
 		}
 	}
 	
-	private void modify(CommandEvent event, ICommand command, EmbedBuilder builder) {
+	private static void getHelp(CommandEvent event, ICommand command, EmbedBuilder builder) {
 		builder.addField("Command", command.getCommand(), true);
 		
 		builder.addField("Usage", command.getUsage(event.getPrefix()), true);
@@ -168,5 +171,7 @@ public class CommandHelp extends CommandImpl {
 		if(command.getDescription() != null && command.getDescription().length() > 0) {
 			builder.addField("Description", command.getDescription(), false);
 		}
+		
+		builder.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null);
 	}
 }

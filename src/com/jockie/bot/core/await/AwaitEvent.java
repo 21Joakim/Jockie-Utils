@@ -5,7 +5,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import com.jockie.bot.core.timeout.Timeoutable;
-
 import net.dv8tion.jda.core.events.Event;
 
 public class AwaitEvent<T extends Event> extends Timeoutable<AwaitEvent<T>> {

@@ -2,6 +2,7 @@ package com.jockie.bot.core.paged;
 
 import net.dv8tion.jda.core.EmbedBuilder;
 
+/* This and all the classes implementing it need a re-make */
 public interface IPagedResult {
 	
 	public long getMessageId();

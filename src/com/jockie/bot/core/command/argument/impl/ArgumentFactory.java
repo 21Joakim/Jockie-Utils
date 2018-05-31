@@ -30,6 +30,8 @@ public class ArgumentFactory {
 	}
 	
 	static {
+		/* All of these should ultimately use a similar implementation to ArgumentUtility#getMemberByIdOrName */
+		
 		ArgumentFactory.registerArgument(Member.class, (event, argument, value) -> {
 			Member member = ArgumentUtility.getMember(event.getGuild(), value);
 			

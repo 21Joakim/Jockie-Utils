@@ -7,8 +7,10 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 /* Add more events? */
 public class CommandEventListener {
 	
+	/** This will be sent after the command has been called. Depending on how the executed command is made, async or blocking, the command might not have finished executed when this is called */
 	public void onCommandExecuted(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent) {}
 	
+	/** This will be sent after an exception passed by uncaught */
 	public void onCommandExecutionException(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, Exception e) {}
 	
 }

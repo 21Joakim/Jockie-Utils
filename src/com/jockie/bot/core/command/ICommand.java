@@ -124,7 +124,10 @@ public interface ICommand {
 	public default String getUsage(String prefix) {
 		StringBuilder builder = new StringBuilder();
 		
-		builder.append(prefix).append(this.getCommand()).append(" ").append(this.getArgumentInfo());
+		builder.append(prefix)
+			.append(this.getCommand())
+			.append(" ")
+			.append(this.getArgumentInfo());
 		
 		return builder.toString();
 	}

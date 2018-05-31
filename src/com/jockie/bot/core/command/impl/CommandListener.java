@@ -167,6 +167,7 @@ public class CommandListener implements EventListener {
 		
 		EmbedBuilder embedBuilder = new EmbedBuilder();
 		embedBuilder.setDescription(description);
+		embedBuilder.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null);
 		embedBuilder.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
 		
 		return embedBuilder;
@@ -180,6 +181,7 @@ public class CommandListener implements EventListener {
 		AwaitManager.handleAwait(event);
 	}
 	
+	/* Would it be possible to split this event in to different steps, opinions? */
 	public void onMessageReceived(MessageReceivedEvent event) {
 		if(event.getChannelType().isGuild()) {
 			if(PagedManager.handlePagedResults(event)) {
@@ -255,7 +257,7 @@ public class CommandListener implements EventListener {
 					continue COMMANDS;
 				}
 				
-				/* Optional? */
+				/* Should this be optional? */
 				if(!(command instanceof DummyCommand)) {
 					possibleCommands.add(command);
 				}
@@ -377,6 +379,7 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
+	/* Maybe allow for this to be enabled and disabled, opinion? */
 	private boolean checkPermissions(MessageReceivedEvent event, ICommand command) {
 		if(event.getChannelType().isGuild()) {
 			Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
@@ -433,6 +436,7 @@ public class CommandListener implements EventListener {
 						listener.onCommandExecutionException(command, event, commandEvent, e);
 					}
 					
+					/* Should this still be thrown even if it sends to the listener? */
 					try {
 						Exception exception = e.getClass().getConstructor(String.class).newInstance("Attempted to execute command (" + command.getCommand() + ") with the arguments " +
 							Arrays.deepToString(arguments) + " but it failed" + 

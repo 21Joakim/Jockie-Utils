@@ -85,7 +85,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 	@SuppressWarnings("unchecked")
 	public VerifiedArgument<Type[]> verify(MessageReceivedEvent event, String value) {
 		int args = 0;
-			
+		
 		Type[] arguments = (Type[]) Array.newInstance(this.clazz, (this.maxArguments > 0) ? this.maxArguments : (int) value.codePoints().filter(c2 -> c2 == ' ').count() + 1);
 		
 		ARGUMENTS:
@@ -131,7 +131,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 				return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
 			}
 			
-			VerifiedArgument<?> verified = this.argument.verify(event, content);
+			VerifiedArgument<Type> verified = this.argument.verify(event, content);
 			
 			switch(verified.getVerifiedType()) {
 				case INVALID: {

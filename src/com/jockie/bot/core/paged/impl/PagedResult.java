@@ -9,8 +9,8 @@ import com.jockie.bot.core.paged.IPagedResult;
 import com.jockie.bot.core.paged.event.SelectEvent;
 import com.jockie.bot.core.paged.event.UpdateEvent;
 import com.jockie.bot.core.paged.event.UpdateEvent.UpdateType;
-import com.jockie.bot.core.timeout.Timeoutable;
 
+import com.jockie.bot.core.timeout.Timeoutable;
 import net.dv8tion.jda.core.EmbedBuilder;
 
 public class PagedResult<Type> extends Timeoutable<PagedResult<Type>> implements IPagedResult {
@@ -46,7 +46,7 @@ public class PagedResult<Type> extends Timeoutable<PagedResult<Type>> implements
 		this.displayFunction = displayFunction;
 		this.selectHandler = consumer;
 		
-		/* Default */
+		/* Default, maybe add a global default or disabled by default? */
 		this.timeout = true;
 		this.timeoutTime = 30;
 		this.timeoutUnit = TimeUnit.SECONDS;
