@@ -54,15 +54,10 @@ public class CommandImpl implements ICommand {
 		this.command = command;
 		
 		Method commandMethod = this.getCommandMethod();
-		if(commandMethod != null && commandMethod.getParameterCount() > 2) {
-			if(arguments.length == 0) {
-				this.setDefaultArguments();
-			}else{
-				this.arguments = arguments;
-			}
+		if(arguments.length == 0 && (commandMethod != null && commandMethod.getParameterCount() > 2)) {
+			this.setDefaultArguments();
 		}else{
-			/* Should this be allowed? */
-			throw new IllegalStateException("onCommand(MessageReceivedEvent, CommandEvent) was not found");
+			this.arguments = arguments;
 		}
 	}
 	
