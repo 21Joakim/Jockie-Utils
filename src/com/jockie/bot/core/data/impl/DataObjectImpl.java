@@ -1,6 +1,6 @@
 package com.jockie.bot.core.data.impl;
 
-public class DataObjectImpl<Type> extends DataImpl<Type> {
+public class DataObjectImpl<Type> extends DataImpl<Type, DataObjectImpl<Type>> {
 	
 	private Type object;
 	
@@ -26,5 +26,9 @@ public class DataObjectImpl<Type> extends DataImpl<Type> {
 	
 	public void load(Type type) {
 		this.object = type;
+	}
+	
+	public DataObjectImpl<Type> self() {
+		return this;
 	}
 }

@@ -2,7 +2,7 @@ package com.jockie.bot.core.data.impl;
 
 import com.jockie.bot.core.data.Data;
 
-public abstract class DataImpl<Type> implements Data<Type> {
+public abstract class DataImpl<Type, ReturnType extends DataImpl<Type, ReturnType>> implements Data<Type> {
 	
 	private Class<Type> clazz;
 	
@@ -13,20 +13,20 @@ public abstract class DataImpl<Type> implements Data<Type> {
 		this.name = name;
 	}
 	
-	public DataImpl<Type> setPath(String path) {
+	public ReturnType setPath(String path) {
 		this.path = path;
 		
-		return this;
+		return this.self();
 	}
 	
 	public String getPath() {
 		return this.path;
 	}
 	
-	public DataImpl<Type> setName(String name) {
+	public ReturnType setName(String name) {
 		this.name = name;
 		
-		return this;
+		return this.self();
 	}
 	
 	public String getName() {
@@ -36,4 +36,6 @@ public abstract class DataImpl<Type> implements Data<Type> {
 	public Class<Type> getType() {
 		return this.clazz;
 	}
+	
+	public abstract ReturnType self();
 }

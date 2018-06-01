@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-public class DataMapImpl<Key, Data> extends DataImpl<Data[]> {
+public class DataMapImpl<Key, Data> extends DataImpl<Data[], DataMapImpl<Key, Data>> {
 	
 	private Map<Key, Data> data = new ConcurrentHashMap<>();
 	
@@ -49,5 +49,9 @@ public class DataMapImpl<Key, Data> extends DataImpl<Data[]> {
 	
 	public void removeByData(Data data) {
 		this.remove(this.function.apply(data));
+	}
+	
+	public DataMapImpl<Key, Data> self() {
+		return this;
 	}
 }

@@ -3,8 +3,10 @@ package com.jockie.bot.core.command.impl;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.jockie.bot.core.command.ICommand;
@@ -43,18 +45,24 @@ public class CommandImpl implements ICommand {
 	
 	private boolean hidden;
 	
-	/* Not sure about these two, might implement it in a different way. They currently only exist for edge cases hence why they aren't well implemented */
+	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	private Map<String, Object> customProperties = new HashMap<>();
-	private Map<String, TriFunction<MessageReceivedEvent, CommandListener, Object, Boolean>> customVerification = new HashMap<>();
+	
+	private List<TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean>> customVerifications = new ArrayList<>();
 	
 	public CommandImpl(String command, IArgument<?>... arguments) {
 		this.command = command;
 		
 		Method commandMethod = this.getCommandMethod();
-		if(arguments.length == 0 && (commandMethod != null && commandMethod.getParameterCount() > 2)) {
-			this.setDefaultArguments();
+		if(commandMethod != null && commandMethod.getParameterCount() > 2) {
+			if(arguments.length == 0) {
+				this.setDefaultArguments();
+			}else{
+				this.arguments = arguments;
+			}
 		}else{
-			this.arguments = arguments;
+			/* Should this be allowed? */
+			throw new IllegalStateException("onCommand(MessageReceivedEvent, CommandEvent) was not found");
 		}
 	}
 	
@@ -110,22 +118,8 @@ public class CommandImpl implements ICommand {
 		return this.customProperties.get(key);
 	}
 	
-	public TriFunction<MessageReceivedEvent, CommandListener, Object, Boolean> getVerification(String key) {
-		return this.customVerification.get(key);
-	}
-	
-	protected void setVerification(String key, TriFunction<MessageReceivedEvent, CommandListener, Object, Boolean> verificationFunction) {
-		this.customVerification.put(key, verificationFunction);
-	}
-	
 	protected void setProperty(String key, Object value) {
 		this.customProperties.put(key, value);
-	}
-	
-	protected void setProperty(String key, Object value, TriFunction<MessageReceivedEvent, CommandListener, Object, Boolean> verificationFunction) {
-		this.setProperty(key, value);
-		
-		this.customVerification.put(key, verificationFunction);
 	}
 	
 	protected void setDeveloperCommand(boolean developerCommand) {
@@ -170,6 +164,10 @@ public class CommandImpl implements ICommand {
 	
 	protected void setHidden(boolean hidden) {
 		this.hidden = hidden;
+	}
+	
+	protected void addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
+		this.customVerifications.add(verification);
 	}
 	
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) {
@@ -241,13 +239,8 @@ public class CommandImpl implements ICommand {
 			}
 		}
 		
-		for(String key : this.customVerification.keySet()) {
-			Object property = this.customProperties.get(key);
-			if(property == null) {
-				return false;
-			}
-			
-			if(!this.customVerification.get(key).apply(event, commandListener, property)) {
+		for(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> function : this.customVerifications) {
+			if(!function.apply(event, commandListener, this)) {
 				return false;
 			}
 		}
@@ -346,6 +339,7 @@ public class CommandImpl implements ICommand {
 		this.arguments = arguments;
 	}
 	
+	/* Allow for different combinations of methods? Or allow these two to be placed anywhere or not at all */
 	private Method getCommandMethod() {
 		for(Method method : this.getClass().getMethods()) {
 			if(method.getName().equals("onCommand")) {
