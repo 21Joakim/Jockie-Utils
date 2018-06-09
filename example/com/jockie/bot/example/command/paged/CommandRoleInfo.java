@@ -14,7 +14,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandRoleInfo extends CommandImpl {
 	
 	public CommandRoleInfo() {
-								/* Since it can't really differentiate between the 3 possible methods I need to do this to set a null value */
+		/* Since it can't really differentiate between the 3 possible methods I need to do this to set a null value */
 		super("role info", ArgumentFactory.of(Role.class).setDefaultValue((a, b) -> null).setDescription("role").build());
 		super.setAliases("roleinfo", "rolei", "ri");
 		super.setDescription("Get information about a role");
