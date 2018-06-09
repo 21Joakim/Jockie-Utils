@@ -1,5 +1,6 @@
 <h1>This is a beta library</h1>
 All suggestions are welcome and feel free to contribute
+</br><b>Be aware, this project does lack examples of all the features avaliable</b>
 
 <h2>Libraries:</h2>
 https://github.com/DV8FromTheWorld/JDA (The Discord wrapper which the library is built upon)
