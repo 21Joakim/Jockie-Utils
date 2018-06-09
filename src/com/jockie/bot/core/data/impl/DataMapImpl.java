@@ -21,11 +21,11 @@ public class DataMapImpl<Key, Data> extends DataImpl<Data[], DataMapImpl<Key, Da
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Data[] save() {
+	public Data[] getSavableData() {
 		return (Data[]) this.data.values().toArray();
 	}
 	
-	public void load(Data[] types) {
+	public void setLoadableData(Data[] types) {
 		for(Data data : types) {
 			this.data.put(this.function.apply(data), data);
 		}

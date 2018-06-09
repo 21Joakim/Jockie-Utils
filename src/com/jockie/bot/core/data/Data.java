@@ -8,8 +8,8 @@ public interface Data<Type> {
 	
 	public Class<Type> getType();
 	
-	public Type save();
+	public Type getSavableData();
 	
-	public void load(Type type);
+	public void setLoadableData(Type type);
 	
 }

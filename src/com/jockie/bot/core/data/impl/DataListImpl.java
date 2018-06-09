@@ -16,11 +16,11 @@ public class DataListImpl<Data> extends DataImpl<Data[], DataListImpl<Data>> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Data[] save() {
+	public Data[] getSavableData() {
 		return (Data[]) this.data.toArray();
 	}
 	
-	public void load(Data[] types) {
+	public void setLoadableData(Data[] types) {
 		for(Data data : types) {
 			this.data.add(data);
 		}

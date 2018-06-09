@@ -1,5 +1,7 @@
 package com.jockie.bot.core.data.impl;
 
+import java.io.IOException;
+
 import com.jockie.bot.core.data.Data;
 
 public abstract class DataImpl<Type, ReturnType extends DataImpl<Type, ReturnType>> implements Data<Type> {
@@ -35,6 +37,22 @@ public abstract class DataImpl<Type, ReturnType extends DataImpl<Type, ReturnTyp
 	
 	public Class<Type> getType() {
 		return this.clazz;
+	}
+	
+	public void save() {
+		try {
+			DataHandler.save(this);
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void load() {
+		try {
+			DataHandler.load(this);
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public abstract ReturnType self();

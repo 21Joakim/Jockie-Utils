@@ -20,11 +20,11 @@ public class DataObjectImpl<Type> extends DataImpl<Type, DataObjectImpl<Type>> {
 		this.object = type;
 	}
 	
-	public Type save() {
+	public Type getSavableData() {
 		return this.object;
 	}
 	
-	public void load(Type type) {
+	public void setLoadableData(Type type) {
 		this.object = type;
 	}
 	

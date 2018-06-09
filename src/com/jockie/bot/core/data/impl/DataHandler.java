@@ -58,14 +58,18 @@ public class DataHandler {
 	
 	@SuppressWarnings("rawtypes")
 	public static synchronized void save(Data data) throws IOException {
-		DataLoader.saveObject(new File(DataHandler.getPath(data)), data.save());
+		DataLoader.saveObject(new File(DataHandler.getPath(data)), data.getSavableData());
 	}
 	
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static synchronized void load(Data data) throws IOException {
 		File file = new File(DataHandler.getPath(data));
+		if(file.getParentFile() != null && !file.getParentFile().exists()) {
+			file.getParentFile().mkdirs();
+		}
+		
 		if(!file.exists()) {
-			Object actualData = data.save();
+			Object actualData = data.getSavableData();
 			
 			if(actualData instanceof Object[]) {
 				DataLoader.createFileList(file);
@@ -78,6 +82,6 @@ public class DataHandler {
 			System.out.println(DataHandler.getPath(data) + " does not exist, creating empty file!");
 		}
 		
-		data.load(DataLoader.loadObject(file, data.getType()));
+		data.setLoadableData(DataLoader.loadObject(file, data.getType()));
 	}
 }
