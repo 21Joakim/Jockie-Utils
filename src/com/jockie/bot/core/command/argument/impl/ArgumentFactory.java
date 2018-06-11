@@ -14,6 +14,7 @@ import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.core.entities.VoiceChannel;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class ArgumentFactory {
@@ -30,10 +31,8 @@ public class ArgumentFactory {
 	}
 	
 	static {
-		/* All of these should ultimately use a similar implementation to ArgumentUtility#getMemberByIdOrName */
-		
 		ArgumentFactory.registerArgument(Member.class, (event, argument, value) -> {
-			Member member = ArgumentUtility.getMember(event.getGuild(), value);
+			Member member = ArgumentUtility.getMemberByIdOrName(event.getGuild(), value, true);
 			
 			if(member != null) {
 				return new VerifiedArgument<Member>(VerifiedType.VALID, member);
@@ -43,7 +42,7 @@ public class ArgumentFactory {
 		});
 		
 		ArgumentFactory.registerArgument(TextChannel.class, (event, argument, value) -> {
-			TextChannel channel = ArgumentUtility.getTextChannel(event.getGuild(), value);
+			TextChannel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
 			
 			if(channel != null) {
 				return new VerifiedArgument<TextChannel>(VerifiedType.VALID, channel);
@@ -52,8 +51,18 @@ public class ArgumentFactory {
 			}
 		});
 		
+		ArgumentFactory.registerArgument(VoiceChannel.class, (event, argument, value) -> {
+			VoiceChannel channel = ArgumentUtility.getVoiceChannelByIdOrName(event.getGuild(), value, true);
+			
+			if(channel != null) {
+				return new VerifiedArgument<VoiceChannel>(VerifiedType.VALID, channel);
+			}else{
+				return new VerifiedArgument<VoiceChannel>(VerifiedType.INVALID, null);
+			}
+		});
+		
 		ArgumentFactory.registerArgument(Role.class, (event, argument, value) -> {
-			Role role = ArgumentUtility.getRole(event.getGuild(), value);
+			Role role = ArgumentUtility.getRoleByIdOrName(event.getGuild(), value, true);
 			
 			if(role != null) {
 				return new VerifiedArgument<Role>(VerifiedType.VALID, role);
@@ -63,7 +72,7 @@ public class ArgumentFactory {
 		});
 		
 		ArgumentFactory.registerArgument(Emote.class, (event, argument, value) -> {
-			Emote emote = ArgumentUtility.getEmote(event.getGuild(), value);
+			Emote emote = ArgumentUtility.getEmoteByIdOrName(event.getGuild(), value, true);
 			
 			if(emote != null) {
 				return new VerifiedArgument<Emote>(VerifiedType.VALID, emote);

@@ -13,6 +13,8 @@ public @interface Argument {
 	public boolean acceptEmpty() default false;
 	public boolean acceptQuote() default false;
 	
+	public boolean nullDefault() default false;
+	
 	public String description();
 	
 }

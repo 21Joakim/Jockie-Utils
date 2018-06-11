@@ -1,7 +1,6 @@
 package com.jockie.bot.example.command.arguments;
 
 import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
-import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.EmbedBuilder;
@@ -12,12 +11,12 @@ public class CommandAvatar extends CommandImpl {
 
 	public CommandAvatar() {
 		/* Need to figure out a way of making this more convenient (When using optional arguments) (Setting a default value will make the argument optional) */
-		super("avatar", ArgumentFactory.of(User.class).setDescription("user").setDefaultValue(event -> event.getAuthor()).build());
+		super("avatar", true, false, ArgumentFactory.of(User.class).setDescription("user").setDefaultValue(event -> event.getAuthor()).build());
 		
 		super.setDescription("Get the avatar of a user");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent, User user) {
+	public void onCommand(MessageReceivedEvent event, User user) {
 		event.getChannel().sendMessage(new EmbedBuilder().setImage(user.getAvatarUrl()).build()).queue();
 	}
 }

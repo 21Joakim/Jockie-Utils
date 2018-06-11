@@ -2,6 +2,7 @@ package com.jockie.bot.core.command;
 
 import com.jockie.bot.core.command.argument.IArgument;
 import com.jockie.bot.core.command.argument.IEndlessArgument;
+import com.jockie.bot.core.command.impl.Category;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 
@@ -75,6 +76,11 @@ public interface ICommand {
 	 * then the command could only be triggered if the message is equal to <strong>PiNg</strong> 
 	 */
 	public boolean isCaseSensitive();
+	
+	/**
+	 * @return the category this command is in
+	 */
+	public Category getCategory();
 	
 	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
