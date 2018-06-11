@@ -8,7 +8,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandAddTwo extends CommandImpl {
 
 	public CommandAddTwo() {
-		super("add two", true, false);
+		super("add two");
 		
 		super.setDescription("Add two integer numbers together and get the result");
 		super.setAliases("addtwo", "at");

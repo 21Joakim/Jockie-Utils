@@ -9,7 +9,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandAddAll extends CommandImpl {
 
 	public CommandAddAll() {
-		super("add all", true, false);
+		super("add all");
 		
 		super.setDescription("Add all provided double numbers and get the result");
 		super.setAliases("addall", "aa");

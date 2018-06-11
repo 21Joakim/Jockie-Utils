@@ -13,7 +13,7 @@ public class CommandCoinFlip extends CommandImpl {
 	private Random random = new Random();
 	
 	public CommandCoinFlip() {
-		super("coinflip", true, false);
+		super("coinflip");
 		
 		super.setDescription("Flip a coin to see if your statement or question is true or false");
 	}

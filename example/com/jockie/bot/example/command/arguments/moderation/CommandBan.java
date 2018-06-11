@@ -11,14 +11,14 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandBan extends CommandImpl {
 	
 	public CommandBan() {
-		super("ban", true, false);
+		super("ban");
 		
-		super.setDescription("Ban a member");
+		super.setDescription("Ban a user");
 		super.setAuthorDiscordPermissionsNeeded(Permission.BAN_MEMBERS);
 		super.setBotDiscordPermissionsNeeded(Permission.BAN_MEMBERS);
 	}
 	
-	public void onCommand(MessageReceivedEvent event, @Argument(description="User") User user, @Argument(description="Reason", nullDefault=true) String reason) {
+	public void onCommand(MessageReceivedEvent event, @Argument(description="User") User user, @Argument(description="Reason", nullDefault=true, endless=true) String reason) {
 		if(event.getGuild().isMember(user)) {
 			Member member = event.getGuild().getMember(user);
 			

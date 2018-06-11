@@ -47,29 +47,20 @@ public class CommandImpl implements ICommand {
 	
 	private Category category;
 	
-	private boolean contextMessageEvent = true, contextCommandEvent = true;
-	
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	private Map<String, Object> customProperties = new HashMap<>();
 	
 	private List<TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean>> customVerifications = new ArrayList<>();
 	
-	public CommandImpl(String command, boolean contextMessageEvent, boolean contextCommandEvent, IArgument<?>... arguments) {
+	public CommandImpl(String command, IArgument<?>... arguments) {
 		this.command = command;
 		
-		this.contextMessageEvent = contextMessageEvent;
-		this.contextCommandEvent = contextCommandEvent;
-		
-		Method commandMethod = this.getCommandMethod(this.contextMessageEvent, this.contextCommandEvent);
-		if(arguments.length == 0 && (commandMethod != null && commandMethod.getParameterCount() > 2)) {
+		Method commandMethod = this.getCommandMethod();
+		if(arguments.length == 0 && commandMethod != null) {
 			this.generateDefaultArguments();
 		}else{
 			this.arguments = arguments;
 		}
-	}
-	
-	public CommandImpl(String command, IArgument<?>... arguments) {
-		this(command, true, true, arguments);
 	}
 	
 	public String getCommand() {
@@ -219,35 +210,28 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) {
-		Method command = this.getCommandMethod(this.contextMessageEvent, this.contextCommandEvent);
+		Method command = this.getCommandMethod();
 		
 		int contextCount = 0;
-		if(this.contextMessageEvent) {
-			contextCount++;
-		}
-		
-		if(this.contextCommandEvent) {
-			contextCount++;
+		for(Parameter parameter : command.getParameters()) {
+			if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+				contextCount++;
+			}
 		}
 		
 		if(command != null) {
 			Object[] arguments = new Object[args.length + contextCount];
 			
-			if(contextCount > 0) {
-				if(this.contextMessageEvent) {
-					arguments[0] = event;
-				}
-				
-				if(this.contextCommandEvent) {
-					arguments[contextCount - 1] = commandEvent;
+			for(int i = 0, i2 = 0; i < arguments.length; i++) {
+				Parameter parameter = command.getParameters()[i];
+				if(parameter.getType().equals(MessageReceivedEvent.class)) {
+					arguments[i] = event;
+				}else if(parameter.getType().equals(CommandEvent.class)) {
+					arguments[i] = commandEvent;
+				}else{
+					arguments[i] = args[i2++];
 				}
 			}
-			
-			for(int i = 0; i < args.length; i++) {
-				arguments[contextCount + i] = args[i];
-			}
-			
-			System.out.println(Arrays.toString(arguments));
 			
 			try {
 				command.invoke(this, arguments);
@@ -317,21 +301,22 @@ public class CommandImpl implements ICommand {
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void generateDefaultArguments() {
-		Method command = this.getCommandMethod(this.contextMessageEvent, this.contextCommandEvent);
+		Method command = this.getCommandMethod();
 		
 		int contextCount = 0;
-		if(this.contextMessageEvent) {
-			contextCount++;
-		}
-		
-		if(this.contextCommandEvent) {
-			contextCount++;
+		for(Parameter parameter : command.getParameters()) {
+			if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+				contextCount++;
+			}
 		}
 		
 		IArgument<?>[] arguments = new IArgument<?>[command.getParameterCount() - contextCount];
 		if(command != null) {
-			for(int i = 0; i < arguments.length; i++) {
-				Parameter parameter = command.getParameters()[i + contextCount];
+			for(int i = 0, i2 = 0; i < command.getParameterCount(); i++) {
+				Parameter parameter = command.getParameters()[i];
+				if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+					continue;
+				}
 				
 				IArgument.Builder<?, ?, ?> builder = ArgumentFactory.of(parameter.getType());
 				if(builder != null) {
@@ -347,7 +332,7 @@ public class CommandImpl implements ICommand {
 						}
 						
 						if(info.endless()) {
-							if(arguments.length - 1 == i) {
+							if(arguments.length - 1 == i2) {
 								builder.setEndless(info.endless());
 							}else{
 								throw new IllegalArgumentException("Only the last argument may be endless");
@@ -359,10 +344,10 @@ public class CommandImpl implements ICommand {
 						}
 					}
 					
-					arguments[i] = builder.build();
+					arguments[i2++] = builder.build();
 				}else{
 					if(parameter.getType().isArray()) {
-						if(arguments.length - 1 == i) {
+						if(arguments.length - 1 == i2) {
 							builder = ArgumentFactory.of(parameter.getType().getComponentType());
 							if(builder != null) {
 								if(parameter.isAnnotationPresent(Argument.class)) {
@@ -392,7 +377,7 @@ public class CommandImpl implements ICommand {
 									endlessBuilder.setMinArguments(info.minArguments()).setMaxArguments(info.maxArguments());
 								}
 								
-								arguments[i] = endlessBuilder.build();
+								arguments[i2++] = endlessBuilder.build();
 								
 								break;
 							}else{
@@ -411,14 +396,10 @@ public class CommandImpl implements ICommand {
 		this.arguments = arguments;
 	}
 	
-	/* Allow for different combinations of methods? Or allow these two to be placed anywhere or not at all */
-	private Method getCommandMethod(boolean contextMessageEvent, boolean contextCommandEvent) {
+	private Method getCommandMethod() {
 		for(Method method : this.getClass().getMethods()) {
 			if(method.getName().equals("onCommand")) {
-				int args = 0;
-				if((contextMessageEvent ? method.getParameterTypes()[args++].equals(MessageReceivedEvent.class) : true) && (contextCommandEvent ? method.getParameterTypes()[args].equals(CommandEvent.class) : true)) {
-					return method;
-				}
+				return method;
 			}
 		}
 		

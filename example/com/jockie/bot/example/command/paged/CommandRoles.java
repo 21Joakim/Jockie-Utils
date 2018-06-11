@@ -10,7 +10,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandRoles extends CommandImpl {
 
 	public CommandRoles() {
-		super("roles", true, false);
+		super("roles");
 		
 		super.setDescription("Get a list of all roles");
 	}

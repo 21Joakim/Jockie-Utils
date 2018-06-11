@@ -11,7 +11,7 @@ public class CommandAvatar extends CommandImpl {
 
 	public CommandAvatar() {
 		/* Need to figure out a way of making this more convenient (When using optional arguments) (Setting a default value will make the argument optional) */
-		super("avatar", true, false, ArgumentFactory.of(User.class).setDescription("user").setDefaultValue(event -> event.getAuthor()).build());
+		super("avatar", ArgumentFactory.of(User.class).setDescription("user").setDefaultValue(event -> event.getAuthor()).build());
 		
 		super.setDescription("Get the avatar of a user");
 	}

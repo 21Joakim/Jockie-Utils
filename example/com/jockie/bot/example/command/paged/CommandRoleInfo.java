@@ -13,7 +13,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandRoleInfo extends CommandImpl {
 	
 	public CommandRoleInfo() {
-		super("role info", true, false);
+		super("role info");
 		super.setAliases("roleinfo", "rolei", "ri");
 		super.setDescription("Get information about a role");
 	}

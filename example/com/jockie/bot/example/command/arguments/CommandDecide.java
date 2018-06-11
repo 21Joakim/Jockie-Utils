@@ -13,7 +13,7 @@ public class CommandDecide extends CommandImpl {
 	private Random random = new Random();
 
 	public CommandDecide() {
-		super("decide", true, false);
+		super("decide");
 		
 		super.setDescription("Give me two sentences and I will choose one of them");
 	}
