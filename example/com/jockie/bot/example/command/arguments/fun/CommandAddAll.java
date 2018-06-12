@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.arguments;
+package com.jockie.bot.example.command.arguments.fun;
 
 import com.jockie.bot.core.command.argument.Argument;
 import com.jockie.bot.core.command.argument.Endless;

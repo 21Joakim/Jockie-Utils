@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.arguments;
+package com.jockie.bot.example.command.arguments.fun;
 
 import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.command.impl.CommandImpl;

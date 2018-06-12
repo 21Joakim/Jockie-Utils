@@ -13,129 +13,118 @@ import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class PagedManager {
 	
+	/* Lul */
 	private static Map<Long, Map<Long, Map<Long, Pair<JDA, IPagedResult>>>> pagedResults = Collections.synchronizedMap(new HashMap<>());
 	
 	/** Only has JDA parameter to support Jockie Music's use case */
 	public static void addPagedResult(MessageReceivedEvent event, JDA jda, IPagedResult pagedResult) {
-		if(!event.getChannelType().isGuild()) {
+		if(event.getGuild() != null) {
+			long guildId = event.getGuild().getIdLong();
+			
+			if(!PagedManager.pagedResults.containsKey(guildId)) {
+				PagedManager.pagedResults.put(guildId, new HashMap<>());
+			}
+			
+			if(!PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
+				PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
+			}
+			
+			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
+				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+				
+				event.getTextChannel().getMessageById(pair.getRight().getMessageId()).queue(message -> {
+					pair.getRight().stopTimeout();
+					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+				}, failure -> {});
+			}
+					
+			jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(pagedResult.getPageAsEmbed().build()).queue(message -> {
+				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(jda, pagedResult));
+				
+				pagedResult.setMessageId(message.getIdLong());
+				pagedResult.onTimeoutFinish(() -> {
+					jda.getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					
+					PagedManager.removePagedResult(event);
+				});
+				
+				pagedResult.startTimeout();
+			});
+		}else{
 			throw new IllegalArgumentException("The PagedResults only work for guilds");
 		}
-		
-		Long guildId;
-		if(event.getGuild() != null) {
-			guildId = event.getGuild().getIdLong();
-		}else{
-			guildId = null;
-		}
-		
-		if(!PagedManager.pagedResults.containsKey(guildId)) {
-			PagedManager.pagedResults.put(guildId, new HashMap<>());
-		}
-		
-		if(!PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
-			PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
-		}
-		
-		if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
-			Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
-			
-			event.getTextChannel().getMessageById(pair.getRight().getMessageId()).queue(message -> {
-				pair.getRight().stopTimeout();
-				pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-			}, failure -> {});
-		}
-				
-		jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(pagedResult.getPageAsEmbed().build()).queue(message -> {
-			PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(jda, pagedResult));
-			
-			pagedResult.setMessageId(message.getIdLong());
-			pagedResult.onTimeoutFinish(() -> {
-				jda.getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
-				
-				PagedManager.removePagedResult(event);
-			});
-			
-			pagedResult.startTimeout();
-		});
 	}
 	
 	public static void addPagedResult(MessageReceivedEvent event, IPagedResult pagedResult) {
 		PagedManager.addPagedResult(event, event.getJDA(), pagedResult);
 	}
 	
-	public static void addPagedResult(MessageReceivedEvent event, IPagedResult pagedResult, Message previous) {
-		if(!event.getChannelType().isGuild()) {
+	public static void addPagedResult(MessageReceivedEvent event, IPagedResult pagedResult, Message previous) {		
+		if(event.getGuild() != null) {
+			long guildId = event.getGuild().getIdLong();
+		
+			if(!PagedManager.pagedResults.containsKey(guildId)) {
+				PagedManager.pagedResults.put(guildId, new HashMap<>());
+			}
+			
+			if(!PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
+				PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
+			}
+			
+			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
+				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+				
+				previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(pair.getRight().getMessageId()).queue(message -> {
+					pair.getRight().stopTimeout();
+					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+				}, failure -> {});
+			}
+			
+			pagedResult.setMessageId(previous.getIdLong());
+			
+			previous.editMessage(pagedResult.getPageAsEmbed().build()).queue(m -> {
+				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(previous.getJDA(), pagedResult));
+				
+				pagedResult.onTimeoutFinish(() -> {
+					previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					
+					PagedManager.removePagedResult(event);
+				});
+				
+				pagedResult.startTimeout();
+			});
+		}else{
 			throw new IllegalArgumentException("The PagedResults only work for guilds");
 		}
-		
-		Long guildId;
-		if(event.getGuild() != null) {
-			guildId = event.getGuild().getIdLong();
-		}else{
-			guildId = null;
-		}
-		
-		if(!PagedManager.pagedResults.containsKey(guildId)) {
-			PagedManager.pagedResults.put(guildId, new HashMap<>());
-		}
-		
-		if(!PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
-			PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
-		}
-		
-		if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
-			Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
-			
-			previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(pair.getRight().getMessageId()).queue(message -> {
-				pair.getRight().stopTimeout();
-				pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-			}, failure -> {});
-		}
-		
-		pagedResult.setMessageId(previous.getIdLong());
-		
-		previous.editMessage(pagedResult.getPageAsEmbed().build()).queue(m -> {
-			PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(previous.getJDA(), pagedResult));
-			
-			pagedResult.onTimeoutFinish(() -> {
-				previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
-				
-				PagedManager.removePagedResult(event);
-			});
-			
-			pagedResult.startTimeout();
-		});
 	}
 	
 	public static Pair<JDA, IPagedResult> getPagedResult(MessageReceivedEvent event) {
-		Long guildId;
 		if(event.getGuild() != null) {
-			guildId = event.getGuild().getIdLong();
-		}else{
-			guildId = null;
-		}
-		
-		if(PagedManager.pagedResults.containsKey(guildId)) {
-			if(PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
-				return PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+			long guildId = event.getGuild().getIdLong();
+			
+			if(PagedManager.pagedResults.containsKey(guildId)) {
+				if(PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
+					return PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+				}
 			}
+		}else{
+			throw new IllegalArgumentException("The PagedResults only work for guilds");
 		}
 		
 		return null;
 	}
 	
 	public static void removePagedResult(MessageReceivedEvent event) {
-		Long guildId;
 		if(event.getGuild() != null) {
-			guildId = event.getGuild().getIdLong();
-		}else{
-			guildId = null;
-		}
-		
-		if(PagedManager.pagedResults.containsKey(guildId)) {
-			if(PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
-				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).remove(event.getAuthor().getIdLong());
+			long guildId = event.getGuild().getIdLong();
+			
+			if(PagedManager.pagedResults.containsKey(guildId)) {
+				if(PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
+					PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).remove(event.getAuthor().getIdLong());
+				}
 			}
+		}else{
+			throw new IllegalArgumentException("The PagedResults only work for guilds");
 		}
 	}
 	

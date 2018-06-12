@@ -157,6 +157,13 @@ public class CommandImpl implements ICommand {
 	}
 	
 	protected CommandImpl setAliases(String... aliases) {
+		/* 
+		 * From the longest alias to the shortest so that if the command for instance has two aliases one being "hello" 
+		 * and the other being "hello there" it would recognize that the command is "hello there" instead of it thinking that
+		 * "hello" is the command and "there" being the argument.
+		 */
+		Arrays.sort(aliases, (a, b) -> Integer.compare(b.length(), a.length()));
+		
 		this.aliases = aliases;
 		
 		return this;

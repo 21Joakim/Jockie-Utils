@@ -34,6 +34,8 @@ public class CommandBan extends CommandImpl {
 				event.getChannel().sendMessage("You can not interact with that member").queue();
 			}
 		}else{
+			/* This is for the so called "hackban" command */
+			
 			event.getGuild().getController().ban(user, 0, reason).queue(success -> {
 				event.getChannel().sendMessage("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
 			});

@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.arguments;
+package com.jockie.bot.example.command.arguments.fun;
 
 import java.util.Random;
 
