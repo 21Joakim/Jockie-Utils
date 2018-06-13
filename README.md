@@ -20,10 +20,10 @@ dependencies {
 }
 ```
 
-<h2>Command structure (Not complete):</h2>
+<h2>Command structure (Not complete, check examples for more):</h2>
 All commands need to extend ICommand and the standard implementation of that is CommandImpl. CommandImpl allows arguments to be specified as the parameters of a function named onCommand.
 </br></br>
-<h3>Allowed parameters:</h3>
+<h4>Allowed parameters:</h4>
 Any objects are allowed to be present as the parameters however if the object's class is not registered in the <b>ArgumentFactory</b> it will not generate any default arguments for it and throw an exception therefore you have to specifiy them yourself. There is one exception to this with two objects which can not be arguments, <b>MessageReceivedEvent</b> and <b>CommandEvent</b>. Any amount of MessageReceivedEvent and CommandEvent used in your parameters won't matter they will always refer to the context and nothing else. Both MessageReceivedEvent and CommandEvent are optional so none of them have to be specified in the parameters but most of the time you would want at least one of them.
 </br></br>
 The <b>ArgumentFactory</b> has a few already registered classes
@@ -32,7 +32,7 @@ The <b>ArgumentFactory</b> has a few already registered classes
 </br><i>User, Member, TextChannel, VoiceChannel, Role and Emote from JDA</i>
 </br></br>
 
-<h3>onCommand</h3>
+<h4>onCommand:</h4>
 To specfiy the command you create a method called onCommand, here's a simple ping command
 
 ```
