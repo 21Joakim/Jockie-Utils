@@ -51,7 +51,7 @@ public class CommandPing extends CommandImpl {
 
 </br>
 
-If you want to specify commands you simple add more parameters, here's a simple decide command which will decide between two commands
+If you want to specify commands you simply add more parameters, here's a simple decide command which will decide between two statements
 ```
 public class CommandDecide extends CommandImpl {
 	
