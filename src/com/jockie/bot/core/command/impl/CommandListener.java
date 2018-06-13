@@ -273,10 +273,10 @@ public class CommandListener implements EventListener {
 				VERIFY:
 				if(!msg.startsWith(cmd + " ") && !msg.equals(cmd)) {
 					for(String a : command.getAliases()) {
-						if(msg.startsWith((!command.isCaseSensitive() ? a.toLowerCase() : alias) + " ") || msg.equals(!command.isCaseSensitive() ? a.toLowerCase() : alias)) {
+						String temp = !command.isCaseSensitive() ? a.toLowerCase() : a;
+						if(msg.startsWith(temp + " ") || msg.equals(temp)) {
 							alias = a;
-							
-							cmd = !command.isCaseSensitive() ? a.toLowerCase() : a;
+							cmd = temp;
 							
 							break VERIFY;
 						}
