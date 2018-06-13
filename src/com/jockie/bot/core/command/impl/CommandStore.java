@@ -29,9 +29,7 @@ public class CommandStore {
 					return 1;
 				}
 				
-				int arguments = 0, arguments2 = 0;
-				arguments += command.getArguments().length;
-				arguments2 += command2.getArguments().length;
+				int arguments = command.getArguments().length, arguments2 = command2.getArguments().length;
 				
 				if(arguments > 0 && arguments2 > 0) {
 					IArgument<?> lastArgument = command.getArguments()[arguments - 1], lastArgument2 = command2.getArguments()[arguments2 - 1];
@@ -147,6 +145,10 @@ public class CommandStore {
 		return this.addCommands(commands.toArray(new ICommand[0]));
 	}
 	
+	public CommandStore addCommands(Category category) {
+		return this.addCommands(category.addCommandStores(this).getCommands());
+	}
+	
 	public CommandStore removeCommands(ICommand... commands) {
 		for(ICommand command : commands) {
 			if(this.commands.contains(command)) {
@@ -163,6 +165,14 @@ public class CommandStore {
 		}
 		
 		return this;
+	}
+	
+	public CommandStore removeCommands(Collection<ICommand> commands) {
+		return this.removeCommands(commands.toArray(new ICommand[0]));
+	}
+	
+	public CommandStore removeCommands(Category category) {
+		return this.removeCommands(category.removeCommandStores(this).getCommands());
 	}
 	
 	public List<ICommand> getCommands() {

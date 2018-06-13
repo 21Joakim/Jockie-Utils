@@ -1,7 +1,6 @@
 package com.jockie.bot.example.command.paged;
 
-import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
-import com.jockie.bot.core.command.impl.CommandEvent;
+import com.jockie.bot.core.command.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.paged.impl.PagedResult;
@@ -14,13 +13,12 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 public class CommandRoleInfo extends CommandImpl {
 	
 	public CommandRoleInfo() {
-		/* Since it can't really differentiate between the 3 possible methods I need to do this to set a null value */
-		super("role info", ArgumentFactory.of(Role.class).setDefaultValue((a, b) -> null).setDescription("role").build());
+		super("role info");
 		super.setAliases("roleinfo", "rolei", "ri");
 		super.setDescription("Get information about a role");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent, Role role) {
+	public void onCommand(MessageReceivedEvent event, @Argument(description="Role", nullDefault=true) Role role) {
 		if(role != null) {
 			event.getChannel().sendMessage(getRoleInfo(role)).queue();
 		}else{

@@ -63,6 +63,12 @@ public interface IArgument<Type> {
 			return this.self();
 		}
 		
+		public BT setDefaultAsNull() {
+			this.setDefaultValue((a, b) -> null);
+			
+			return this.self();
+		}
+		
 		public boolean isEndless() {
 			return this.endless;
 		}

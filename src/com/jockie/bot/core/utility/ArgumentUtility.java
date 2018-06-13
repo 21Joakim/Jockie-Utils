@@ -1,5 +1,6 @@
 package com.jockie.bot.core.utility;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,12 +12,13 @@ import net.dv8tion.jda.core.entities.Message.MentionType;
 import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.core.entities.VoiceChannel;
 import net.dv8tion.jda.core.requests.RestAction;
 import net.dv8tion.jda.core.requests.RestAction.EmptyRestAction;
 
 public class ArgumentUtility {
 	
-	public static final Pattern USER_NAME_PATTERN = Pattern.compile(".{1,}#[0-9]{4}");
+	public static final Pattern USER_NAME_PATTERN = Pattern.compile(".{2,32}#[0-9]{4}");
 	public static final Pattern ID_PATTERN = Pattern.compile("\\d+");
 	
 	private static String getGroup(Pattern pattern, int group, String value) {
@@ -105,6 +107,8 @@ public class ArgumentUtility {
 		
 		if(processed != null) {
 			return guild.getMemberById(processed);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getMemberById(value);
 		}
 		
 		if(USER_NAME_PATTERN.matcher(value).matches()) {
@@ -119,6 +123,75 @@ public class ArgumentUtility {
 					}
 				}
 			}
+		}
+		
+		List<Member> members = guild.getMembersByEffectiveName(value, ignoreCase);
+		if(members.size() == 1) {
+			return members.get(0);
+		}
+		
+		return null;
+	}
+	
+	public static Role getRoleByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		String processed = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
+		
+		if(processed != null) {
+			return guild.getRoleById(processed);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getRoleById(value);
+		}
+		
+		List<Role> roles = guild.getRolesByName(value, ignoreCase);
+		if(roles.size() == 1) {
+			return roles.get(0);
+		}
+		
+		return null;
+	}
+	
+	public static Emote getEmoteByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		String processed = ArgumentUtility.getGroup(MentionType.EMOTE.getPattern(), 1, value);
+		
+		if(processed != null) {
+			return guild.getEmoteById(processed);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getEmoteById(value);
+		}
+		
+		List<Emote> emote = guild.getEmotesByName(value, ignoreCase);
+		if(emote.size() == 1) {
+			return emote.get(0);
+		}
+		
+		return null;
+	}
+	
+	public static TextChannel getTextChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		String processed = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
+		
+		if(processed != null) {
+			return guild.getTextChannelById(processed);
+		}else if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getTextChannelById(value);
+		}
+		
+		List<TextChannel> channels = guild.getTextChannelsByName(value, ignoreCase);
+		if(channels.size() == 1) {
+			return channels.get(0);
+		}
+		
+		return null;
+	}
+	
+	public static VoiceChannel getVoiceChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getVoiceChannelById(value);
+		}
+		
+		List<VoiceChannel> channels = guild.getVoiceChannelsByName(value, ignoreCase);
+		if(channels.size() == 1) {
+			return channels.get(0);
 		}
 		
 		return null;

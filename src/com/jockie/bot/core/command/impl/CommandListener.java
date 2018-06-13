@@ -35,6 +35,8 @@ public class CommandListener implements EventListener {
 	
 	private TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> helperFunction;
 	
+	private boolean helpEnabled;
+	
 	private List<Long> developers = new ArrayList<>();
 	
 	private List<CommandStore> commandStores = new ArrayList<>();
@@ -63,10 +65,6 @@ public class CommandListener implements EventListener {
 		return Collections.unmodifiableList(this.commandEventListeners);
 	}
 	
-	public List<CommandStore> getCommandStores() {
-		return Collections.unmodifiableList(this.commandStores);
-	}
-	
 	public CommandListener addCommandStore(CommandStore... commandStores) {
 		for(CommandStore commandStore : commandStores) {
 			if(!this.commandStores.contains(commandStore)) {
@@ -85,7 +83,18 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	public List<CommandStore> getCommandStores() {
+		return Collections.unmodifiableList(this.commandStores);
+	}
+	
 	public CommandListener setDefaultPrefixes(String... prefixes) {
+		/* 
+		 * From the longest prefix to the shortest so that if the bot for instance has two prefixes one being "hello" 
+		 * and the other being "hello there" it would recognize that the prefix is "hello there" instead of it thinking that
+		 * "hello" is the prefix and "there" being the command.
+		 */
+		Arrays.sort(prefixes, (a, b) -> Integer.compare(b.length(), a.length()));
+		
 		this.defaultPrefixes = prefixes;
 		
 		return this;
@@ -118,7 +127,7 @@ public class CommandListener implements EventListener {
 	}
 	
 	public List<Long> getDevelopers() {
-		return this.developers;
+		return Collections.unmodifiableList(this.developers);
 	}
 	
 	public CommandListener setPrefixesFunction(Function<MessageReceivedEvent, String[]> function) {
@@ -135,6 +144,29 @@ public class CommandListener implements EventListener {
 		return this.getDefaultPrefixes();
 	}
 	
+	/**
+	 * See {@link #isHelpEnabled()}
+	 */
+	public CommandListener setHelpEnabled(boolean enabled) {
+		this.helpEnabled = enabled;
+		
+		return this;
+	}
+	
+	/**
+	 * Whether or not the bot should return a message when the wrong arguments were given
+	 */
+	public boolean isHelpEnabled() {
+		return this.helpEnabled;
+	}
+	
+	/**
+	 * @param function The function that will be called when a command had the wrong arguments. 
+	 * </br></br>Parameters for the function:
+	 * </br><b>MessageReceivedEvent</b> - The event that triggered this
+	 * </br><b>CommandEvent</b> - Information about the command and context
+	 * </br><b>List&#60;ICommand&#62;</b> - The possible commands which the message could be referring to
+	 */
 	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> function) {
 		this.helperFunction = function;
 		
@@ -143,7 +175,13 @@ public class CommandListener implements EventListener {
 	
 	public EmbedBuilder getHelp(MessageReceivedEvent event, CommandEvent commandEvent, List<ICommand> commands) {
 		if(this.helperFunction != null) {
-			return this.helperFunction.apply(event, commandEvent, commands);
+			EmbedBuilder embedBuilder = this.helperFunction.apply(event, commandEvent, commands);
+			
+			if(embedBuilder != null) {
+				return embedBuilder;
+			}else{
+				System.err.println("The help function returned a null object, I will return the default help instead");
+			}
 		}
 		
 		StringBuilder description = new StringBuilder();
@@ -165,12 +203,9 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
-		EmbedBuilder embedBuilder = new EmbedBuilder();
-		embedBuilder.setDescription(description);
-		embedBuilder.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null);
-		embedBuilder.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
-		
-		return embedBuilder;
+		return new EmbedBuilder().setDescription(description)
+			.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null)
+			.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
 	}
 	
 	public void onEvent(Event event) {
@@ -190,16 +225,14 @@ public class CommandListener implements EventListener {
 		}
 		
 		String[] prefixes = this.getPrefixes(event);
-		String message = event.getMessage().getContentRaw(), prefix = null, selfMention;
+		String message = event.getMessage().getContentRaw(), prefix = null;
 		
-		if(event.getChannelType().isGuild()) {
-			selfMention = event.getGuild().getSelfMember().getAsMention() + " ";
-		}else{
-			selfMention = event.getJDA().getSelfUser().getAsMention() + " ";
-		}
-		
-		if(message.startsWith(selfMention)) {
-			if(message.equals(selfMention + "prefix") || message.equals(selfMention + "prefixes")) {
+		/* Needs to work for both non-nicked mention and nicked mention */
+		if(message.startsWith("<@" + event.getJDA().getSelfUser().getId() + "> ") || message.startsWith("<@!" + event.getJDA().getSelfUser().getId() + "> ")) {
+			/* I want every bot to have this feature therefore it will be a hard coded one, arguments against it? */
+			prefix = message.substring(0, message.indexOf(" ") + 1);
+			
+			if(message.equals(prefix + "prefix") || message.equals(prefix + "prefixes")) {
 				String allPrefixes = Arrays.deepToString(prefixes);
 				allPrefixes = allPrefixes.substring(1, allPrefixes.length() - 1);
 				
@@ -210,13 +243,8 @@ public class CommandListener implements EventListener {
 					.build()).queue();
 				
 				return;
-			}else{
-				/* I want every bot to have this feature therefore it will be a hard coded one, arguments against it? */
-				prefix = selfMention;
 			}
-		}
-		
-		if(prefix == null) {
+		}else{
 			for(String p : prefixes) {
 				if(message.startsWith(p)) {
 					prefix = p;
@@ -245,10 +273,10 @@ public class CommandListener implements EventListener {
 				VERIFY:
 				if(!msg.startsWith(cmd + " ") && !msg.equals(cmd)) {
 					for(String a : command.getAliases()) {
-						if(msg.startsWith((!command.isCaseSensitive() ? a.toLowerCase() : alias) + " ") || msg.equals(!command.isCaseSensitive() ? a.toLowerCase() : alias)) {
+						String temp = !command.isCaseSensitive() ? a.toLowerCase() : a;
+						if(msg.startsWith(temp + " ") || msg.equals(temp)) {
 							alias = a;
-							
-							cmd = !command.isCaseSensitive() ? a.toLowerCase() : a;
+							cmd = temp;
 							
 							break VERIFY;
 						}
@@ -257,7 +285,6 @@ public class CommandListener implements EventListener {
 					continue COMMANDS;
 				}
 				
-				/* Should this be optional? */
 				if(!(command instanceof DummyCommand)) {
 					possibleCommands.add(command);
 				}
@@ -357,9 +384,9 @@ public class CommandListener implements EventListener {
 				}
 			}
 			
-			if(possibleCommands.size() > 0) {
+			if(possibleCommands.size() > 0 && this.helpEnabled) {
 				if(event.getChannelType().isGuild()) {
-					Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
+					Member bot = event.getGuild().getSelfMember();
 					
 					if(!bot.hasPermission(Permission.MESSAGE_WRITE)) {
 						event.getAuthor().openPrivateChannel().queue(channel -> {
@@ -368,7 +395,7 @@ public class CommandListener implements EventListener {
 						
 						return;
 					}else if(!bot.hasPermission(Permission.MESSAGE_EMBED_LINKS)) {
-						event.getChannel().sendMessage("Missing permission **" + Permission.MESSAGE_WRITE.getName() + "** in " + event.getChannel().getName() + ", " + event.getGuild().getName()).queue();
+						event.getChannel().sendMessage("Missing permission **" + Permission.MESSAGE_EMBED_LINKS.getName() + "** in " + event.getChannel().getName() + ", " + event.getGuild().getName()).queue();
 						
 						return;
 					}
@@ -387,7 +414,6 @@ public class CommandListener implements EventListener {
 			long permissionsNeeded = Permission.getRaw(this.genericPermissions) | Permission.getRaw(command.getBotDiscordPermissionsNeeded());
 			
 			StringBuilder missingPermissions = new StringBuilder();
-			
 			for(Permission permission : Permission.getPermissions(permissionsNeeded)) {
 				if(!bot.hasPermission(event.getTextChannel(), permission)) {
 					missingPermissions.append(permission.getName() + "\n");
@@ -395,9 +421,8 @@ public class CommandListener implements EventListener {
 			}
 			
 			if(missingPermissions.length() > 0) {
-				StringBuilder message = new StringBuilder();
-				
-				message.append("Missing permission" + (missingPermissions.length() > 1 ? "s" : "") + " to execute **")
+				StringBuilder message = new StringBuilder()
+					.append("Missing permission" + (missingPermissions.length() > 1 ? "s" : "") + " to execute **")
 					.append(command.getCommand()).append("** in ")
 					.append(event.getChannel().getName())
 					.append(", ")

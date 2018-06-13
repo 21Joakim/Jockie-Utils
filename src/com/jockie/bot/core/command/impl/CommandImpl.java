@@ -45,6 +45,8 @@ public class CommandImpl implements ICommand {
 	
 	private boolean hidden;
 	
+	private Category category;
+	
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	private Map<String, Object> customProperties = new HashMap<>();
 	
@@ -54,8 +56,8 @@ public class CommandImpl implements ICommand {
 		this.command = command;
 		
 		Method commandMethod = this.getCommandMethod();
-		if(arguments.length == 0 && (commandMethod != null && commandMethod.getParameterCount() > 2)) {
-			this.setDefaultArguments();
+		if(arguments.length == 0 && commandMethod != null) {
+			this.generateDefaultArguments();
 		}else{
 			this.arguments = arguments;
 		}
@@ -109,72 +111,133 @@ public class CommandImpl implements ICommand {
 		return this.hidden;
 	}
 	
+	public Category getCategory() {
+		return this.category;
+	}
+	
+	/** Custom properties for the command which can be used in {@link #addVerification(TriFunction)} */
 	public Object getProperty(String key) {
 		return this.customProperties.get(key);
 	}
 	
-	protected void setProperty(String key, Object value) {
+	protected CommandImpl setProperty(String key, Object value) {
 		this.customProperties.put(key, value);
+		
+		return this;
 	}
 	
-	protected void setDeveloperCommand(boolean developerCommand) {
+	protected CommandImpl setDeveloperCommand(boolean developerCommand) {
 		this.developerCommand = developerCommand;
+		
+		return this;
 	}
 	
-	protected void setBotTriggerable(boolean botTriggerable) {
+	protected CommandImpl setBotTriggerable(boolean botTriggerable) {
 		this.botTriggerable = botTriggerable;
+		
+		return this;
 	}
 	
-	protected void setBotDiscordPermissionsNeeded(Permission... permissions) {
+	protected CommandImpl setBotDiscordPermissionsNeeded(Permission... permissions) {
 		this.botDiscordPermissionsNeeded = permissions;
+		
+		return this;
 	}
 	
-	protected void setAuthorDiscordPermissionsNeeded(Permission... permissions) {
+	protected CommandImpl setAuthorDiscordPermissionsNeeded(Permission... permissions) {
 		this.authorDiscordPermissionsNeeded = permissions;
+		
+		return this;
 	}
 	
-	protected void setDescription(String description) {
+	protected CommandImpl setDescription(String description) {
 		this.description = description;
+		
+		return this;
 	}
 	
-	protected void setAliases(String... aliases) {
+	protected CommandImpl setAliases(String... aliases) {
+		/* 
+		 * From the longest alias to the shortest so that if the command for instance has two aliases one being "hello" 
+		 * and the other being "hello there" it would recognize that the command is "hello there" instead of it thinking that
+		 * "hello" is the command and "there" being the argument.
+		 */
+		Arrays.sort(aliases, (a, b) -> Integer.compare(b.length(), a.length()));
+		
 		this.aliases = aliases;
+		
+		return this;
 	}
 	
-	protected void setArguments(IArgument<?>... arguments) {
+	protected CommandImpl setArguments(IArgument<?>... arguments) {
 		this.arguments = arguments;
+		
+		return this;
 	}
 	
-	protected void setGuildTriggerable(boolean triggerable) {
+	protected CommandImpl setGuildTriggerable(boolean triggerable) {
 		this.guildTriggerable = triggerable;
+		
+		return this;
 	}
 	
-	protected void setPrivateTriggerable(boolean triggerable) {
+	protected CommandImpl setPrivateTriggerable(boolean triggerable) {
 		this.privateTriggerable = triggerable;
+		
+		return this;
 	}
 	
-	protected void setCaseSensitive(boolean caseSensitive) {
+	protected CommandImpl setCaseSensitive(boolean caseSensitive) {
 		this.caseSensitive = caseSensitive;
+		
+		return this;
 	}
 	
-	protected void setHidden(boolean hidden) {
+	protected CommandImpl setHidden(boolean hidden) {
 		this.hidden = hidden;
+		
+		return this;
 	}
 	
-	protected void addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
+	protected CommandImpl setCategory(Category category) {
+		if(this.category != null) {
+			this.category.removeCommands(this);
+		}
+		
+		this.category = category.addCommands(this);
+		
+		return this;
+	}
+	
+	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */
+	protected CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
 		this.customVerifications.add(verification);
+		
+		return this;
 	}
 	
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) {
 		Method command = this.getCommandMethod();
 		
+		int contextCount = 0;
+		for(Parameter parameter : command.getParameters()) {
+			if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+				contextCount++;
+			}
+		}
+		
 		if(command != null) {
-			Object[] arguments = new Object[args.length + 2];
-			arguments[0] = event;
-			arguments[1] = commandEvent;
+			Object[] arguments = new Object[args.length + contextCount];
 			
-			for(int i = 0; i < args.length; i++) {
-				arguments[2 + i] = args[i];
+			for(int i = 0, i2 = 0; i < arguments.length; i++) {
+				Parameter parameter = command.getParameters()[i];
+				if(parameter.getType().equals(MessageReceivedEvent.class)) {
+					arguments[i] = event;
+				}else if(parameter.getType().equals(CommandEvent.class)) {
+					arguments[i] = commandEvent;
+				}else{
+					arguments[i] = args[i2++];
+				}
 			}
 			
 			try {
@@ -244,25 +307,23 @@ public class CommandImpl implements ICommand {
 	}
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	private void setDefaultArguments() {
-		Method command = null;
+	private void generateDefaultArguments() {
+		Method command = this.getCommandMethod();
 		
-		for(Method method : this.getClass().getMethods()) {
-			if(method.getName().equals("onCommand")) {
-				if(method.getParameterCount() >= 2) {
-					if(method.getParameterTypes()[0].equals(MessageReceivedEvent.class) && method.getParameterTypes()[1].equals(CommandEvent.class)) {
-						command = method;
-						
-						break;
-					}
-				}
+		int contextCount = 0;
+		for(Parameter parameter : command.getParameters()) {
+			if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+				contextCount++;
 			}
 		}
 		
-		IArgument<?>[] arguments = new IArgument<?>[command.getParameters().length - 2];
+		IArgument<?>[] arguments = new IArgument<?>[command.getParameterCount() - contextCount];
 		if(command != null) {
-			for(int i = 0; i < arguments.length; i++) {
-				Parameter parameter = command.getParameters()[i + 2];
+			for(int i = 0, i2 = 0; i < command.getParameterCount(); i++) {
+				Parameter parameter = command.getParameters()[i];
+				if(parameter.getType().equals(MessageReceivedEvent.class) || parameter.getType().equals(CommandEvent.class)) {
+					continue;
+				}
 				
 				IArgument.Builder<?, ?, ?> builder = ArgumentFactory.of(parameter.getType());
 				if(builder != null) {
@@ -273,8 +334,12 @@ public class CommandImpl implements ICommand {
 							.setAcceptEmpty(info.acceptEmpty())
 							.setAcceptQuote(info.acceptQuote());
 						
+						if(info.nullDefault()) {
+							builder.setDefaultAsNull();
+						}
+						
 						if(info.endless()) {
-							if(arguments.length - 1 == i) {
+							if(arguments.length - 1 == i2) {
 								builder.setEndless(info.endless());
 							}else{
 								throw new IllegalArgumentException("Only the last argument may be endless");
@@ -286,10 +351,10 @@ public class CommandImpl implements ICommand {
 						}
 					}
 					
-					arguments[i] = builder.build();
+					arguments[i2++] = builder.build();
 				}else{
 					if(parameter.getType().isArray()) {
-						if(arguments.length - 1 == i) {
+						if(arguments.length - 1 == i2) {
 							builder = ArgumentFactory.of(parameter.getType().getComponentType());
 							if(builder != null) {
 								if(parameter.isAnnotationPresent(Argument.class)) {
@@ -298,6 +363,10 @@ public class CommandImpl implements ICommand {
 									builder.setDescription(info.description())
 										.setAcceptEmpty(info.acceptEmpty())
 										.setAcceptQuote(info.acceptQuote());
+									
+									if(info.nullDefault()) {
+										builder.setDefaultAsNull();
+									}
 									
 									if(info.endless()) {
 										throw new IllegalArgumentException("An endless argument may not be endless");
@@ -315,7 +384,7 @@ public class CommandImpl implements ICommand {
 									endlessBuilder.setMinArguments(info.minArguments()).setMaxArguments(info.maxArguments());
 								}
 								
-								arguments[i] = endlessBuilder.build();
+								arguments[i2++] = endlessBuilder.build();
 								
 								break;
 							}else{
@@ -334,15 +403,10 @@ public class CommandImpl implements ICommand {
 		this.arguments = arguments;
 	}
 	
-	/* Allow for different combinations of methods? Or allow these two to be placed anywhere or not at all */
 	private Method getCommandMethod() {
 		for(Method method : this.getClass().getMethods()) {
 			if(method.getName().equals("onCommand")) {
-				if(method.getParameterCount() >= 2) {
-					if(method.getParameterTypes()[0].equals(MessageReceivedEvent.class) && method.getParameterTypes()[1].equals(CommandEvent.class)) {
-						return method;
-					}
-				}
+				return method;
 			}
 		}
 		

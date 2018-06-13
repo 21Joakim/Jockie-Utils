@@ -1,7 +1,6 @@
-package com.jockie.bot.example.command.arguments;
+package com.jockie.bot.example.command.arguments.fun;
 
 import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
-import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.EmbedBuilder;
@@ -17,7 +16,7 @@ public class CommandAvatar extends CommandImpl {
 		super.setDescription("Get the avatar of a user");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent, User user) {
+	public void onCommand(MessageReceivedEvent event, User user) {
 		event.getChannel().sendMessage(new EmbedBuilder().setImage(user.getAvatarUrl()).build()).queue();
 	}
 }

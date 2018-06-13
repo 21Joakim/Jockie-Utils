@@ -1,6 +1,5 @@
 package com.jockie.bot.example.command.paged;
 
-import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.paged.impl.PagedResult;
@@ -16,7 +15,7 @@ public class CommandRoles extends CommandImpl {
 		super.setDescription("Get a list of all roles");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent) {
+	public void onCommand(MessageReceivedEvent event) {
 		PagedResult<Role> paged = new PagedResult<Role>(event.getGuild().getRoles(), Role::getAsMention /* Alternatively: role -> role.getAsMention() */);
 		paged.setListIndexesContinuously(true);
 		paged.setTimeout(false);

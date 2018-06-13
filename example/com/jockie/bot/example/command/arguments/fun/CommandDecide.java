@@ -1,9 +1,8 @@
-package com.jockie.bot.example.command.arguments;
+package com.jockie.bot.example.command.arguments.fun;
 
 import java.util.Random;
 
 import com.jockie.bot.core.command.argument.Argument;
-import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
@@ -19,7 +18,7 @@ public class CommandDecide extends CommandImpl {
 		super.setDescription("Give me two sentences and I will choose one of them");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent, @Argument(description="statement", acceptQuote=true) String statement, @Argument(description="statement 2", acceptQuote=true) String statement2) {
+	public void onCommand(MessageReceivedEvent event, @Argument(description="statement", acceptQuote=true) String statement, @Argument(description="statement 2", acceptQuote=true) String statement2) {
 		event.getChannel().sendMessage("**" + (this.random.nextBoolean() ? statement : statement2) + "**" + " seems more reasonable to me!").queue();
 	}
 }
