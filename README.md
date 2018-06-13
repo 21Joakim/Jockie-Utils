@@ -28,9 +28,7 @@ All commands need to extend ICommand and the standard implementation of that is 
 <b>Allowed parameters:</b>
 </br>
 Any objects are allowed to be present as the parameters however if the object's class is not registered in the <b>ArgumentFactory</b> it will not generate any default arguments for it and throw an exception therefore you have to specifiy them yourself. There is one exception to this with two objects which can not be arguments, <b>MessageReceivedEvent</b> and <b>CommandEvent</b>. Any amount of MessageReceivedEvent and CommandEvent used in your parameters won't matter they will always refer to the context and nothing else. Both MessageReceivedEvent and CommandEvent are optional so none of them have to be specified in the parameters but most of the time you would want at least one of them.
-
-</br>
-
+</br></br>
 The <b>ArgumentFactory</b> has a few already registered classes
 </br><i>All primitive data types</i>
 </br><i>String and any Enum class</i>
