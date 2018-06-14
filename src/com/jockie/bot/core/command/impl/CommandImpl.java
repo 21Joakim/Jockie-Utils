@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.Argument;
@@ -46,6 +47,8 @@ public class CommandImpl implements ICommand {
 	private boolean hidden;
 	
 	private Category category;
+	
+	private long cooldownDuration = 0;
 	
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	private Map<String, Object> customProperties = new HashMap<>();
@@ -113,6 +116,10 @@ public class CommandImpl implements ICommand {
 	
 	public Category getCategory() {
 		return this.category;
+	}
+	
+	public long getCooldownDuration() {
+		return this.cooldownDuration;
 	}
 	
 	/** Custom properties for the command which can be used in {@link #addVerification(TriFunction)} */
@@ -207,6 +214,23 @@ public class CommandImpl implements ICommand {
 		this.category = category.addCommands(this);
 		
 		return this;
+	}
+	
+	/**
+	 * See {@link #getCooldownDuration()}
+	 * @param duration milliseconds
+	 */
+	protected CommandImpl setCooldownDuration(long duration) {
+		this.cooldownDuration = duration;
+		
+		return this;
+	}
+	
+	/**
+	 * See {@link #getCooldownDuration()}
+	 */
+	protected CommandImpl setCooldownDuration(long duration, TimeUnit unit) {
+		return this.setCooldownDuration(unit.toMillis(duration));
 	}
 	
 	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */

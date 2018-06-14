@@ -83,6 +83,13 @@ public interface ICommand {
 	public Category getCategory();
 	
 	/**
+	 * @return the cooldown duration in milliseconds which will be applied to a user
+	 * after they use this command. If the cooldown is less than or equal to 0 no
+	 * cooldown will be applied
+	 */
+	public long getCooldownDuration();
+	
+	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
 	 * 
 	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
@@ -97,6 +104,9 @@ public interface ICommand {
 	 */
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments);
 	
+	/**
+	 * @return information about the arguments
+	 */
 	public default String getArgumentInfo() {
 		StringBuilder builder = new StringBuilder();
 		
@@ -127,6 +137,9 @@ public interface ICommand {
 		return builder.toString();
 	}
 	
+	/**
+	 * @return full usage information about the command, prefix, command and {@link #getArgumentInfo()}
+	 */
 	public default String getUsage(String prefix) {
 		StringBuilder builder = new StringBuilder();
 		

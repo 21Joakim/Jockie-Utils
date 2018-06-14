@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -14,6 +16,7 @@ import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.utility.TriFunction;
 
+import beta.com.jockie.bot.core.command.impl.CooldownManager;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.MessageBuilder.Formatting;
@@ -35,13 +38,15 @@ public class CommandListener implements EventListener {
 	
 	private TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> helperFunction;
 	
-	private boolean helpEnabled;
+	private boolean helpEnabled = true, asyncEnabled = false;
 	
 	private List<Long> developers = new ArrayList<>();
 	
 	private List<CommandStore> commandStores = new ArrayList<>();
 	
 	private List<CommandEventListener> commandEventListeners = new ArrayList<>();
+	
+	private ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
 	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
 		for(CommandEventListener commandEventListener : commandEventListeners) {
@@ -65,6 +70,9 @@ public class CommandListener implements EventListener {
 		return Collections.unmodifiableList(this.commandEventListeners);
 	}
 	
+	/**
+	 * See {@link #getCommandStores()}
+	 */
 	public CommandListener addCommandStore(CommandStore... commandStores) {
 		for(CommandStore commandStore : commandStores) {
 			if(!this.commandStores.contains(commandStore)) {
@@ -75,6 +83,9 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	/**
+	 * See {@link #getCommandStores()}
+	 */
 	public CommandListener removeCommandStore(CommandStore... commandStores) {
 		for(CommandStore commandStore : commandStores) {
 			this.commandStores.remove(commandStore);
@@ -83,10 +94,16 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	/**
+	 * @return a list of CommandStores which are basically like command containers holding all the commands
+	 */
 	public List<CommandStore> getCommandStores() {
 		return Collections.unmodifiableList(this.commandStores);
 	}
 	
+	/**
+	 * See {@link #getDefaultPrefixes()}
+	 */
 	public CommandListener setDefaultPrefixes(String... prefixes) {
 		/* 
 		 * From the longest prefix to the shortest so that if the bot for instance has two prefixes one being "hello" 
@@ -100,48 +117,114 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	/**
+	 * @return a set of default prefixes which will be checked for when the bot receives a MessageReceivedEvent, 
+	 * additionally the mention of the bot is a hard-coded prefix which can not be removed
+	 */
 	public String[] getDefaultPrefixes() {
 		return this.defaultPrefixes;
 	}
 	
+	/**
+	 * See {@link #getGenericPermissions()}
+	 */
 	public CommandListener setGenericPermissions(Permission... permissions) {
 		this.genericPermissions = permissions;
 		
 		return this;
 	}
 	
+	/**
+	 * @return a set of permissions which will always be checked for no matter the properties of the command. If the bot does not have these permissions the commands will not work
+	 */
 	public Permission[] getGenericPermissions() {
 		return this.genericPermissions;
 	}
 	
+	/**
+	 * See {@link #getDevelopers()}
+	 */
 	public CommandListener addDeveloper(long id) {
 		this.developers.add(id);
 		
 		return this;
 	}
 	
+	/**
+	 * See {@link #getDevelopers()}
+	 */
 	public CommandListener removeDeveloper(long id) {
 		this.developers.remove(id);
 		
 		return this;
 	}
 	
+	/**
+	 * @return the developers which should be checked for in {@link ICommand#verify(MessageReceivedEvent, CommandListener)} if the command has {@link ICommand#isDeveloperCommand()}
+	 */
 	public List<Long> getDevelopers() {
 		return Collections.unmodifiableList(this.developers);
 	}
 	
+	/**
+	 * See {@link #getPrefixes(MessageReceivedEvent)}
+	 * 
+	 * @param function the function which will return a set amount of prefixes for the specific context,
+	 * for instance you can return guild or user specific prefixes
+	 */
 	public CommandListener setPrefixesFunction(Function<MessageReceivedEvent, String[]> function) {
 		this.prefixFunction = function;
 		
 		return this;
 	}
 	
+	/**
+	 * @param event the context of the message
+	 * 
+	 * @return this will return a set of prefixes for the specific context,
+	 * if a function was not set through {@link #setPrefixesFunction(Function)}
+	 * the default function, {@link #getDefaultPrefixes()}, will instead be used
+	 */
 	public String[] getPrefixes(MessageReceivedEvent event) {
 		if(this.prefixFunction != null) {
-			return this.prefixFunction.apply(event);
+			String[] prefixes = this.prefixFunction.apply(event);
+			
+			/* 
+			 * Should we also check if the length of the array is greater than 0 or
+			 * can we justify giving the user the freedom of not returning any prefixes at all? 
+			 * After all the mention prefix is hard-coded 
+			 */
+			if(prefixes != null /* && prefixes.length > 0 */) {
+				/* 
+				 * From the longest prefix to the shortest so that if the bot for instance has two prefixes one being "hello" 
+				 * and the other being "hello there" it would recognize that the prefix is "hello there" instead of it thinking that
+				 * "hello" is the prefix and "there" being the command.
+				 */
+				Arrays.sort(prefixes, (a, b) -> Integer.compare(b.length(), a.length()));
+				
+				return prefixes;
+			}else{
+				System.err.println("The prefix function returned a null object, I will return the default prefixes instead");
+			}
 		}
 		
 		return this.getDefaultPrefixes();
+	}
+	
+	/**
+	 * See {@link #isAsyncEnabled()}
+	 */
+	public CommandListener setAsyncEnabled(boolean enabled) {
+		this.asyncEnabled = enabled;
+		
+		return this;
+	}
+	
+	/**
+	 * Whether or not each command execution will be created on a new thread or not
+	 */
+	public boolean isAsyncEnabled() {
+		return this.asyncEnabled;
 	}
 	
 	/**
@@ -161,7 +244,7 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * @param function The function that will be called when a command had the wrong arguments. 
+	 * @param function the function that will be called when a command had the wrong arguments. 
 	 * </br></br>Parameters for the function:
 	 * </br><b>MessageReceivedEvent</b> - The event that triggered this
 	 * </br><b>CommandEvent</b> - Information about the command and context
@@ -290,101 +373,106 @@ public class CommandListener implements EventListener {
 				}
 				
 				msg = message.substring(cmd.length());
+				    
+				if(msg.length() > 0 && msg.charAt(0) != ' ') {
+					continue COMMANDS;
+				}
 				
-				if(msg.length() >= 0) {
-					if(msg.length() > 0 && msg.charAt(0) != ' ') {
-						continue COMMANDS;
+				int args = 0;
+				
+				Object[] arguments = new Object[command.getArguments().length];
+				
+				ARGUMENTS:
+				for(int i = 0; i < arguments.length; i++) {
+					if(msg.length() > 0) {
+						if(msg.startsWith(" ")) {
+							msg = msg.substring(1);
+						}else{
+							continue COMMANDS;
+						}
 					}
 					
-					int args = 0;
+					IArgument<?> argument = command.getArguments()[i];
 					
-					Object[] arguments = new Object[command.getArguments().length];
-					
-					ARGUMENTS:
-					for(int i = 0; i < arguments.length; i++) {
-						if(msg.length() > 0) {
-							if(msg.startsWith(" ")) {
-								msg = msg.substring(1);
-							}else{
-								continue COMMANDS;
-							}
+					VerifiedArgument<?> verified;
+					if(argument.isEndless()) {
+						if(msg.length() == 0 && !argument.acceptEmpty()) {
+							continue COMMANDS;
 						}
 						
-						IArgument<?> argument = command.getArguments()[i];
-						
-						VerifiedArgument<?> verified;
-						if(argument.isEndless()) {
-							if(msg.length() == 0 && !argument.acceptEmpty()) {
-								continue COMMANDS;
-							}
-							
-							verified = argument.verify(event, msg);
-							msg = "";
-						}else{
-							String content = null;
-							if(msg.length() > 0) {
-								if(argument.acceptQuote()) {
-									if(msg.charAt(0) == '"') {
-										int nextQuote = 0;
-										while((nextQuote = msg.indexOf('"', nextQuote + 1)) != -1 && msg.charAt(nextQuote - 1) == '\\');
+						verified = argument.verify(event, msg);
+						msg = "";
+					}else{
+						String content = null;
+						if(msg.length() > 0) {
+							if(argument.acceptQuote()) {
+								if(msg.charAt(0) == '"') {
+									int nextQuote = 0;
+									while((nextQuote = msg.indexOf('"', nextQuote + 1)) != -1 && msg.charAt(nextQuote - 1) == '\\');
+									
+									if(nextQuote != -1) {
+										content = msg.substring(1, nextQuote);
 										
-										if(nextQuote != -1) {
-											content = msg.substring(1, nextQuote);
-											
-											msg = msg.substring(content.length() + 2);
-											
-											content = content.replace("\\\"", "\"");
-										}
+										msg = msg.substring(content.length() + 2);
+										
+										content = content.replace("\\\"", "\"");
 									}
 								}
-								
-								if(content == null) {
-									content = msg.substring(0, (msg.contains(" ")) ? msg.indexOf(" ") : msg.length());
-									msg = msg.substring(content.length());
-								}
-							}else{
-								content = "";
 							}
 							
-							if(content.length() == 0 && !argument.acceptEmpty()) {
-								continue COMMANDS;
+							if(content == null) {
+								content = msg.substring(0, (msg.contains(" ")) ? msg.indexOf(" ") : msg.length());
+								msg = msg.substring(content.length());
 							}
-							
-							verified = argument.verify(event, content);
+						}else{
+							content = "";
 						}
 						
-						switch(verified.getVerifiedType()) {
-							case INVALID: {
-								continue COMMANDS;
-							}
-							case VALID: {
-								arguments[args++] = verified.getObject();
-								
-								break;
-							}
-							case VALID_END_NOW: {
-								arguments[args++] = verified.getObject();
-								
-								break ARGUMENTS;
-							}
+						if(content.length() == 0 && !argument.acceptEmpty()) {
+							continue COMMANDS;
+						}
+						
+						verified = argument.verify(event, content);
+					}
+					
+					switch(verified.getVerifiedType()) {
+						case INVALID: {
+							continue COMMANDS;
+						}
+						case VALID: {
+							arguments[args++] = verified.getObject();
+							
+							break;
+						}
+						case VALID_END_NOW: {
+							arguments[args++] = verified.getObject();
+							
+							break ARGUMENTS;
 						}
 					}
-					
-					if(msg.length() > 0) {
-						continue COMMANDS;
-					}
-					
-					if(command.getArguments().length != args) {
-						continue COMMANDS;
-					}
-					
-					this.executeCommand(command, event, new CommandEvent(event, this, prefix, alias), commandStarted, arguments);
-					
-					return;
 				}
+				
+				if(msg.length() > 0) {
+					continue COMMANDS;
+				}
+				
+				if(command.getArguments().length != args) {
+					continue COMMANDS;
+				}
+				
+				CommandEvent commandEvent = new CommandEvent(event, this, prefix, alias);
+				if(this.asyncEnabled) {
+					this.commandExecutor.submit(() -> {
+						this.executeCommand(command, event, commandEvent, commandStarted, arguments);
+					});
+				}else{
+					this.executeCommand(command, event, commandEvent, commandStarted, arguments);
+				}
+				
+				return;
 			}
 			
-			if(possibleCommands.size() > 0 && this.helpEnabled) {
+			if(this.helpEnabled && possibleCommands.size() > 0) {
 				if(event.getChannelType().isGuild()) {
 					Member bot = event.getGuild().getSelfMember();
 					
@@ -401,12 +489,12 @@ public class CommandListener implements EventListener {
 					}
 				}
 				
+				/* The alias for the CommandEvent is just everything after the prefix since there is no way to do it other than having a list of CommandEvent or aliases */
 				event.getChannel().sendMessage(this.getHelp(event, new CommandEvent(event, this, prefix, message), possibleCommands).build()).queue();
 			}
 		}
 	}
 	
-	/* Maybe allow for this to be enabled and disabled, opinion? */
 	private boolean checkPermissions(MessageReceivedEvent event, ICommand command) {
 		if(event.getChannelType().isGuild()) {
 			Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
@@ -451,14 +539,45 @@ public class CommandListener implements EventListener {
 		try {
 			if(this.checkPermissions(event, command)) {
 				try {
-					command.execute(event, commandEvent, arguments);
+					/* Allow for a custom cooldown implementation? */
+					/* Simple cooldown feature, not sure how scalable it is */
+					if(command.getCooldownDuration() > 0) {
+						/* Should a new manager be used for this or not? */
+						long remaining = CooldownManager.getTimeRemaining(command, event.getAuthor().getIdLong());
+						
+						if(remaining == 0) {
+							/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
+							CooldownManager.addCooldown(command, event.getAuthor().getIdLong());
+							
+							command.execute(event, commandEvent, arguments);
+						}else{
+							event.getChannel().sendMessage("This command has a cooldown, please try again in " + ((double) remaining/1000) + " seconds").queue();
+						}
+					}else{
+						command.execute(event, commandEvent, arguments);
+					}
 					
 					for(CommandEventListener listener : this.commandEventListeners) {
-						listener.onCommandExecuted(command, event, commandEvent);
+						/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+						try {
+							listener.onCommandExecuted(command, event, commandEvent);
+						}catch(Exception e) {
+							e.printStackTrace();
+						}
 					}
 				}catch(Exception e) {
+					if(command.getCooldownDuration() > 0) {
+						/* If the command execution fails then no cooldown should be added therefore this */
+						CooldownManager.removeCooldown(command, event.getAuthor().getIdLong());
+					}
+					
 					for(CommandEventListener listener : this.commandEventListeners) {
-						listener.onCommandExecutionException(command, event, commandEvent, e);
+						/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+						try {
+							listener.onCommandExecutionException(command, event, commandEvent, e);
+						}catch(Exception e1) {
+							e1.printStackTrace();
+						}
 					}
 					
 					/* Should this still be thrown even if it sends to the listener? */
