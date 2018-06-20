@@ -12,4 +12,6 @@ public @interface Endless {
 	public int minArguments() default 1;
 	public int maxArguments() default 0;
 	
+	public boolean endless() default true;
+	
 }

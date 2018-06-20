@@ -9,11 +9,29 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public interface IArgument<Type> {
 	
+	public boolean isEndless();
+	
+	public boolean acceptQuote();
+	
+	public boolean acceptEmpty();
+	
+	public boolean hasDefault();
+	
+	public String getName();
+	
+	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent);
+	
+	/* Remove? */
+	public String getError();
+	
+	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
+	
 	public abstract class Builder<RT, A extends IArgument<RT>, BT extends Builder<RT, A, BT>> {
 		
-		protected boolean endless, empty, quote;
+		/* I see no reason not to allow quoted by default */
+		protected boolean endless, empty, quote = true;
 		
-		protected String description;
+		protected String name, error;
 		
 		protected BiFunction<MessageReceivedEvent, CommandEvent, RT> defaultValueFunction;
 		
@@ -35,24 +53,8 @@ public interface IArgument<Type> {
 			return this.self();
 		}
 		
-		public BT setDescription(String description) {
-			this.description = description;
-			
-			return this.self();
-		}
-		
-		public BT setDefaultValue(RT defaultValue) {
-			this.defaultValueFunction = (event, commandEvent) -> {
-				return defaultValue;
-			};
-			
-			return this.self();
-		}
-		
-		public BT setDefaultValue(Function<MessageReceivedEvent, RT> defaultValueFunction) {
-			this.defaultValueFunction = (event, commandEvent) -> {
-				return defaultValueFunction.apply(event);
-			};
+		public BT setName(String name) {
+			this.name = name;
 			
 			return this.self();
 		}
@@ -63,8 +65,24 @@ public interface IArgument<Type> {
 			return this.self();
 		}
 		
-		public BT setDefaultAsNull() {
-			this.setDefaultValue((a, b) -> null);
+		public BT setDefaultValue(RT defaultValue) {
+			return this.setDefaultValue((event, commandEvent) -> {
+				return defaultValue;
+			});
+		}
+		
+		public BT setDefaultValue(Function<MessageReceivedEvent, RT> defaultValueFunction) {
+			return this.setDefaultValue((event, commandEvent) -> {
+				return defaultValueFunction.apply(event);
+			});
+		}
+		
+		public BT setDefaultAsNull() {			
+			return this.setDefaultValue((a, b) -> null);
+		}
+		
+		public BT setError(String error) {
+			this.error = error;
 			
 			return this.self();
 		}
@@ -81,55 +99,20 @@ public interface IArgument<Type> {
 			return this.quote;
 		}
 		
-		public String getDescription() {
-			return this.description;
+		public String getName() {
+			return this.name;
 		}
 		
 		public BiFunction<MessageReceivedEvent, CommandEvent, RT> getDefaultValueFunction() {
 			return this.defaultValueFunction;
 		}
 		
+		public String getError() {
+			return this.error;
+		}
+		
 		public abstract BT self();
 		
 		public abstract A build();
 	}
-	
-	public class VerifiedArgument<Type> {
-		
-		public enum VerifiedType {
-			INVALID,
-			VALID,
-			VALID_END_NOW;
-		}
-		
-		private VerifiedType type;
-		private Type object;
-		
-		public VerifiedArgument(VerifiedType type, Type object) {
-			this.type = type;
-			this.object = object;
-		}
-		
-		public VerifiedType getVerifiedType() {
-			return this.type;
-		}
-		
-		public Type getObject() {
-			return this.object;
-		}
-	}
-	
-	public boolean isEndless();
-	
-	public boolean acceptQuote();
-	
-	public boolean acceptEmpty();
-	
-	public boolean hasDefault();
-	
-	public String getDescription();
-	
-	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent);
-	
-	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 }

@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.arguments.moderation;
+package example.command.moderation;
 
 import com.jockie.bot.core.command.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
@@ -18,7 +18,7 @@ public class CommandBan extends CommandImpl {
 		super.setBotDiscordPermissionsNeeded(Permission.BAN_MEMBERS);
 	}
 	
-	public void onCommand(MessageReceivedEvent event, @Argument(description="User") User user, @Argument(description="Reason", nullDefault=true, endless=true) String reason) {
+	public void onCommand(MessageReceivedEvent event, @Argument(name="User") User user, @Argument(name="Reason", nullDefault=true, endless=true) String reason) {
 		if(event.getGuild().isMember(user)) {
 			Member member = event.getGuild().getMember(user);
 			
@@ -26,6 +26,10 @@ public class CommandBan extends CommandImpl {
 				if(event.getGuild().getSelfMember().canInteract(member)) {
 					event.getGuild().getController().ban(member, 0, reason).queue(success -> {
 						event.getChannel().sendMessage("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
+						
+						user.openPrivateChannel().queue(channel -> {
+							channel.sendMessage("You have been banned from " + event.getGuild().getName() + ((reason != null) ? " for the reason **" + reason + "**" :  "")).queue();
+						});
 					});
 				}else{
 					event.getChannel().sendMessage("I can not interact with that member").queue();

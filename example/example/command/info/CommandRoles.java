@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.paged;
+package example.command.info;
 
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.paged.impl.PagedManager;

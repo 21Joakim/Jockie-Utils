@@ -52,7 +52,7 @@ public interface ICommand {
 	public Permission[] getBotDiscordPermissionsNeeded();
 	
 	/**
-	 * @return the discord permissions the author is required to have to trigger this command.
+	 * @return the discord permissions the author is required to have to trigger this command, if the user does not have these permissions the command will not be visible to them.
 	 */
 	public Permission[] getAuthorDiscordPermissionsNeeded();
 	
@@ -83,10 +83,19 @@ public interface ICommand {
 	public Category getCategory();
 	
 	/**
+	 * @return the cooldown duration in milliseconds which will be applied to a user
+	 * after they use this command. If the cooldown is less than or equal to 0 no
+	 * cooldown will be applied
+	 */
+	public long getCooldownDuration();
+	
+	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
 	 * 
 	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
 	 */
+	
+	/* Should this be renamed to something else, such as isAccessible? Since it checks whether the user has access to the command or not, maybe canAccess? */
 	public boolean verify(MessageReceivedEvent event, CommandListener commandListener);
 	
 	/**
@@ -97,14 +106,17 @@ public interface ICommand {
 	 */
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments);
 	
+	/**
+	 * @return information about the arguments
+	 */
 	public default String getArgumentInfo() {
 		StringBuilder builder = new StringBuilder();
 		
 		for(int i = 0; i < this.getArguments().length; i++) {
 			IArgument<?> argument = this.getArguments()[i];
 			
-			if(argument.getDescription() != null) {
-				builder.append("<").append(argument.getDescription()).append(">");
+			if(argument.getName() != null) {
+				builder.append("<").append(argument.getName()).append(">");
 			}else{
 				builder.append("<argument ").append(i + 1).append(">");
 			}
@@ -127,6 +139,9 @@ public interface ICommand {
 		return builder.toString();
 	}
 	
+	/**
+	 * @return full usage information about the command, prefix, command and {@link #getArgumentInfo()}
+	 */
 	public default String getUsage(String prefix) {
 		StringBuilder builder = new StringBuilder();
 		

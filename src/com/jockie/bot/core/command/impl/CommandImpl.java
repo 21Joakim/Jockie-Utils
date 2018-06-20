@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.Argument;
@@ -46,6 +47,8 @@ public class CommandImpl implements ICommand {
 	private boolean hidden;
 	
 	private Category category;
+	
+	private long cooldownDuration = 0;
 	
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	private Map<String, Object> customProperties = new HashMap<>();
@@ -113,6 +116,10 @@ public class CommandImpl implements ICommand {
 	
 	public Category getCategory() {
 		return this.category;
+	}
+	
+	public long getCooldownDuration() {
+		return this.cooldownDuration;
 	}
 	
 	/** Custom properties for the command which can be used in {@link #addVerification(TriFunction)} */
@@ -209,6 +216,23 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
+	/**
+	 * See {@link #getCooldownDuration()}
+	 * @param duration milliseconds
+	 */
+	protected CommandImpl setCooldownDuration(long duration) {
+		this.cooldownDuration = duration;
+		
+		return this;
+	}
+	
+	/**
+	 * See {@link #getCooldownDuration()}
+	 */
+	protected CommandImpl setCooldownDuration(long duration, TimeUnit unit) {
+		return this.setCooldownDuration(unit.toMillis(duration));
+	}
+	
 	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */
 	protected CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
 		this.customVerifications.add(verification);
@@ -250,7 +274,11 @@ public class CommandImpl implements ICommand {
 					
 					information.append("    Arguments provided:\n");
 					for(Object argument : arguments) {
-						information.append("        " + argument.getClass().getName() + "\n");
+						if(argument != null) {
+							information.append("        " + argument.getClass().getName() + "\n");
+						}else{
+							information.append("        null\n");
+						}
 					}
 					
 					information.append("    Arguments expected:\n");
@@ -270,6 +298,10 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
+		if(event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
+			return false;
+		}
+		
 		if(!this.botTriggerable && event.getAuthor().isBot()) {
 			return false;
 		}
@@ -330,9 +362,10 @@ public class CommandImpl implements ICommand {
 					if(parameter.isAnnotationPresent(Argument.class)) {
 						Argument info = parameter.getAnnotation(Argument.class);
 						
-						builder.setDescription(info.description())
+						builder.setName(info.name())
 							.setAcceptEmpty(info.acceptEmpty())
-							.setAcceptQuote(info.acceptQuote());
+							.setAcceptQuote(info.acceptQuote())
+							.setError(info.error().length() > 0 ? info.error() : null);
 						
 						if(info.nullDefault()) {
 							builder.setDefaultAsNull();
@@ -347,51 +380,56 @@ public class CommandImpl implements ICommand {
 						}
 					}else{
 						if(parameter.isNamePresent()) {
-							builder.setDescription(parameter.getName());
+							builder.setName(parameter.getName());
 						}
 					}
 					
 					arguments[i2++] = builder.build();
 				}else{
 					if(parameter.getType().isArray()) {
-						if(arguments.length - 1 == i2) {
-							builder = ArgumentFactory.of(parameter.getType().getComponentType());
-							if(builder != null) {
-								if(parameter.isAnnotationPresent(Argument.class)) {
-									Argument info = parameter.getAnnotation(Argument.class);
-									
-									builder.setDescription(info.description())
-										.setAcceptEmpty(info.acceptEmpty())
-										.setAcceptQuote(info.acceptQuote());
-									
-									if(info.nullDefault()) {
-										builder.setDefaultAsNull();
-									}
-									
-									if(info.endless()) {
-										throw new IllegalArgumentException("An endless argument may not be endless");
-									}
-								}else{
-									if(parameter.isNamePresent()) {
-										builder.setDescription(parameter.getName());
-									}
+						builder = ArgumentFactory.of(parameter.getType().getComponentType());
+						if(builder != null) {
+							if(parameter.isAnnotationPresent(Argument.class)) {
+								Argument info = parameter.getAnnotation(Argument.class);
+								
+								builder.setName(info.name())
+									.setAcceptEmpty(info.acceptEmpty())
+									.setAcceptQuote(info.acceptQuote())
+									.setError(info.error().length() > 0 ? info.error() : null);
+								
+								if(info.nullDefault()) {
+									builder.setDefaultAsNull();
 								}
 								
-								EndlessArgumentImpl.Builder endlessBuilder = new EndlessArgumentImpl.Builder(parameter.getType().getComponentType()).setArgument(builder.build());
-								if(parameter.isAnnotationPresent(Endless.class)) {
-									Endless info = parameter.getAnnotation(Endless.class);
-									
-									endlessBuilder.setMinArguments(info.minArguments()).setMaxArguments(info.maxArguments());
+								if(info.endless()) {
+									throw new IllegalArgumentException("Not a valid candidate, candidate may not be endless");
 								}
-								
-								arguments[i2++] = endlessBuilder.build();
-								
-								break;
 							}else{
-								throw new IllegalArgumentException("There are no default arguments for " + parameter.getType().getComponentType().toString());
+								if(parameter.isNamePresent()) {
+									builder.setName(parameter.getName());
+								}
 							}
+							
+							EndlessArgumentImpl.Builder endlessBuilder = new EndlessArgumentImpl.Builder(parameter.getType().getComponentType()).setArgument(builder.build());
+							if(parameter.isAnnotationPresent(Endless.class)) {
+								Endless info = parameter.getAnnotation(Endless.class);
+								
+								endlessBuilder.setMinArguments(info.minArguments()).setMaxArguments(info.maxArguments()).setEndless(info.endless());
+							}
+							
+							IArgument argument = endlessBuilder.build();
+							
+							if(argument.isEndless()) {
+								if(arguments.length - 1 != i2) {
+									throw new IllegalArgumentException("Only the last argument may be endless");
+								}
+							}
+							
+							arguments[i2++] = argument;
+							
+							continue;
 						}else{
-							throw new IllegalArgumentException("Only the last argument may be endless");
+							throw new IllegalArgumentException("There are no default arguments for " + parameter.getType().getComponentType().toString());
 						}
 					}
 					

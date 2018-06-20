@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.paged;
+package example.command.info;
 
 import com.jockie.bot.core.command.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
@@ -18,7 +18,7 @@ public class CommandRoleInfo extends CommandImpl {
 		super.setDescription("Get information about a role");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, @Argument(description="Role", nullDefault=true) Role role) {
+	public void onCommand(MessageReceivedEvent event, @Argument(name="Role", nullDefault=true) Role role) {
 		if(role != null) {
 			event.getChannel().sendMessage(getRoleInfo(role)).queue();
 		}else{

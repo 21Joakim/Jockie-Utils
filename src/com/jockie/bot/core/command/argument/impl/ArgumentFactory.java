@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.jockie.bot.core.command.argument.IArgument;
-import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument;
-import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument.VerifiedType;
+import com.jockie.bot.core.command.argument.VerifiedArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument.VerifiedType;
 import com.jockie.bot.core.utility.ArgumentUtility;
 import com.jockie.bot.core.utility.TriFunction;
 
@@ -21,7 +21,7 @@ public class ArgumentFactory {
 	
 	private static Map<Class<?>, TriFunction<MessageReceivedEvent, SimpleArgument<?>, String, VerifiedArgument<?>>> arguments = new HashMap<>();
 	
-	@SuppressWarnings("unchecked") /* What the hell am I even doing at this point */
+	@SuppressWarnings("unchecked")
 	public static <T> void registerArgument(Class<T> clazz, TriFunction<MessageReceivedEvent, SimpleArgument<T>, String, VerifiedArgument<T>> function) {
 		ArgumentFactory.arguments.put(clazz, (TriFunction<MessageReceivedEvent, SimpleArgument<?>, String, VerifiedArgument<?>>) (Object) function);
 	}
@@ -101,7 +101,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Byte.parseByte(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Short.class) || type.isAssignableFrom(short.class)) {
@@ -109,7 +109,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Short.parseShort(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Integer.class) || type.isAssignableFrom(int.class)) {
@@ -117,7 +117,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Integer.parseInt(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Long.class) || type.isAssignableFrom(long.class)) {
@@ -125,7 +125,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Long.parseLong(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Float.class) || type.isAssignableFrom(float.class)) {
@@ -133,7 +133,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Float.parseFloat(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Double.class) || type.isAssignableFrom(double.class)) {
@@ -141,7 +141,7 @@ public class ArgumentFactory {
 				try {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Double.parseDouble(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(Boolean.class) || type.isAssignableFrom(boolean.class)) {
@@ -150,14 +150,14 @@ public class ArgumentFactory {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Boolean.parseBoolean(value));
 				}
 				
-				return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<ReturnType>(null);
 			});
 		}else if(type.isAssignableFrom(Character.class) || type.isAssignableFrom(char.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				if(value.length() == 1) {
 					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) value.charAt(0));
 				}else{
-					return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<ReturnType>(null);
 				}
 			});
 		}else if(type.isAssignableFrom(String.class)) {
@@ -178,7 +178,7 @@ public class ArgumentFactory {
 					}
 				}
 				
-				return new VerifiedArgument<ReturnType>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<ReturnType>(null);
 			});
 		}else if(ArgumentFactory.arguments.containsKey(type)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {

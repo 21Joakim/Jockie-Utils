@@ -3,6 +3,7 @@ package com.jockie.bot.core.command.argument.impl;
 import java.util.function.BiFunction;
 
 import com.jockie.bot.core.command.argument.IArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
@@ -13,13 +14,14 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	
 	private boolean endless, empty, quote;
 	
-	private String description;
+	private String name, error;
 	
 	public <BuilderType extends IArgument.Builder<Type, ?, ?>> ArgumentImpl(BuilderType builder) {
 		this.endless = builder.isEndless();
 		this.empty = builder.isAcceptEmpty();
 		this.quote = builder.isAcceptQuote();
-		this.description = builder.getDescription();
+		this.name = builder.getName();
+		this.error = builder.getError();
 		this.defaultValueFunction = builder.getDefaultValueFunction();
 	}
 	
@@ -47,8 +49,12 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 		return this.empty;
 	}
 	
-	public String getDescription() {
-		return this.description;
+	public String getName() {
+		return this.name;
+	}
+	
+	public String getError() {
+		return this.error;
 	}
 	
 	public abstract VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
