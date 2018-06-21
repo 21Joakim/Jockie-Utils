@@ -20,7 +20,6 @@ import com.jockie.bot.core.command.argument.VerifiedArgument;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.utility.TriFunction;
 
-import beta.com.jockie.bot.core.command.impl.CooldownManager;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.MessageBuilder.Formatting;
