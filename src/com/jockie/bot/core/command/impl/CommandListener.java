@@ -1,9 +1,12 @@
 package com.jockie.bot.core.command.impl;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -12,11 +15,11 @@ import java.util.stream.Collectors;
 import com.jockie.bot.core.await.AwaitManager;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.IArgument;
-import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument;
+import com.jockie.bot.core.command.argument.IEndlessArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument;
 import com.jockie.bot.core.paged.impl.PagedManager;
 import com.jockie.bot.core.utility.TriFunction;
 
-import beta.com.jockie.bot.core.command.impl.CooldownManager;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.MessageBuilder.Formatting;
@@ -36,7 +39,7 @@ public class CommandListener implements EventListener {
 	
 	private Function<MessageReceivedEvent, String[]> prefixFunction;
 	
-	private TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> helperFunction;
+	private TriFunction<MessageReceivedEvent, CommandEvent, List<FailedExecution>, MessageBuilder> helperFunction;
 	
 	private boolean helpEnabled = true, asyncEnabled = false;
 	
@@ -250,45 +253,53 @@ public class CommandListener implements EventListener {
 	 * </br><b>CommandEvent</b> - Information about the command and context
 	 * </br><b>List&#60;ICommand&#62;</b> - The possible commands which the message could be referring to
 	 */
-	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, EmbedBuilder> function) {
+	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, CommandEvent, List<FailedExecution>, MessageBuilder> function) {
 		this.helperFunction = function;
 		
 		return this;
 	}
 	
-	public EmbedBuilder getHelp(MessageReceivedEvent event, CommandEvent commandEvent, List<ICommand> commands) {
+	public MessageBuilder getHelp(MessageReceivedEvent event, CommandEvent commandEvent, List<FailedExecution> commands) {
 		if(this.helperFunction != null) {
-			EmbedBuilder embedBuilder = this.helperFunction.apply(event, commandEvent, commands);
+			MessageBuilder builder = this.helperFunction.apply(event, commandEvent, commands);
 			
-			if(embedBuilder != null) {
-				return embedBuilder;
+			if(builder != null) {
+				return builder;
 			}else{
 				System.err.println("The help function returned a null object, I will return the default help instead");
 			}
 		}
 		
-		StringBuilder description = new StringBuilder();
-		for(int i = 0; i < commands.size(); i++) {
-			ICommand command = commands.get(i);
-			
-			description.append("**Usage:** ")
-				.append(commandEvent.getPrefix())
-				.append(command.getCommand())
-				.append(" ")
-				.append(command.getArgumentInfo());
-			
-			if(command.getDescription() != null) {
-				description.append("\n**Command Description:** ").append(command.getDescription());
-			}
-			
-			if(i < commands.size() - 1) {
-				description.append("\n\n");
-			}
-		}
+		List<String> reasons = commands.stream().map(failed -> failed.reasons).flatMap(List::stream).distinct().collect(Collectors.toList());
 		
-		return new EmbedBuilder().setDescription(description)
-			.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null)
-			.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+		if(reasons.size() == 1) {
+			return new MessageBuilder().setEmbed(new EmbedBuilder().setDescription(reasons.get(0)).setColor(Color.RED).build());
+		}else{
+			StringBuilder description = new StringBuilder();
+			for(int i = 0; i < commands.size(); i++) {
+				FailedExecution failed = commands.get(i);
+				
+				ICommand command = failed.command;
+				
+				description.append("**Usage:** ")
+					.append(commandEvent.getPrefix())
+					.append(command.getCommand())
+					.append(" ")
+					.append(command.getArgumentInfo());
+				
+				if(command.getDescription() != null) {
+					description.append("\n**Command Description:** ").append(command.getDescription());
+				}
+				
+				if(i < commands.size() - 1) {
+					description.append("\n\n");
+				}
+			}
+			
+			return new MessageBuilder().setEmbed(new EmbedBuilder().setDescription(description)
+				.setFooter("\"*\" means required. \"[]\" means multiple arguments of that type.", null)
+				.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl()).build());
+		}
 	}
 	
 	public void onEvent(Event event) {
@@ -297,6 +308,19 @@ public class CommandListener implements EventListener {
 		}
 		
 		AwaitManager.handleAwait(event);
+	}
+	
+	private class FailedExecution {
+		
+		public final ICommand command;
+		
+		/* The reason there are multiple reasons is because DummyCommands should be considered
+		 * the original command rather than a separate one therefore there can be multiple reasons a command fail */
+		public List<String> reasons = new ArrayList<>();
+		
+		public FailedExecution(ICommand command) {
+			this.command = command;
+		}
 	}
 	
 	/* Would it be possible to split this event in to different steps, opinions? */
@@ -308,6 +332,7 @@ public class CommandListener implements EventListener {
 		}
 		
 		String[] prefixes = this.getPrefixes(event);
+		
 		String message = event.getMessage().getContentRaw(), prefix = null;
 		
 		/* Needs to work for both non-nicked mention and nicked mention */
@@ -342,7 +367,7 @@ public class CommandListener implements EventListener {
 			
 			message = message.substring(prefix.length());
 			
-			List<ICommand> possibleCommands = new ArrayList<>();
+			Map<ICommand, FailedExecution> possibleCommands = new HashMap<>();
 			
 			COMMANDS :
 			for(ICommand command : this.getCommandStores().stream().map(store -> store.getCommandsAuthorized(event, this)).flatMap(List::stream).collect(Collectors.toList())) {
@@ -368,13 +393,32 @@ public class CommandListener implements EventListener {
 					continue COMMANDS;
 				}
 				
+				FailedExecution failed;
 				if(!(command instanceof DummyCommand)) {
-					possibleCommands.add(command);
+					failed = possibleCommands.get(command);
+					
+					if(failed == null) {
+						failed = new FailedExecution(command);
+						
+						possibleCommands.put(command, failed);
+					}
+				}else{
+					ICommand original = ((DummyCommand) command).getDummiedCommand();
+					
+					failed = possibleCommands.get(original);
+					
+					if(failed == null) {
+						failed = new FailedExecution(original);
+						
+						possibleCommands.put(original, failed);
+					}
 				}
 				
 				msg = message.substring(cmd.length());
-				    
+				
 				if(msg.length() > 0 && msg.charAt(0) != ' ') {
+					/* Can it even get to this? */
+					
 					continue COMMANDS;
 				}
 				
@@ -388,6 +432,8 @@ public class CommandListener implements EventListener {
 						if(msg.startsWith(" ")) {
 							msg = msg.substring(1);
 						}else{
+							/* When does it get here? */
+							
 							continue COMMANDS;
 						}
 					}
@@ -397,6 +443,8 @@ public class CommandListener implements EventListener {
 					VerifiedArgument<?> verified;
 					if(argument.isEndless()) {
 						if(msg.length() == 0 && !argument.acceptEmpty()) {
+							failed.reasons.add("Argument **" + (argument.getName() != null ? argument.getName() : "argument " + (i + 1)) + "** can not be empty");
+							
 							continue COMMANDS;
 						}
 						
@@ -405,7 +453,20 @@ public class CommandListener implements EventListener {
 					}else{
 						String content = null;
 						if(msg.length() > 0) {
-							if(argument.acceptQuote()) {
+							if(argument instanceof IEndlessArgument) {
+								if(msg.charAt(0) == '[') {
+									int endBracket = 0;
+									while((endBracket = msg.indexOf(']', endBracket + 1)) != -1 && msg.charAt(endBracket - 1) == '\\');
+									
+									if(endBracket != -1) {
+										content = msg.substring(1, endBracket);
+										
+										msg = msg.substring(content.length() + 2);
+										
+										content = content.replace("\\[", "[").replace("\\]", "]");
+									}
+								}
+							}else if(argument.acceptQuote()) {
 								if(msg.charAt(0) == '"') {
 									int nextQuote = 0;
 									while((nextQuote = msg.indexOf('"', nextQuote + 1)) != -1 && msg.charAt(nextQuote - 1) == '\\');
@@ -429,6 +490,8 @@ public class CommandListener implements EventListener {
 						}
 						
 						if(content.length() == 0 && !argument.acceptEmpty()) {
+							failed.reasons.add("Argument **" + (argument.getName() != null ? argument.getName() : "argument " + (i + 1)) + "** can not be empty");
+							
 							continue COMMANDS;
 						}
 						
@@ -437,6 +500,16 @@ public class CommandListener implements EventListener {
 					
 					switch(verified.getVerifiedType()) {
 						case INVALID: {
+							String reason = argument.getError();
+							if(reason == null) {
+								reason = verified.getError();
+								if(reason == null) {
+									reason = "is invalid";
+								}
+							}
+							
+							failed.reasons.add("Argument **" + (argument.getName() != null ? argument.getName() : "argument " + (i + 1)) + "** " + reason);
+							
 							continue COMMANDS;
 						}
 						case VALID: {
@@ -452,10 +525,12 @@ public class CommandListener implements EventListener {
 					}
 				}
 				
+				/* There is more content than the arguments handled */
 				if(msg.length() > 0) {
 					continue COMMANDS;
 				}
 				
+				/* Not the correct amount of arguments for the command */
 				if(command.getArguments().length != args) {
 					continue COMMANDS;
 				}
@@ -490,7 +565,7 @@ public class CommandListener implements EventListener {
 				}
 				
 				/* The alias for the CommandEvent is just everything after the prefix since there is no way to do it other than having a list of CommandEvent or aliases */
-				event.getChannel().sendMessage(this.getHelp(event, new CommandEvent(event, this, prefix, message), possibleCommands).build()).queue();
+				event.getChannel().sendMessage(this.getHelp(event, new CommandEvent(event, this, prefix, message), new ArrayList<>(possibleCommands.values())).build()).queue();
 			}
 		}
 	}

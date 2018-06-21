@@ -52,7 +52,7 @@ public interface ICommand {
 	public Permission[] getBotDiscordPermissionsNeeded();
 	
 	/**
-	 * @return the discord permissions the author is required to have to trigger this command.
+	 * @return the discord permissions the author is required to have to trigger this command, if the user does not have these permissions the command will not be visible to them.
 	 */
 	public Permission[] getAuthorDiscordPermissionsNeeded();
 	
@@ -94,6 +94,8 @@ public interface ICommand {
 	 * 
 	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
 	 */
+	
+	/* Should this be renamed to something else, such as isAccessible? Since it checks whether the user has access to the command or not, maybe canAccess? */
 	public boolean verify(MessageReceivedEvent event, CommandListener commandListener);
 	
 	/**
@@ -113,8 +115,8 @@ public interface ICommand {
 		for(int i = 0; i < this.getArguments().length; i++) {
 			IArgument<?> argument = this.getArguments()[i];
 			
-			if(argument.getDescription() != null) {
-				builder.append("<").append(argument.getDescription()).append(">");
+			if(argument.getName() != null) {
+				builder.append("<").append(argument.getName()).append(">");
 			}else{
 				builder.append("<argument ").append(i + 1).append(">");
 			}

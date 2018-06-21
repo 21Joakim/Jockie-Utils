@@ -1,4 +1,4 @@
-package com.jockie.bot.example.command.arguments.fun;
+package example.command.fun;
 
 import java.util.Random;
 
@@ -19,7 +19,7 @@ public class CommandCoinFlip extends CommandImpl {
 	}
 	
 	/* If the argument is not endless it will only take the first word as the argument */
-	public void onCommand(MessageReceivedEvent event, @Argument(description="question", endless=true) String question) {
+	public void onCommand(MessageReceivedEvent event, @Argument(name="question", endless=true) String question) {
 		if(this.random.nextBoolean()) {
 			event.getChannel().sendMessage("That is true!").queue();
 		}else{

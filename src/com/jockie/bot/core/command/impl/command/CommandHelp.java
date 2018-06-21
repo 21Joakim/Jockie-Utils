@@ -27,8 +27,7 @@ public class CommandHelp extends CommandImpl {
 	public void onCommand(MessageReceivedEvent event, CommandEvent commandEvent, String commandRaw) {
 		if(commandRaw.length() > 0) {
 			if(commandRaw.equals("all")) {
-				List<ICommand> commands = commandEvent.getCommandListener().getCommandStores()
-					.stream()
+				List<ICommand> commands = commandEvent.getCommandListener().getCommandStores().stream()
 					.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 					.flatMap(List::stream)
 					.filter(c -> !(c instanceof DummyCommand))
@@ -55,8 +54,7 @@ public class CommandHelp extends CommandImpl {
 				
 				PagedManager.addPagedResult(event, pagedResult);
 			}else{
-				List<ICommand> commands = commandEvent.getCommandListener().getCommandStores()
-					.stream()
+				List<ICommand> commands = commandEvent.getCommandListener().getCommandStores().stream()
 					.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 					.flatMap(List::stream)
 					.filter(c -> !(c instanceof DummyCommand))
@@ -114,8 +112,7 @@ public class CommandHelp extends CommandImpl {
 				}
 			}
 		}else{
-			List<ICommand> commands = commandEvent.getCommandListener().getCommandStores()
-				.stream()
+			List<ICommand> commands = commandEvent.getCommandListener().getCommandStores().stream()
 				.map(store -> store.getCommandsAuthorized(event, commandEvent.getCommandListener()))
 				.flatMap(List::stream)
 				.filter(c -> !(c instanceof DummyCommand))

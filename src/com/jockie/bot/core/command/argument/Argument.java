@@ -11,10 +11,13 @@ public @interface Argument {
 	
 	public boolean endless() default false;
 	public boolean acceptEmpty() default false;
-	public boolean acceptQuote() default false;
+	
+	/* I see no reason not to allow quoted by default */
+	public boolean acceptQuote() default true;
 	
 	public boolean nullDefault() default false;
 	
-	public String description();
+	public String name();
+	public String error() default "";
 	
 }

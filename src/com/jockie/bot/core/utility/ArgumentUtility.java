@@ -151,7 +151,7 @@ public class ArgumentUtility {
 	}
 	
 	public static Emote getEmoteByIdOrName(Guild guild, String value, boolean ignoreCase) {
-		String processed = ArgumentUtility.getGroup(MentionType.EMOTE.getPattern(), 1, value);
+		String processed = ArgumentUtility.getGroup(MentionType.EMOTE.getPattern(), 2, value);
 		
 		if(processed != null) {
 			return guild.getEmoteById(processed);

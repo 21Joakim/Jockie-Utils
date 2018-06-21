@@ -3,8 +3,9 @@ package com.jockie.bot.core.command.argument.impl;
 import java.lang.reflect.Array;
 
 import com.jockie.bot.core.command.argument.IArgument;
-import com.jockie.bot.core.command.argument.IArgument.VerifiedArgument.VerifiedType;
 import com.jockie.bot.core.command.argument.IEndlessArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument.VerifiedType;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
@@ -24,7 +25,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		
 		public Builder(Class<Type> clazz) {			
 			if(clazz.isPrimitive()) {
-				throw new IllegalArgumentException("Primitve types are currently not supported");
+				throw new IllegalArgumentException("Primitve types are currently not supported for endless arguments");
 			}
 			
 			this.clazz = clazz;
@@ -32,14 +33,11 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		
 		public Builder<Type> setArgument(IArgument<Type> argument) {
 			if(argument instanceof IEndlessArgument || argument.isEndless()) {
-				throw new IllegalArgumentException("Not a valid candidate");
+				throw new IllegalArgumentException("Not a valid candidate, candidate may not be endless");
 			}
 			
 			this.argument = argument;
-			
-			this.description = argument.getDescription();
-			this.empty = argument.acceptEmpty();
-			this.quote = argument.acceptQuote();
+			this.name = argument.getName();
 			
 			return this.self();
 		}
@@ -98,6 +96,8 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 				if(value.startsWith(" ")) {
 					value = value.substring(1);
 				}else{
+					/* When does this happen? */
+					
 					return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
 				}
 			}
@@ -128,14 +128,22 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 			}
 			
 			if(content.length() == 0 && !this.argument.acceptEmpty()) {
-				return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<Type[]>("may not be empty");
 			}
 			
 			VerifiedArgument<Type> verified = this.argument.verify(event, content);
 			
 			switch(verified.getVerifiedType()) {
 				case INVALID: {
-					return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
+					String reason = argument.getError();
+					if(reason == null) {
+						reason = verified.getError();
+						if(reason == null) {
+							reason = "is invalid";
+						}
+					}
+					
+					return new VerifiedArgument<Type[]>("is invalid, argument at index " + (i + 1) + " " + reason);
 				}
 				case VALID: {
 					arguments[args++] = (Type) verified.getObject();
@@ -151,11 +159,13 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		}
 		
 		if(value.length() > 0) {
-			return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
+			/* When does this happen? */
+			
+			return new VerifiedArgument<Type[]>(null);
 		}
 		
 		if(args < this.minArguments || ((this.maxArguments > 0) ? args > this.maxArguments : false)) {
-			return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
+			return new VerifiedArgument<Type[]>("incorrect amount of arguments");
 		}
 		
 		Type[] objects = (Type[]) Array.newInstance(this.clazz, args);
@@ -165,6 +175,10 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		
 		arguments = objects;
 		
-		return new VerifiedArgument<Type[]>(VerifiedType.VALID_END_NOW, objects);
+		if(this.isEndless()) {
+			return new VerifiedArgument<Type[]>(VerifiedType.VALID_END_NOW, objects);
+		}else{
+			return new VerifiedArgument<Type[]>(VerifiedType.VALID, objects);
+		}
 	}
 }

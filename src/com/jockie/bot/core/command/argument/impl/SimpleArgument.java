@@ -1,6 +1,7 @@
 package com.jockie.bot.core.command.argument.impl;
 
 import com.jockie.bot.core.command.argument.IArgument;
+import com.jockie.bot.core.command.argument.VerifiedArgument;
 import com.jockie.bot.core.utility.TriFunction;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;

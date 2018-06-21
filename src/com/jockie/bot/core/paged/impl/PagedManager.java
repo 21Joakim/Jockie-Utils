@@ -28,15 +28,16 @@ public class PagedManager {
 			if(!PagedManager.pagedResults.get(guildId).containsKey(event.getTextChannel().getIdLong())) {
 				PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
 			}
-			
-			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
-				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
-				
-				event.getTextChannel().getMessageById(pair.getRight().getMessageId()).queue(message -> {
-					pair.getRight().stopTimeout();
-					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-				}, failure -> {});
-			}
+
+//			Not sure if i want this
+//			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
+//				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+//				
+//				event.getTextChannel().getMessageById(pair.getRight().getMessageId()).queue(message -> {
+//					pair.getRight().stopTimeout();
+//					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+//				}, failure -> {});
+//			}
 					
 			jda.getTextChannelById(event.getTextChannel().getIdLong()).sendMessage(pagedResult.getPageAsEmbed().build()).queue(message -> {
 				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(jda, pagedResult));
@@ -71,14 +72,15 @@ public class PagedManager {
 				PagedManager.pagedResults.get(guildId).put(event.getTextChannel().getIdLong(), new HashMap<>());
 			}
 			
-			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
-				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
-				
-				previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(pair.getRight().getMessageId()).queue(message -> {
-					pair.getRight().stopTimeout();
-					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
-				}, failure -> {});
-			}
+//			Not sure if i want this
+//			if(PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).containsKey(event.getAuthor().getIdLong())) {
+//				Pair<JDA, IPagedResult> pair = PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).get(event.getAuthor().getIdLong());
+//				
+//				previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).getMessageById(pair.getRight().getMessageId()).queue(message -> {
+//					pair.getRight().stopTimeout();
+//					pair.getLeft().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(message.getIdLong()).queue();
+//				}, failure -> {});
+//			}
 			
 			pagedResult.setMessageId(previous.getIdLong());
 			

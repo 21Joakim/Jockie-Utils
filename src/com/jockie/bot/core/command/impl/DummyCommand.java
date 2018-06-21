@@ -10,6 +10,7 @@ import com.jockie.bot.core.command.argument.IArgument;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
+/* This was basically the easiest way I could figure out how to make optional arguments */
 public class DummyCommand extends CommandImpl {
 	
 	private ICommand command;
