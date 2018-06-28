@@ -44,7 +44,9 @@ public class PagedManager {
 				
 				pagedResult.setMessageId(message.getIdLong());
 				pagedResult.onTimeoutFinish(() -> {
-					jda.getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					if(pagedResult.isDeleteOnTimeout()) {
+						jda.getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					}
 					
 					PagedManager.removePagedResult(event);
 				});
@@ -88,7 +90,9 @@ public class PagedManager {
 				PagedManager.pagedResults.get(guildId).get(event.getTextChannel().getIdLong()).put(event.getAuthor().getIdLong(), Pair.of(previous.getJDA(), pagedResult));
 				
 				pagedResult.onTimeoutFinish(() -> {
-					previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					if(pagedResult.isDeleteOnTimeout()) {
+						previous.getJDA().getTextChannelById(event.getTextChannel().getIdLong()).deleteMessageById(pagedResult.getMessageId()).queue();
+					}
 					
 					PagedManager.removePagedResult(event);
 				});

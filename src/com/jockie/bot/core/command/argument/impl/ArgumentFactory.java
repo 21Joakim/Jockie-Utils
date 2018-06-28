@@ -9,6 +9,8 @@ import com.jockie.bot.core.command.argument.VerifiedArgument.VerifiedType;
 import com.jockie.bot.core.utility.ArgumentUtility;
 import com.jockie.bot.core.utility.TriFunction;
 
+import net.dv8tion.jda.core.entities.Category;
+import net.dv8tion.jda.core.entities.Channel;
 import net.dv8tion.jda.core.entities.Emote;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Role;
@@ -37,7 +39,7 @@ public class ArgumentFactory {
 			if(member != null) {
 				return new VerifiedArgument<Member>(VerifiedType.VALID, member);
 			}else{
-				return new VerifiedArgument<Member>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<Member>(null);
 			}
 		});
 		
@@ -47,7 +49,7 @@ public class ArgumentFactory {
 			if(channel != null) {
 				return new VerifiedArgument<TextChannel>(VerifiedType.VALID, channel);
 			}else{
-				return new VerifiedArgument<TextChannel>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<TextChannel>(null);
 			}
 		});
 		
@@ -57,7 +59,28 @@ public class ArgumentFactory {
 			if(channel != null) {
 				return new VerifiedArgument<VoiceChannel>(VerifiedType.VALID, channel);
 			}else{
-				return new VerifiedArgument<VoiceChannel>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<VoiceChannel>(null);
+			}
+		});
+		
+		/* Even though Category technically does implement Channel I do not want it to be a part of the Channel argument */
+		ArgumentFactory.registerArgument(Channel.class, (event, argument, value) -> {
+			Channel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
+			
+			if(channel != null || (channel = ArgumentUtility.getVoiceChannelByIdOrName(event.getGuild(), value, true)) != null) {
+				return new VerifiedArgument<Channel>(VerifiedType.VALID, channel);
+			}else{
+				return new VerifiedArgument<Channel>(null);
+			}
+		});
+		
+		ArgumentFactory.registerArgument(Category.class, (event, argument, value) -> {
+			Category category = ArgumentUtility.getCategoryByIdOrName(event.getGuild(), value, true);
+			
+			if(category != null) {
+				return new VerifiedArgument<Category>(VerifiedType.VALID, category);
+			}else{
+				return new VerifiedArgument<Category>(null);
 			}
 		});
 		
@@ -67,7 +90,7 @@ public class ArgumentFactory {
 			if(role != null) {
 				return new VerifiedArgument<Role>(VerifiedType.VALID, role);
 			}else{
-				return new VerifiedArgument<Role>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<Role>(null);
 			}
 		});
 		
@@ -77,7 +100,7 @@ public class ArgumentFactory {
 			if(emote != null) {
 				return new VerifiedArgument<Emote>(VerifiedType.VALID, emote);
 			}else{
-				return new VerifiedArgument<Emote>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<Emote>(null);
 			}
 		});
 		
@@ -87,7 +110,7 @@ public class ArgumentFactory {
 			if(user != null) {
 				return new VerifiedArgument<User>(VerifiedType.VALID, user);
 			}else{
-				return new VerifiedArgument<User>(VerifiedType.INVALID, null);
+				return new VerifiedArgument<User>(null);
 			}
 		});
 	}

@@ -14,6 +14,8 @@ import net.dv8tion.jda.core.EmbedBuilder;
 
 public class PagedResultText extends Timeoutable<PagedResultText> implements IPagedResult {
 	
+	private boolean deleteOnTimeout = false;
+	
 	private int currentPage = 1;
 	
 	private String text;
@@ -64,6 +66,14 @@ public class PagedResultText extends Timeoutable<PagedResultText> implements IPa
 		
 		this.pages = this.determinePagesContent();
 		this.maxPages = this.pages.size();
+	}
+	
+	public void setDeleteOnTimeout(boolean deleteOnTimeout) {
+		this.deleteOnTimeout = deleteOnTimeout;
+	}
+	
+	public boolean isDeleteOnTimeout() {
+		return this.deleteOnTimeout;
 	}
 	
 	public void setCancelable(boolean cancelable) {

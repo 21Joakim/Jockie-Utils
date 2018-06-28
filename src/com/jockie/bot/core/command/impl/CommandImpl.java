@@ -46,6 +46,8 @@ public class CommandImpl implements ICommand {
 	
 	private boolean hidden;
 	
+	private boolean executeAsync;
+	
 	private Category category;
 	
 	private long cooldownDuration = 0;
@@ -120,6 +122,10 @@ public class CommandImpl implements ICommand {
 	
 	public long getCooldownDuration() {
 		return this.cooldownDuration;
+	}
+	
+	public boolean isExecuteAsync() {
+		return this.executeAsync;
 	}
 	
 	/** Custom properties for the command which can be used in {@link #addVerification(TriFunction)} */
@@ -233,6 +239,12 @@ public class CommandImpl implements ICommand {
 		return this.setCooldownDuration(unit.toMillis(duration));
 	}
 	
+	protected CommandImpl setExecuteAsync(boolean executeAsync) {
+		this.executeAsync = executeAsync;
+		
+		return this;
+	}
+	
 	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */
 	protected CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
 		this.customVerifications.add(verification);
@@ -240,7 +252,7 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) {
+	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) throws Exception {
 		Method command = this.getCommandMethod();
 		
 		int contextCount = 0;
@@ -291,7 +303,13 @@ public class CommandImpl implements ICommand {
 					/* No need to throw an Exception for this, the stack trace doesn't add any additional information. I guess we should add some sort of event for this though, maybe they don't want it in the console */
 					System.err.println(information);
 				}else{
-					e.printStackTrace();
+					if(e instanceof InvocationTargetException) {
+						if(e instanceof Exception) {
+							throw (Exception) e.getCause();
+						}
+					}
+					
+					throw e;
 				}
 			}
 		}

@@ -8,6 +8,8 @@ public interface IPagedResult {
 	public long getMessageId();
 	public void setMessageId(long messageId);
 	
+	public boolean isDeleteOnTimeout();
+	
 	public void startTimeout();
 	public void stopTimeout();
 	public void restartTimeout();

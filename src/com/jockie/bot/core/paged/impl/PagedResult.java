@@ -15,6 +15,8 @@ import net.dv8tion.jda.core.EmbedBuilder;
 
 public class PagedResult<Type> extends Timeoutable<PagedResult<Type>> implements IPagedResult {
 	
+	private boolean deleteOnTimeout = false;
+	
 	private int currentPage = 1;
 	private int entriesPerPage = 10;
 	
@@ -56,6 +58,14 @@ public class PagedResult<Type> extends Timeoutable<PagedResult<Type>> implements
 	
 	public PagedResult(List<? extends Type> entries, Function<? super Type, String> displayFunction) {
 		this(entries, displayFunction, null);
+	}
+	
+	public void setDeleteOnTimeout(boolean deleteOnTimeout) {
+		this.deleteOnTimeout = deleteOnTimeout;
+	}
+	
+	public boolean isDeleteOnTimeout() {
+		return this.deleteOnTimeout;
 	}
 	
 	public void setEntriesPerPage(int entriesPerPage) {

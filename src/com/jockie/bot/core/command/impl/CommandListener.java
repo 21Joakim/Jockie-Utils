@@ -41,7 +41,7 @@ public class CommandListener implements EventListener {
 	
 	private TriFunction<MessageReceivedEvent, CommandEvent, List<FailedExecution>, MessageBuilder> helperFunction;
 	
-	private boolean helpEnabled = true, asyncEnabled = false;
+	private boolean helpEnabled = true;
 	
 	private List<Long> developers = new ArrayList<>();
 	
@@ -212,22 +212,6 @@ public class CommandListener implements EventListener {
 		}
 		
 		return this.getDefaultPrefixes();
-	}
-	
-	/**
-	 * See {@link #isAsyncEnabled()}
-	 */
-	public CommandListener setAsyncEnabled(boolean enabled) {
-		this.asyncEnabled = enabled;
-		
-		return this;
-	}
-	
-	/**
-	 * Whether or not each command execution will be created on a new thread or not
-	 */
-	public boolean isAsyncEnabled() {
-		return this.asyncEnabled;
 	}
 	
 	/**
@@ -422,9 +406,11 @@ public class CommandListener implements EventListener {
 					continue COMMANDS;
 				}
 				
-				int args = 0;
+				int argumentCount = 0;
 				
 				Object[] arguments = new Object[command.getArguments().length];
+				
+				IArgument<?>[] args = command.getArguments();
 				
 				ARGUMENTS:
 				for(int i = 0; i < arguments.length; i++) {
@@ -438,7 +424,7 @@ public class CommandListener implements EventListener {
 						}
 					}
 					
-					IArgument<?> argument = command.getArguments()[i];
+					IArgument<?> argument = args[i];
 					
 					VerifiedArgument<?> verified;
 					if(argument.isEndless()) {
@@ -453,6 +439,7 @@ public class CommandListener implements EventListener {
 					}else{
 						String content = null;
 						if(msg.length() > 0) {
+							/* Is this even worth having? Not quite sure if I like the implementation */
 							if(argument instanceof IEndlessArgument) {
 								if(msg.charAt(0) == '[') {
 									int endBracket = 0;
@@ -513,12 +500,12 @@ public class CommandListener implements EventListener {
 							continue COMMANDS;
 						}
 						case VALID: {
-							arguments[args++] = verified.getObject();
+							arguments[argumentCount++] = verified.getObject();
 							
 							break;
 						}
 						case VALID_END_NOW: {
-							arguments[args++] = verified.getObject();
+							arguments[argumentCount++] = verified.getObject();
 							
 							break ARGUMENTS;
 						}
@@ -531,12 +518,12 @@ public class CommandListener implements EventListener {
 				}
 				
 				/* Not the correct amount of arguments for the command */
-				if(command.getArguments().length != args) {
+				if(command.getArguments().length != argumentCount) {
 					continue COMMANDS;
 				}
 				
 				CommandEvent commandEvent = new CommandEvent(event, this, prefix, alias);
-				if(this.asyncEnabled) {
+				if(command.isExecuteAsync()) {
 					this.commandExecutor.submit(() -> {
 						this.executeCommand(command, event, commandEvent, commandStarted, arguments);
 					});
@@ -611,72 +598,74 @@ public class CommandListener implements EventListener {
 	}
 	
 	private void executeCommand(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, long timeStarted, Object... arguments) {
-		try {
-			if(this.checkPermissions(event, command)) {
-				try {
-					/* Allow for a custom cooldown implementation? */
-					/* Simple cooldown feature, not sure how scalable it is */
-					if(command.getCooldownDuration() > 0) {
-						/* Should a new manager be used for this or not? */
-						long remaining = CooldownManager.getTimeRemaining(command, event.getAuthor().getIdLong());
+		if(this.checkPermissions(event, command)) {
+			try {
+				/* Allow for a custom cooldown implementation? */
+				/* Simple cooldown feature, not sure how scalable it is */
+				if(command.getCooldownDuration() > 0) {
+					/* Should a new manager be used for this or not? */
+					long remaining = CooldownManager.getTimeRemaining(command, event.getAuthor().getIdLong());
+					
+					if(remaining == 0) {
+						/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
+						CooldownManager.addCooldown(command, event.getAuthor().getIdLong());
 						
-						if(remaining == 0) {
-							/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
-							CooldownManager.addCooldown(command, event.getAuthor().getIdLong());
-							
-							command.execute(event, commandEvent, arguments);
-						}else{
-							event.getChannel().sendMessage("This command has a cooldown, please try again in " + ((double) remaining/1000) + " seconds").queue();
-						}
-					}else{
 						command.execute(event, commandEvent, arguments);
+					}else{
+						event.getChannel().sendMessage("This command has a cooldown, please try again in " + ((double) remaining/1000) + " seconds").queue();
 					}
-					
-					for(CommandEventListener listener : this.commandEventListeners) {
-						/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
-						try {
-							listener.onCommandExecuted(command, event, commandEvent);
-						}catch(Exception e) {
-							e.printStackTrace();
-						}
-					}
-				}catch(Exception e) {
-					if(command.getCooldownDuration() > 0) {
-						/* If the command execution fails then no cooldown should be added therefore this */
-						CooldownManager.removeCooldown(command, event.getAuthor().getIdLong());
-					}
-					
-					for(CommandEventListener listener : this.commandEventListeners) {
-						/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
-						try {
-							listener.onCommandExecutionException(command, event, commandEvent, e);
-						}catch(Exception e1) {
-							e1.printStackTrace();
-						}
-					}
-					
-					/* Should this still be thrown even if it sends to the listener? */
+				}else{
+					command.execute(event, commandEvent, arguments);
+				}
+				
+				for(CommandEventListener listener : this.commandEventListeners) {
+					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 					try {
-						Exception exception = e.getClass().getConstructor(String.class).newInstance("Attempted to execute command (" + command.getCommand() + ") with the arguments " +
-							Arrays.deepToString(arguments) + " but it failed" + 
-							((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
-						
-						exception.setStackTrace(e.getStackTrace());
-						exception.printStackTrace();
-					}catch(Exception e2) {
-						e2.printStackTrace();
+						listener.onCommandExecuted(command, event, commandEvent);
+					}catch(Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}catch(Exception e) {
+				if(command.getCooldownDuration() > 0) {
+					/* If the command execution fails then no cooldown should be added therefore this */
+					CooldownManager.removeCooldown(command, event.getAuthor().getIdLong());
+				}
+				
+				if(e instanceof InsufficientPermissionException) {
+					System.out.println("Attempted to execute command (" + command.getCommand() + ") with arguments " + Arrays.deepToString(arguments) + 
+						", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
+						", error message (" + e.getMessage() + ")");
+					
+					/* Should we filter out the missing permission(s) from the exception and get its readable format and send it back to the user? */
+					event.getChannel().sendMessage("Missing permissions").queue();
+					
+					return;
+				}
+				
+				for(CommandEventListener listener : this.commandEventListeners) {
+					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+					try {
+						listener.onCommandExecutionException(command, event, commandEvent, e);
+					}catch(Exception e1) {
+						e1.printStackTrace();
 					}
 				}
 				
-				System.out.println("Executed command (" + command.getCommand() + ") with the arguments " 
-					+ Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
+				/* Should this still be thrown even if it sends to the listener? */
+				try {
+					Exception exception = e.getClass().getConstructor(String.class).newInstance("Attempted to execute command (" + command.getCommand() + ") with the arguments " +
+						Arrays.deepToString(arguments) + " but it failed" + 
+						((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
+					
+					exception.setStackTrace(e.getStackTrace());
+					exception.printStackTrace();
+				}catch(Exception e2) {
+					e2.printStackTrace();
+				}
 			}
-		}catch(InsufficientPermissionException e) {
-			System.out.println("Attempted to execute command (" + command.getCommand() + ") with arguments " + Arrays.deepToString(arguments) + 
-				", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
-				", error message (" + e.getMessage() + ")");
 			
-			event.getChannel().sendMessage("Missing permissions").queue();
+			System.out.println("Executed command (" + command.getCommand() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
 		}
 	}
 }

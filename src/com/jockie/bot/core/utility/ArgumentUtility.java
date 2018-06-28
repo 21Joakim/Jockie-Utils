@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.dv8tion.jda.core.JDA;
+import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.Emote;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.Member;
@@ -13,6 +14,8 @@ import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.VoiceChannel;
+import net.dv8tion.jda.core.entities.impl.EmoteImpl;
+import net.dv8tion.jda.core.entities.impl.JDAImpl;
 import net.dv8tion.jda.core.requests.RestAction;
 import net.dv8tion.jda.core.requests.RestAction.EmptyRestAction;
 
@@ -67,15 +70,20 @@ public class ArgumentUtility {
 	}
 	
 	public static Emote getEmote(Guild guild, String value) {
-		String id = ArgumentUtility.getGroup(MentionType.EMOTE.getPattern(), 2, value);
+		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
-		if(id != null) {
-			return guild.getEmoteById(id);
+		Emote emote = null;
+		if(matcher.matches()) {
+			emote = guild.getEmoteById(matcher.group(2));
+			
+			if(emote == null) {
+				emote = new EmoteImpl(Long.valueOf(matcher.group(2)), (JDAImpl) guild.getJDA()).setName(matcher.group(1)).setAnimated(value.startsWith("<a:"));
+			}
 		}else if(ID_PATTERN.matcher(value).matches()) {
-			return guild.getEmoteById(value);
+			emote = guild.getEmoteById(value);
 		}
 		
-		return null;
+		return emote;
 	}
 	
 	public static User getUser(JDA jda, String value) {
@@ -151,20 +159,25 @@ public class ArgumentUtility {
 	}
 	
 	public static Emote getEmoteByIdOrName(Guild guild, String value, boolean ignoreCase) {
-		String processed = ArgumentUtility.getGroup(MentionType.EMOTE.getPattern(), 2, value);
+		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
-		if(processed != null) {
-			return guild.getEmoteById(processed);
+		Emote emote = null;
+		if(matcher.matches()) {
+			emote = guild.getEmoteById(matcher.group(2));
+			
+			if(emote == null) {
+				emote = new EmoteImpl(Long.valueOf(matcher.group(2)), (JDAImpl) guild.getJDA()).setName(matcher.group(1)).setAnimated(value.startsWith("<a:"));
+			}
 		}else if(ID_PATTERN.matcher(value).matches()) {
-			return guild.getEmoteById(value);
+			emote = guild.getEmoteById(value);
 		}
 		
-		List<Emote> emote = guild.getEmotesByName(value, ignoreCase);
-		if(emote.size() == 1) {
-			return emote.get(0);
+		List<Emote> emotes = guild.getEmotesByName(value, ignoreCase);
+		if(emotes.size() == 1) {
+			emote = emotes.get(0);
 		}
 		
-		return null;
+		return emote;
 	}
 	
 	public static TextChannel getTextChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
@@ -192,6 +205,19 @@ public class ArgumentUtility {
 		List<VoiceChannel> channels = guild.getVoiceChannelsByName(value, ignoreCase);
 		if(channels.size() == 1) {
 			return channels.get(0);
+		}
+		
+		return null;
+	}
+	
+	public static Category getCategoryByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		if(ID_PATTERN.matcher(value).matches()) {
+			return guild.getCategoryById(value);
+		}
+		
+		List<Category> categories = guild.getCategoriesByName(value, ignoreCase);
+		if(categories.size() == 1) {
+			return categories.get(0);
 		}
 		
 		return null;

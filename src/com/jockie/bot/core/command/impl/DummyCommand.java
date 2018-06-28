@@ -58,7 +58,7 @@ public class DummyCommand extends CommandImpl {
 		return this.command;
 	}
 	
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) {
+	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Exception {
 		Object[] args = new Object[this.command.getArguments().length];
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {

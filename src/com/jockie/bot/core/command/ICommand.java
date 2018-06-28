@@ -90,6 +90,11 @@ public interface ICommand {
 	public long getCooldownDuration();
 	
 	/**
+	 * @return a boolean that will tell whether the command should be executed on a separate thread or not
+	 */
+	public boolean isExecuteAsync();
+	
+	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
 	 * 
 	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
@@ -104,7 +109,7 @@ public interface ICommand {
 	 * @param event the event which triggered the command.
 	 * @param arguments the arguments which triggered the command.
 	 */
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments);
+	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Exception;
 	
 	/**
 	 * @return information about the arguments
