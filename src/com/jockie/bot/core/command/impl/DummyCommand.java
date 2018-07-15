@@ -1,29 +1,32 @@
 package com.jockie.bot.core.command.impl;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.argument.IArgument;
 
+import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.utils.tuple.Pair;
 
 /* This was basically the easiest way I could figure out how to make optional arguments */
-public class DummyCommand extends CommandImpl {
+public class DummyCommand implements ICommand {
 	
 	private ICommand command;
 	
 	private Map<Integer, IArgument<?>> indexes = new HashMap<>();
 	
+	private IArgument<?>[] arguments;
+	
 	public DummyCommand(ICommand command, IArgument<?>... arguments) {
-		super(command.getCommand());
-		
 		this.command = command;
 		
-		super.setAliases(command.getAliases());
-		super.setArguments(Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
+		this.arguments = Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
 			public boolean test(IArgument<?> argument) {
 				if(!argument.hasDefault())
 					return true;
@@ -32,7 +35,7 @@ public class DummyCommand extends CommandImpl {
 					if(command.getArguments()[i].equals(argument)) {
 						for(int j = 0; j < arguments.length; j++) {
 							if(arguments[j].equals(argument)) {
-								indexes.put(i, argument);
+								DummyCommand.this.indexes.put(i, argument);
 								
 								return false;
 							}
@@ -42,20 +45,7 @@ public class DummyCommand extends CommandImpl {
 				
 				return true;
 			}
-		}).toArray(IArgument[]::new));
-		
-		super.setAuthorDiscordPermissionsNeeded(command.getAuthorDiscordPermissionsNeeded());
-		super.setBotDiscordPermissionsNeeded(command.getBotDiscordPermissionsNeeded());
-		super.setBotTriggerable(command.isBotTriggerable());
-		super.setDescription(command.getDescription());
-		super.setDeveloperCommand(command.isDeveloperCommand());
-		super.setGuildTriggerable(command.isGuildTriggerable());
-		super.setHidden(command.isHidden());
-		super.setPrivateTriggerable(command.isPrivateTriggerable());
-	}
-	
-	public ICommand getDummiedCommand() {
-		return this.command;
+		}).toArray(IArgument[]::new);
 	}
 	
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Exception {
@@ -71,5 +61,96 @@ public class DummyCommand extends CommandImpl {
 		}
 		
 		this.command.execute(event, commandEvent, args);
+	}
+	
+	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
+		return this.command.verify(event, commandListener);
+	}
+	
+	public String[] getAliases() {
+		return this.command.getAliases();
+	}
+	
+	public long getCooldownDuration() {
+		return this.command.getCooldownDuration();
+	}
+	
+	public boolean isExecuteAsync() {
+		return this.command.isExecuteAsync();
+	}
+	
+	public boolean isBotTriggerable() {
+		return this.command.isBotTriggerable();
+	}
+	
+	public boolean isCaseSensitive() {
+		return this.command.isCaseSensitive();
+	}
+	
+	public boolean isDeveloperCommand() {
+		return this.command.isDeveloperCommand();
+	}
+	
+	public boolean isGuildTriggerable() {
+		return this.command.isGuildTriggerable();
+	}
+	
+	public boolean isPrivateTriggerable() {
+		return this.command.isPrivateTriggerable();
+	}
+	
+	public boolean isHidden() {
+		return this.command.isHidden();
+	}
+	
+	public boolean isPassive() {
+		return this.command.isPassive();
+	}
+	
+	public String getDescription() {
+		return this.command.getDescription();
+	}
+	
+	public Permission[] getAuthorDiscordPermissionsNeeded() {
+		return this.command.getAuthorDiscordPermissionsNeeded();
+	}
+	
+	public Permission[] getBotDiscordPermissionsNeeded() {
+		return this.command.getBotDiscordPermissionsNeeded();
+	}
+	
+	public String getCommand() {
+		return this.command.getCommand();
+	}
+	
+	public ICommand getParent() {
+		return this.command;
+	}
+	
+	public IArgument<?>[] getArguments() {
+		return this.arguments;
+	}
+	
+	public Category getCategory() {
+		return this.command.getCategory();
+	}
+	
+	public List<ICommand> getSubCommands() {
+		return new ArrayList<>();
+	}
+	
+	public List<Pair<ICommand, List<?>>> getAllCommandsRecursive(String prefix) {
+		return new ArrayList<>();
+	}
+	
+	public String getCommandTrigger() {
+		String command = this.getCommand();
+		
+		ICommand parent = this.getParent();
+		while((parent = parent.getParent()) != null) {
+			command = (parent.getCommand() + " " + command).trim();
+		}
+		
+		return command;
 	}
 }

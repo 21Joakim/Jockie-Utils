@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command;
 
+import java.util.List;
+
 import com.jockie.bot.core.command.argument.IArgument;
 import com.jockie.bot.core.command.argument.IEndlessArgument;
 import com.jockie.bot.core.command.impl.Category;
@@ -8,6 +10,7 @@ import com.jockie.bot.core.command.impl.CommandListener;
 
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public interface ICommand {
 	
@@ -94,6 +97,19 @@ public interface ICommand {
 	 */
 	public boolean isExecuteAsync();
 	
+	public ICommand getParent();
+	
+	public default boolean hasParent() {
+		return this.getParent() != null;
+	}
+	
+	/**
+	 * @return a boolean to prove whether this command is passive or not, a passive command will not have any executable method and might for instance only have sub-commands.
+	 */
+	public boolean isPassive();
+	
+	public List<ICommand> getSubCommands();
+	
 	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
 	 * 
@@ -110,6 +126,9 @@ public interface ICommand {
 	 * @param arguments the arguments which triggered the command.
 	 */
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Exception;
+	
+	/* I don't really like how this is but it works for now */
+	public List<Pair<ICommand, List<?>>> getAllCommandsRecursive(String prefix);
 	
 	/**
 	 * @return information about the arguments
@@ -151,7 +170,7 @@ public interface ICommand {
 		StringBuilder builder = new StringBuilder();
 		
 		builder.append(prefix)
-			.append(this.getCommand())
+			.append(this.getCommandTrigger())
 			.append(" ")
 			.append(this.getArgumentInfo());
 		
@@ -160,5 +179,32 @@ public interface ICommand {
 	
 	public default String getUsage() {
 		return this.getUsage("");
+	}
+	
+	/**
+	 * @return the actual trigger for this command which is created by recursively getting the parents of this command
+	 */
+	public default String getCommandTrigger() {
+		String command = this.getCommand();
+		
+		ICommand parent = this;
+		while((parent = parent.getParent()) != null) {
+			command = (parent.getCommand() + " " + command).trim();
+		}
+		
+		return command;
+	}
+	
+	public default ICommand getTopParent() {
+		if(this.hasParent()) {
+			ICommand parent = this.getParent();
+			while(parent.hasParent()) {
+				parent = parent.getParent();
+			}
+			
+			return parent;
+		}
+		
+		return this;
 	}
 }

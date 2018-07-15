@@ -21,6 +21,8 @@ import net.dv8tion.jda.core.requests.RestAction.EmptyRestAction;
 
 public class ArgumentUtility {
 	
+	private ArgumentUtility() {}
+	
 	public static final Pattern USER_NAME_PATTERN = Pattern.compile(".{2,32}#[0-9]{4}");
 	public static final Pattern ID_PATTERN = Pattern.compile("\\d+");
 	

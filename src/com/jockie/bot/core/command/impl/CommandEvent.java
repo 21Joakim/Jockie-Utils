@@ -9,12 +9,14 @@ public class CommandEvent {
 	
 	private String prefix;
 	private String alias;
+	private String commandTrigger;
 	
-	public CommandEvent(MessageReceivedEvent event, CommandListener listener, String prefix, String alias) {
+	public CommandEvent(MessageReceivedEvent event, CommandListener listener, String prefix, String alias, String commandTrigger) {
 		this.event = event;
 		this.commandListener = listener;
 		this.prefix = prefix;
 		this.alias = alias;
+		this.commandTrigger = commandTrigger;
 	}
 	
 	public MessageReceivedEvent getEvent() {
@@ -31,5 +33,9 @@ public class CommandEvent {
 	
 	public String getAlias() {
 		return this.alias;
+	}
+	
+	public String getCommandTrigger() {
+		return this.commandTrigger;
 	}
 }

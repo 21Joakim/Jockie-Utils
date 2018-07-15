@@ -6,18 +6,26 @@ import java.util.List;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
+import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.argument.IArgument;
+import com.jockie.bot.core.command.impl.DummyCommand;
 
 public class LoaderUtility {
 	
-	private static boolean isDeepImplementation(Class<?> clazz, Class<?> clazz2) {
-		while(!clazz2.equals(Object.class)) {
-			for(Class<?> interfaze : clazz2.getInterfaces()) {
-				if(interfaze.equals(clazz)) {
+	private LoaderUtility() {}
+	
+	/**
+	 * @return true if clazz implements interfaze checked recursively till the super class is either null or Object
+	 */
+	public static boolean isDeepImplementation(Class<?> clazz, Class<?> interfaze) {
+		while(clazz != null && !clazz.equals(Object.class)) {
+			for(Class<?> interfaze2 : clazz.getInterfaces()) {
+				if(interfaze2.equals(interfaze)) {
 					return true;
 				}
 			}
 			
-			clazz2 = clazz2.getSuperclass();
+			clazz = clazz.getSuperclass();
 		}
 		
 		return false;
@@ -44,7 +52,7 @@ public class LoaderUtility {
 			for(ClassInfo info : classes) {
 				Class<?> clazz2 = classLoader.loadClass(info.toString());
 				
-				if(LoaderUtility.isDeepImplementation(clazz, clazz2)) {
+				if(LoaderUtility.isDeepImplementation(clazz2, clazz)) {
 					try {
 						objects.add((T) clazz2.getConstructor().newInstance());
 					}catch(Exception e1) {
@@ -57,5 +65,38 @@ public class LoaderUtility {
 		}
 		
 		return objects;
+	}
+	
+	public static List<ICommand> generateDummyCommands(ICommand command) {
+		List<ICommand> dummyCommands = new ArrayList<>();
+		
+		if(!(command instanceof DummyCommand)) {
+			List<IArgument<?>> arguments = new ArrayList<>();
+			if(command.getArguments().length > 0) {
+				for(int i = 0; i < command.getArguments().length; i++) {
+					IArgument<?> argument = command.getArguments()[i];
+					if(argument.hasDefault()) {
+						arguments.add(argument);
+					}
+				}
+				
+				if(arguments.size() > 0) {
+					List<IArgument<?>> args = new ArrayList<>();
+			    	for(int i = 1, max = 1 << arguments.size(); i < max; ++i) {
+			    	    for(int j = 0, k = 1; j < arguments.size(); ++j, k <<= 1) {
+			    	        if((k & i) != 0) {
+			    	        	args.add(arguments.get(j));
+			    	        }
+			    	    }
+			    	    
+			    	    dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
+						
+						args.clear();
+			    	}
+				}
+			}
+		}
+		
+		return dummyCommands;
 	}
 }

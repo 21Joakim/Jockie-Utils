@@ -3,6 +3,7 @@ package example;
 import java.awt.Color;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,6 +19,8 @@ import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDABuilder;
 
 public class Main {
+	
+	public static DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE;
 	
 	public static void main(String[] args) throws Exception {
 		final Pattern HEX_PATTERN = Pattern.compile("(#|)(([0-9]|(?i)[A-F]){6})");
@@ -46,7 +49,7 @@ public class Main {
 		
 		CommandListener listener = new CommandListener()
 			.addCommandStore(CommandStore.of("example.command").addCommands(new CommandHelp() /* Built in help command */))
-			.setDefaultPrefixes("?");
+			.setDefaultPrefixes("§");
 		
 		new JDABuilder(AccountType.BOT).setToken(Safe.TEST_TOKEN)
 			.addEventListener(listener)
