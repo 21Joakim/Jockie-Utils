@@ -2,7 +2,6 @@ plugins {
     id 'java'
 }
 
-group 'com.github.bumbleboss'
 version '0.07'
 
 sourceCompatibility = 1.8
