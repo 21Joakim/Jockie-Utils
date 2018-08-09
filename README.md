@@ -35,7 +35,7 @@ The <b>ArgumentFactory</b> has a few already registered classes
 <h4>onCommand:</h4>
 To specfiy the command you create a method called onCommand, here's a simple ping command
 
-```
+```Java
 public class CommandPing extends CommandImpl {
 	public CommandPing() {
 		super("ping");
@@ -52,7 +52,7 @@ public class CommandPing extends CommandImpl {
 </br>
 
 If you want to specify commands you simply add more parameters, here's a simple decide command which will decide between two statements
-```
+```Java
 public class CommandDecide extends CommandImpl {
 	
 	/* No need to create a new one each time someone uses it */
@@ -79,7 +79,7 @@ The Argument annotation is used when you want to give the parameter specific pro
 </br>
 
 There is also a way to specify each argument manually, this way allows for custom arguments to be specified and optional arguments to be defined more in depth
-```
+```Java
 public class CommandAvatar extends CommandImpl {
 
 	public CommandAvatar() {
