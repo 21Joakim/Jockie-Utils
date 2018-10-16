@@ -10,6 +10,7 @@ https://github.com/google/guava (Used for simplied adding of commands, adding co
 
 <h2>Gradle:</h2>
 
+[![](https://jitpack.io/v/21Joakim/Jockie-Utils.svg)](https://jitpack.io/#21Joakim/Jockie-Utils)
 ```
 repositories {
 	maven { url 'https://jitpack.io' }
