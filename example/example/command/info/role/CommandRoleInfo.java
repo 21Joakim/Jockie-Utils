@@ -1,9 +1,7 @@
 package example.command.info.role;
 
-import com.jockie.bot.core.command.argument.Argument;
+import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
-import com.jockie.bot.core.paged.impl.PagedManager;
-import com.jockie.bot.core.paged.impl.PagedResult;
 
 import example.Main;
 import net.dv8tion.jda.core.EmbedBuilder;
@@ -20,23 +18,9 @@ public class CommandRoleInfo extends CommandImpl {
 		super.setDescription("Get information about a role");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, @Argument(name="Role", nullDefault=true) Role role) {
-		if(role != null) {
-			event.getChannel().sendMessage(getRoleInfo(role)).queue();
-		}else{
-			PagedResult<Role> paged = new PagedResult<Role>(event.getGuild().getRoles(), Role::getAsMention, selectEvent -> {
-				event.getChannel().sendMessage(getRoleInfo(selectEvent.entry)).queue();
-			});
-			
-			paged.setListIndexesContinuously(true);
-			paged.setDeleteOnTimeout(true);
-			
-			PagedManager.addPagedResult(event, paged);
-		}
-	}
-	
-	private static MessageEmbed getRoleInfo(Role role) {
+	public MessageEmbed onCommand(MessageReceivedEvent event, @Argument(name="Role") Role role) {
 		EmbedBuilder builder = new EmbedBuilder();
+		
 		builder.setColor(role.getColor());
 		builder.addField("Name", role.getName(), true);
 		builder.addField("Id", role.getName(), true);

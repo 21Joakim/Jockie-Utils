@@ -1,6 +1,6 @@
 package example.command.info.user;
 
-import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
+import com.jockie.bot.core.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.EmbedBuilder;

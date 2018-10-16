@@ -1,7 +1,7 @@
 package example.command.fun;
 
-import com.jockie.bot.core.command.argument.Argument;
-import com.jockie.bot.core.command.argument.Endless;
+import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;

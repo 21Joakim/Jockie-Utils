@@ -1,17 +1,14 @@
-plugins {
-    id 'java'
-}
+apply plugin: 'java'
 
-version '0.07'
+version '1.00'
 
 sourceCompatibility = 1.8
 
 repositories {
-    jcenter()
+	jcenter()
 }
 
 dependencies {
-    compile 'net.dv8tion:JDA:3.7.1_386'
-    compile 'com.google.guava:guava:25.0-jre'
-    implementation 'com.google.code.gson:gson:2.8.5'
+	compile 'com.google.guava:guava:25.0-jre'
+	compile 'net.dv8tion:JDA:3.8.1_438'
 }

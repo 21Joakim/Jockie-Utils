@@ -7,13 +7,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.jockie.bot.core.command.argument.VerifiedArgument;
-import com.jockie.bot.core.command.argument.VerifiedArgument.VerifiedType;
-import com.jockie.bot.core.command.argument.impl.ArgumentFactory;
+import com.jockie.bot.core.argument.VerifiedArgument;
+import com.jockie.bot.core.argument.VerifiedArgument.VerifiedType;
+import com.jockie.bot.core.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.impl.CommandStore;
-import com.jockie.bot.core.command.impl.command.CommandHelp;
-import com.jockie.bot.example.Safe;
+import com.jockie.bot.test.Safe;
 
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDABuilder;
@@ -48,11 +47,12 @@ public class Main {
 		});
 		
 		CommandListener listener = new CommandListener()
-			.addCommandStore(CommandStore.of("example.command").addCommands(new CommandHelp() /* Built in help command */))
+			.addCommandStore(CommandStore.of("example.command"))
 			.setDefaultPrefixes("§");
 		
-		new JDABuilder(AccountType.BOT).setToken(Safe.TEST_TOKEN)
+		new JDABuilder(AccountType.BOT).setToken(Safe.TOKEN)
 			.addEventListener(listener)
-			.buildBlocking();
+			.build()
+			.awaitReady();
 	}
 }

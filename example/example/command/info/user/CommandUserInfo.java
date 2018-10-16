@@ -2,7 +2,7 @@ package example.command.info.user;
 
 import java.awt.Color;
 
-import com.jockie.bot.core.command.argument.Argument;
+import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.utility.ArgumentUtility;
 

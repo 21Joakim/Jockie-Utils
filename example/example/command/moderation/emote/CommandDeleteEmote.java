@@ -1,6 +1,6 @@
 package example.command.moderation.emote;
 
-import com.jockie.bot.core.command.argument.Argument;
+import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.Permission;
