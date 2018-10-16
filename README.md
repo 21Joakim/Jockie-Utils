@@ -10,13 +10,15 @@ https://github.com/google/gson (Used for the Data implementations)
 </br>
 https://github.com/google/guava (Used for simplied adding of commands, adding commands by package)
 
-<h2>Gradle (For dependencies and not the actual project):</h2>
+<h2>Gradle:</h2>
 
 ```
+repositories {
+	maven { url 'https://jitpack.io' }
+}
+
 dependencies {
-    compile 'net.dv8tion:JDA:3+'
-    compile 'com.google.guava:guava:25.0-jre'
-    implementation 'com.google.code.gson:gson:2.8.4'
+	implementation 'com.github.21Joakim:Jockie-Utils:{latest-version}'
 }
 ```
 
