@@ -6,8 +6,6 @@ All suggestions are welcome and feel free to contribute
 <h2>Libraries:</h2>
 https://github.com/DV8FromTheWorld/JDA (The Discord wrapper which the library is built upon)
 </br>
-https://github.com/google/gson (Used for the Data implementations) 
-</br>
 https://github.com/google/guava (Used for simplied adding of commands, adding commands by package)
 
 <h2>Gradle:</h2>
