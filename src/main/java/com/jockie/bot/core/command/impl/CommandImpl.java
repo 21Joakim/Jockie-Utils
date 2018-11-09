@@ -1,5 +1,6 @@
 package com.jockie.bot.core.command.impl;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -45,12 +47,69 @@ import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class CommandImpl implements ICommand {
 	
+	@SuppressWarnings("rawtypes")
+	private static Map<Class, BiFunction> contextes = new HashMap<>();
+	
+	public static <T> void registerContext(Class<T> type, BiFunction<CommandEvent, Parameter, T> function) {
+		CommandImpl.contextes.put(Objects.requireNonNull(type), Objects.requireNonNull(function));
+	}
+	
+	public static void unregisterContext(Class<?> type) {
+		CommandImpl.contextes.remove(type);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> BiFunction<CommandEvent, Parameter, T> getContextFunction(Class<T> type) {
+		return CommandImpl.contextes.get(type);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private static Map<Class, BiFunction> beforeExecuteAnnotation = new HashMap<>();
+	
+	public static <T extends Annotation> void registerBeforeExecuteAnnotation(Class<T> type, BiFunction<CommandEvent, T, Object> function) {
+		CommandImpl.beforeExecuteAnnotation.put(type, function);
+	}
+	
+	public static void unregisterBeforeExecuteAnnotation(Class<? extends Annotation> type) {
+		CommandImpl.beforeExecuteAnnotation.remove(type);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getBeforeExecuteFunction(Class<T> type) {
+		return CommandImpl.beforeExecuteAnnotation.get(type);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private static Map<Class, BiFunction> afterExecuteAnnotation = new HashMap<>();
+	
+	public static <T extends Annotation> void registerAfterExecuteAnnotation(Class<T> type, BiFunction<CommandEvent, T, Object> function) {
+		CommandImpl.afterExecuteAnnotation.put(type, function);
+	}
+	
+	public static void unregisterAfterExecuteAnnotation(Class<? extends Annotation> type) {
+		CommandImpl.afterExecuteAnnotation.remove(type);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getAfterExecuteFunction(Class<T> type) {
+		return CommandImpl.afterExecuteAnnotation.get(type);
+	}
+	
 	private static Object getContextVariable(MessageReceivedEvent event, CommandEvent commandEvent, Object[] arguments, Parameter parameter) {
 		if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class)) {
 			return event;
 		}else if(parameter.getType().isAssignableFrom(CommandEvent.class)) {
 			return commandEvent;
 		}else if(parameter.isAnnotationPresent(Context.class)) {
+			Class<?> command = commandEvent.getCommand().getClass();
+			if(parameter.getType().isAssignableFrom(command)) {
+				return commandEvent.getCommand();
+			}
+			
+			if(parameter.getType().isAssignableFrom(CommandListener.class)) {
+				return commandEvent.getCommandListener();
+			}
+			
 			if(parameter.getType().isAssignableFrom(JDAImpl.class)) {
 				return event.getJDA();
 			}else if(parameter.getType().isAssignableFrom(UserImpl.class)) {
@@ -79,6 +138,10 @@ public class CommandImpl implements ICommand {
 				if(parameter.getType().isAssignableFrom(GroupImpl.class)) {
 					return event.getGroup();
 				}
+			}
+			
+			if(CommandImpl.contextes.containsKey(parameter.getType())) {
+				return CommandImpl.getContextFunction(parameter.getType()).apply(commandEvent, parameter);
 			}
 			
 			throw new IllegalArgumentException("There is no context avaliable for that class");
@@ -311,6 +374,7 @@ public class CommandImpl implements ICommand {
 					
 					options[i2++] = new OptionImpl.Builder()
 						.setName(option.option())
+						.setDescription(option.description())
 						.setAliases(option.aliases())
 						.setHidden(option.hidden())
 						.setDeveloperOption(option.developer())
@@ -324,32 +388,92 @@ public class CommandImpl implements ICommand {
 		}
 	}
 	
-	public MethodCommand createFrom(String name, Method method) {
+	public static List<ICommand> generateDummyCommands(ICommand command) {
+		List<ICommand> dummyCommands = new ArrayList<>();
+		
+		if(!(command instanceof DummyCommand)) {
+			List<IArgument<?>> arguments = new ArrayList<>();
+			if(command.getArguments().length > 0) {
+				for(int i = 0; i < command.getArguments().length; i++) {
+					IArgument<?> argument = command.getArguments()[i];
+					if(argument.hasDefault()) {
+						arguments.add(argument);
+					}
+				}
+				
+				if(arguments.size() > 0) {
+					List<IArgument<?>> args = new ArrayList<>();
+			    	for(int i = 1, max = 1 << arguments.size(); i < max; ++i) {
+			    	    for(int j = 0, k = 1; j < arguments.size(); ++j, k <<= 1) {
+			    	        if((k & i) != 0) {
+			    	        	args.add(arguments.get(j));
+			    	        }
+			    	    }
+			    	    
+			    	    dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
+						
+						args.clear();
+			    	}
+				}
+			}
+		}
+		
+		return dummyCommands;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static MethodCommand createFrom(String name, Object invoker, Method method) {
 		MethodCommand methodCommand;
 		if(method.isAnnotationPresent(Command.class)) {
-			Command annotation = method.getAnnotation(Command.class);
+			Command commandAnnotation = method.getAnnotation(Command.class);
 			
-			methodCommand = new MethodCommand(annotation.command().length() == 0 ? (name != null ? name : "") : annotation.command(), this, method);
-			methodCommand.setAliases(annotation.aliases());
-			methodCommand.setAuthorDiscordPermissionsNeeded(annotation.authorPermissionsNeeded());
-			methodCommand.setBotDiscordPermissionsNeeded(annotation.botPermissionsNeeded());
-			methodCommand.setBotTriggerable(annotation.botTriggerable());
-			methodCommand.setCaseSensitive(annotation.caseSensitive());
-			methodCommand.setCooldownDuration(annotation.cooldown(), annotation.cooldownUnit());
-			methodCommand.setCooldownScope(annotation.cooldownScope());
-			methodCommand.setDescription(annotation.description());
-			methodCommand.setDeveloperCommand(annotation.developerCommand());
-			methodCommand.setExecuteAsync(annotation.async());
-			methodCommand.setGuildTriggerable(annotation.guildTriggerable());
-			methodCommand.setHidden(annotation.hidden());
-			methodCommand.setPrivateTriggerable(annotation.privateTriggerable());
-			methodCommand.setShortDescription(annotation.shortDescription());
-			methodCommand.setExamples(annotation.examples());
+			methodCommand = new MethodCommand(commandAnnotation.command().length() == 0 ? (name != null ? name : "") : commandAnnotation.command(), invoker, method);
+			methodCommand.setAliases(commandAnnotation.aliases());
+			methodCommand.setAuthorDiscordPermissionsNeeded(commandAnnotation.authorPermissionsNeeded());
+			methodCommand.setBotDiscordPermissionsNeeded(commandAnnotation.botPermissionsNeeded());
+			methodCommand.setBotTriggerable(commandAnnotation.botTriggerable());
+			methodCommand.setCaseSensitive(commandAnnotation.caseSensitive());
+			methodCommand.setCooldownDuration(commandAnnotation.cooldown(), commandAnnotation.cooldownUnit());
+			methodCommand.setCooldownScope(commandAnnotation.cooldownScope());
+			methodCommand.setDescription(commandAnnotation.description());
+			methodCommand.setDeveloperCommand(commandAnnotation.developerCommand());
+			methodCommand.setExecuteAsync(commandAnnotation.async());
+			methodCommand.setGuildTriggerable(commandAnnotation.guildTriggerable());
+			methodCommand.setHidden(commandAnnotation.hidden());
+			methodCommand.setPrivateTriggerable(commandAnnotation.privateTriggerable());
+			methodCommand.setShortDescription(commandAnnotation.shortDescription());
+			methodCommand.setExamples(commandAnnotation.examples());
+			
+			for(Annotation annotation : method.getAnnotations()) {
+				BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.beforeExecuteAnnotation.get(annotation.getClass());
+				if(function != null) {
+					methodCommand.registerBeforeExecute(commandEvent -> {
+						return function.apply(commandEvent, annotation);
+					});
+				}
+			}
+			
+			for(Annotation annotation : method.getAnnotations()) {
+				BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.afterExecuteAnnotation.get(annotation.getClass());
+				if(function != null) {
+					methodCommand.registerAfterExecute(commandEvent -> {
+						return function.apply(commandEvent, annotation);
+					});
+				}
+			}
 		}else{
-			methodCommand = new MethodCommand(name != null ? name : "", this, method);
+			methodCommand = new MethodCommand(name != null ? name : "", invoker, method);
 		}
 		
 		return methodCommand;
+	}
+	
+	public static MethodCommand createFrom(Object invoker, Method method) {
+		return CommandImpl.createFrom(null, invoker, method);
+	}
+	
+	public MethodCommand createFrom(String name, Method method) {		
+		return CommandImpl.createFrom(name, this, method);
 	}
 	
 	public MethodCommand createFrom(Method method) {
@@ -368,10 +492,15 @@ public class CommandImpl implements ICommand {
 	
 	private BiFunction<CommandImpl, MessageReceivedEvent, String[]> aliasesFunction = DEFAULT_ALIASES_FUNCTION;
 	
+	private List<Function<CommandEvent, Object>> beforeExecute = new ArrayList<>();
+	private List<Function<CommandEvent, Object>> afterExecute = new ArrayList<>();
+	
 	private IArgument<?>[] arguments = {};
 	private IOption[] options = {};
 	
 	private OptionPolicy optionPolicy = OptionPolicy.INCLUDE;
+	
+	private ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
 	private Permission[] botDiscordPermissionsNeeded = {};
 	private Permission[] authorDiscordPermissionsNeeded = {};
@@ -388,8 +517,6 @@ public class CommandImpl implements ICommand {
 	private boolean hidden;
 	
 	private boolean executeAsync;
-	
-	private Category category;
 	
 	private long cooldownDuration = 0;
 	private Scope cooldownScope = Scope.USER;
@@ -411,16 +538,38 @@ public class CommandImpl implements ICommand {
 	
 	private boolean defaultGenerated = false;
 	
+	@SuppressWarnings("unchecked")
 	public CommandImpl(String command, boolean generateDefault, IArgument<?>... arguments) {
 		this.command = command;
 		
 		if(generateDefault) {
 			if(arguments.length == 0 && this.commandMethods.size() == 1) {
-				this.arguments = CommandImpl.generateDefaultArguments(this.commandMethods.get(0));
+				Method commandMethod = this.commandMethods.get(0);
+				
+				this.arguments = CommandImpl.generateDefaultArguments(commandMethod);
+				this.options = CommandImpl.generateOptions(commandMethod);
+				
+				for(Annotation annotation : commandMethod.getAnnotations()) {
+					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.beforeExecuteAnnotation.get(annotation.getClass());
+					if(function != null) {
+						this.registerBeforeExecute(commandEvent -> {
+							return function.apply(commandEvent, annotation);
+						});
+					}
+				}
+				
+				for(Annotation annotation : commandMethod.getAnnotations()) {
+					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.afterExecuteAnnotation.get(annotation.getClass());
+					if(function != null) {
+						this.registerAfterExecute(commandEvent -> {
+							return function.apply(commandEvent, annotation);
+						});
+					}
+				}
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
-						this.addSubCommand(this.createFrom(this.commandMethods.get(i)));
+						this.addSubCommand(this.createFrom(this.commandMethods.get(i).getName().replace("_", " "), this.commandMethods.get(i)));
 					}
 					
 					if(arguments.length > 0) {
@@ -430,8 +579,6 @@ public class CommandImpl implements ICommand {
 					this.arguments = arguments;
 				}
 			}
-			
-			this.options = CommandImpl.generateOptions(this.commandMethods.get(0));
 			
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
@@ -471,7 +618,7 @@ public class CommandImpl implements ICommand {
 		
 		this.defaultGenerated = generateDefault;
 		
-		this.dummyCommands = LoaderUtility.generateDummyCommands(this);
+		this.dummyCommands = CommandImpl.generateDummyCommands(this);
 	}
 	
 	public CommandImpl(String command, IArgument<?>... arguments) {
@@ -498,6 +645,14 @@ public class CommandImpl implements ICommand {
 		return this.aliases;
 	}
 	
+	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions() {
+		return this.beforeExecute;
+	}
+	
+	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions() {
+		return this.afterExecute;
+	}
+	
 	public IArgument<?>[] getArguments() {
 		return this.arguments;
 	}
@@ -508,6 +663,10 @@ public class CommandImpl implements ICommand {
 	
 	public OptionPolicy getOptionPolicy() {
 		return this.optionPolicy;
+	}
+	
+	public ContentOverflowPolicy getContentOverflowPolicy() {
+		return this.overflowPolicy;
 	}
 	
 	public Permission[] getBotDiscordPermissionsNeeded() {
@@ -540,10 +699,6 @@ public class CommandImpl implements ICommand {
 	
 	public boolean isHidden() {
 		return this.hidden;
-	}
-	
-	public Category getCategory() {
-		return this.category;
 	}
 	
 	public long getCooldownDuration() {
@@ -654,7 +809,7 @@ public class CommandImpl implements ICommand {
 	
 	protected CommandImpl setArguments(IArgument<?>... arguments) {
 		this.arguments = arguments;
-		this.dummyCommands = LoaderUtility.generateDummyCommands(this);
+		this.dummyCommands = CommandImpl.generateDummyCommands(this);
 		
 		return this;
 	}
@@ -667,6 +822,12 @@ public class CommandImpl implements ICommand {
 	
 	protected CommandImpl setOptionPolicy(OptionPolicy optionPolicy) {
 		this.optionPolicy = optionPolicy;
+		
+		return this;
+	}
+	
+	protected CommandImpl setContentOverflowPolicy(ContentOverflowPolicy overflowPolicy) {
+		this.overflowPolicy = overflowPolicy;
 		
 		return this;
 	}
@@ -691,16 +852,6 @@ public class CommandImpl implements ICommand {
 	
 	protected CommandImpl setHidden(boolean hidden) {
 		this.hidden = hidden;
-		
-		return this;
-	}
-	
-	protected CommandImpl setCategory(Category category) {
-		if(this.category != null) {
-			this.category.removeCommands(this);
-		}
-		
-		this.category = category.addCommands(this);
 		
 		return this;
 	}
@@ -775,6 +926,18 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
+	protected CommandImpl registerBeforeExecute(Function<CommandEvent, Object> beforeExecute) {
+		this.beforeExecute.add(beforeExecute);
+		
+		return this;
+	}
+	
+	protected CommandImpl registerAfterExecute(Function<CommandEvent, Object> afterExecute) {
+		this.afterExecute.add(afterExecute);
+		
+		return this;
+	}
+	
 	protected CommandImpl setAliases(BiFunction<CommandImpl, MessageReceivedEvent, String[]> function) {
 		if(function != null) {
 			this.aliasesFunction = function;
@@ -795,16 +958,14 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	public List<Pair<ICommand, List<?>>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
-		List<Pair<ICommand, List<?>>> commands = new ArrayList<>();
-		List<Object> commandTriggers = new ArrayList<>();
+	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
+		List<Pair<String, ICommand>> commands = new ArrayList<>();
 		
-		commandTriggers.add((prefix + " " + this.getCommand()).trim());
+		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
 		
 		String[] aliases = this.aliasesFunction.apply(this, event);
-		
 		for(String alias : aliases) {
-			commandTriggers.add((prefix + " " + alias).trim());
+			commands.add(Pair.of((prefix + " " + alias).trim(), this));
 		}
 		
 		for(ICommand command : this.getSubCommands()) {
@@ -816,18 +977,12 @@ public class CommandImpl implements ICommand {
 		}
 		
 		for(ICommand command : this.dummyCommands) {
-			List<String> triggers = new ArrayList<>();
-			
-			triggers.add((prefix + " " + command.getCommand()).trim());
+			commands.add(Pair.of((prefix + " " + command.getCommand()).trim(), command));
 			
 			for(String alias : aliases) {
-				triggers.add((prefix + " " + alias).trim());
+				commands.add(Pair.of((prefix + " " + alias).trim(), command));
 			}
-			
-			commandTriggers.add(Pair.of(command, triggers));
 		}
-		
-		commands.add(Pair.of(this, commandTriggers));
 		
 		return commands;
 	}
@@ -889,5 +1044,9 @@ public class CommandImpl implements ICommand {
 		}
 		
 		return methods;
+	}
+	
+	public String toString() {
+		return this.getCommand() + " " + this.getArgumentInfo();
 	}
 }

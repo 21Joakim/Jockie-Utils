@@ -20,21 +20,21 @@ public class CommandCopy extends CommandImpl {
 		super("copy");
 	}
 	
-	@Command(command="role", aliases="", authorPermissionsNeeded=Permission.MANAGE_ROLES, botPermissionsNeeded=Permission.MANAGE_ROLES)
+	@Command(command="role", authorPermissionsNeeded=Permission.MANAGE_ROLES, botPermissionsNeeded=Permission.MANAGE_ROLES)
 	public void onCommand(MessageReceivedEvent event, @Argument(name="role") Role role) {
 		role.createCopy().queue(copy -> {
 			event.getChannel().sendMessage("Created copy of role " + role.getName()).queue();
 		});
 	}
 	
-	@Command(command="channel", aliases="", authorPermissionsNeeded=Permission.MANAGE_CHANNEL, botPermissionsNeeded=Permission.MANAGE_CHANNEL)
+	@Command(command="channel", authorPermissionsNeeded=Permission.MANAGE_CHANNEL, botPermissionsNeeded=Permission.MANAGE_CHANNEL)
 	public void onCommand(MessageReceivedEvent event, @Argument(name="channel") Channel channel) {
 		channel.createCopy().queue(copy -> {
 			event.getChannel().sendMessage("Created copy of channel " + channel.getName()).queue();
 		});
 	}
 	
-	@Command(command="emote", aliases="", authorPermissionsNeeded=Permission.MANAGE_EMOTES, botPermissionsNeeded=Permission.MANAGE_EMOTES)
+	@Command(command="emote", authorPermissionsNeeded=Permission.MANAGE_EMOTES, botPermissionsNeeded=Permission.MANAGE_EMOTES)
 	public void onCommand(MessageReceivedEvent event, @Argument(name="emote") Emote emote) {
 		try {
 			event.getGuild().getController().createEmote(emote.getName(), Icon.from(new URL(emote.getImageUrl()).openStream())).queue(copy -> {

@@ -1,10 +1,10 @@
 package com.jockie.bot.core.command;
 
 import java.util.List;
+import java.util.function.Function;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
-import com.jockie.bot.core.command.impl.Category;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
@@ -61,12 +61,22 @@ public interface ICommand {
 	 */
 	public String[] getAliases();
 	
+	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions();
+	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions();
+	
 	public IOption[] getOptions();
 	
 	public OptionPolicy getOptionPolicy();
 	
 	public enum OptionPolicy {
 		INCLUDE,
+		IGNORE,
+		FAIL;
+	}
+	
+	public ContentOverflowPolicy getContentOverflowPolicy();
+	
+	public enum ContentOverflowPolicy {
 		IGNORE,
 		FAIL;
 	}
@@ -101,11 +111,6 @@ public interface ICommand {
 	 * then the command could only be triggered if the message is equal to <strong>PiNg</strong> 
 	 */
 	public boolean isCaseSensitive();
-	
-	/**
-	 * @return the category this command is in
-	 */
-	public Category getCategory();
 	
 	/**
 	 * @return the cooldown duration in milliseconds which will be applied to a user
@@ -151,8 +156,7 @@ public interface ICommand {
 	 */
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Throwable;
 	
-	/* I don't really like how this is but it works for now */
-	public List<Pair<ICommand, List<?>>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix);
+	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix);
 	
 	/**
 	 * @return information about the arguments

@@ -1,21 +1,19 @@
 package com.jockie.bot.core.utility;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
-import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.command.ICommand;
-import com.jockie.bot.core.command.impl.DummyCommand;
 
 public class LoaderUtility {
 	
 	private LoaderUtility() {}
 	
 	/**
-	 * @return true if clazz implements interfaze checked recursively till the super class is either null or Object
+	 * @return true if class implements interface checked recursively till the super class is either null or Object
 	 */
 	public static boolean isDeepImplementation(Class<?> clazz, Class<?> interfaze) {
 		while(clazz != null && !clazz.equals(Object.class)) {
@@ -50,13 +48,13 @@ public class LoaderUtility {
 			}
 			
 			for(ClassInfo info : classes) {
-				Class<?> clazz2 = classLoader.loadClass(info.toString());
+				Class<?> loadedClass = classLoader.loadClass(info.toString());
 				
-				if(LoaderUtility.isDeepImplementation(clazz2, clazz)) {
+				if(LoaderUtility.isDeepImplementation(loadedClass, clazz)) {
 					try {
-						objects.add((T) clazz2.getConstructor().newInstance());
+						objects.add((T) loadedClass.getConstructor().newInstance());
 					}catch(Exception e1) {
-						throw e1;
+						throw new Exception("Failed to load class " + loadedClass, e1);
 					}
 				}
 			}
@@ -67,36 +65,34 @@ public class LoaderUtility {
 		return objects;
 	}
 	
-	public static List<ICommand> generateDummyCommands(ICommand command) {
-		List<ICommand> dummyCommands = new ArrayList<>();
+	public static <T extends Annotation> List<Object> loadWith(String packagePath, boolean subPackages, Class<T> annotation) {
+		List<Object> objects = new ArrayList<>();
 		
-		if(!(command instanceof DummyCommand)) {
-			List<IArgument<?>> arguments = new ArrayList<>();
-			if(command.getArguments().length > 0) {
-				for(int i = 0; i < command.getArguments().length; i++) {
-					IArgument<?> argument = command.getArguments()[i];
-					if(argument.hasDefault()) {
-						arguments.add(argument);
+		try {
+			ClassLoader classLoader = ClassLoader.getSystemClassLoader();
+			
+			ImmutableSet<ClassInfo> classes;
+			if(subPackages) {
+				classes = ClassPath.from(classLoader).getTopLevelClassesRecursive(packagePath);
+			}else{
+				classes = ClassPath.from(classLoader).getTopLevelClasses(packagePath);
+			}
+			
+			for(ClassInfo info : classes) {
+				Class<?> loadedClass = classLoader.loadClass(info.toString());
+				
+				if(loadedClass.isAnnotationPresent(annotation)) {
+					try {
+						objects.add(loadedClass.getConstructor().newInstance());
+					}catch(Exception e1) {
+						throw new Exception("Failed to load class " + loadedClass, e1);
 					}
 				}
-				
-				if(arguments.size() > 0) {
-					List<IArgument<?>> args = new ArrayList<>();
-			    	for(int i = 1, max = 1 << arguments.size(); i < max; ++i) {
-			    	    for(int j = 0, k = 1; j < arguments.size(); ++j, k <<= 1) {
-			    	        if((k & i) != 0) {
-			    	        	args.add(arguments.get(j));
-			    	        }
-			    	    }
-			    	    
-			    	    dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
-						
-						args.clear();
-			    	}
-				}
 			}
+		}catch(Exception e) {
+			e.printStackTrace();
 		}
 		
-		return dummyCommands;
+		return objects;
 	}
 }

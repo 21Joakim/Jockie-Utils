@@ -4,6 +4,8 @@ public interface IOption {
 	
 	public String getName();
 	
+	public String getDescription();
+	
 	public String[] getAliases();
 	
 	public boolean isHidden();
@@ -12,6 +14,9 @@ public interface IOption {
 	public abstract class Builder<Type extends IOption, BuilderType extends Builder<Type, BuilderType>> {
 		
 		protected String name;
+		
+		protected String description;
+		
 		protected String[] aliases;
 		
 		protected boolean hidden;
@@ -19,6 +24,12 @@ public interface IOption {
 		
 		public BuilderType setName(String name) {
 			this.name = name;
+			
+			return this.self();
+		}
+		
+		public BuilderType setDescription(String description) {
+			this.description = description;
 			
 			return this.self();
 		}
@@ -43,6 +54,10 @@ public interface IOption {
 		
 		public String getName() {
 			return this.name;
+		}
+		
+		public String getDescription() {
+			return this.description;
 		}
 		
 		public String[] getAliases() {

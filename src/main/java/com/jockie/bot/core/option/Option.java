@@ -11,6 +11,8 @@ public @interface Option {
 	
 	public String option();
 	
+	public String description() default "";
+	
 	public String[] aliases() default {};
 	
 	public boolean hidden() default false;

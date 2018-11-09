@@ -32,11 +32,21 @@ public class CooldownImpl implements ICooldown {
 		this.timeStarted = Clock.systemUTC().instant();
 	}
 	
+	public CooldownImpl(Scope scope, long duration, TimeUnit unit) {
+		this.scope = scope;
+		this.duration = unit.toMillis(duration);
+		this.durationUnit = TimeUnit.MILLISECONDS;
+	}
+	
+	public void applyContext(MessageReceivedEvent event) {
+		this.key = this.scope.getContextKey(event);
+	}
+	
 	public Scope getScope() {
 		return this.scope;
 	}
 	
-	public String getKey() {
+	public String getContextKey() {
 		return this.key;
 	}
 	
@@ -72,28 +82,32 @@ public class CooldownImpl implements ICooldown {
 		return this.getTimeRemainingMillis() <= 0;
 	}
 	
-	public void updateDuration(long time) {
-		this.duration += time;
+	public void updateDuration(long duration) {
+		this.duration += duration;
 	}
 	
-	public void updateDuration(long time, TimeUnit unit) {
-		this.duration += unit.toMillis(time);
+	public void updateDuration(long duration, TimeUnit unit) {
+		this.duration += unit.toMillis(duration);
 	}
 	
-	public void increase(long time) {
-		this.updateDuration(time);
+	public void increase(long duration) {
+		this.updateDuration(duration);
 	}
 	
-	public void increase(long time, TimeUnit unit) {
-		this.updateDuration(time, unit);
+	public void increase(long duration, TimeUnit unit) {
+		this.updateDuration(duration, unit);
 	}
 	
-	public void decrease(long time) {
-		this.updateDuration(-time);
+	public void decrease(long duration) {
+		this.updateDuration(-duration);
 	}
 	
-	public void decrease(long time, TimeUnit unit) {
-		this.updateDuration(-time, unit);
+	public void decrease(long duration, TimeUnit unit) {
+		this.updateDuration(-duration, unit);
+	}
+	
+	public void start() {
+		this.timeStarted = Clock.systemUTC().instant();
 	}
 	
 	public void reset() {

@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.jockie.bot.core.argument.IArgument;
@@ -146,15 +147,11 @@ public class DummyCommand implements ICommand {
 		return this.arguments;
 	}
 	
-	public Category getCategory() {
-		return this.command.getCategory();
-	}
-	
 	public List<ICommand> getSubCommands() {
 		return new ArrayList<>();
 	}
 	
-	public List<Pair<ICommand, List<?>>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
+	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
 		return Collections.emptyList();
 	}
 	
@@ -175,5 +172,17 @@ public class DummyCommand implements ICommand {
 	
 	public OptionPolicy getOptionPolicy() {
 		return this.command.getOptionPolicy();
+	}
+	
+	public ContentOverflowPolicy getContentOverflowPolicy() {
+		return this.command.getContentOverflowPolicy();
+	}
+	
+	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions() {
+		return this.command.getBeforeExecuteFunctions();
+	}
+	
+	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions() {
+		return this.command.getAfterExecuteFunctions();
 	}
 }

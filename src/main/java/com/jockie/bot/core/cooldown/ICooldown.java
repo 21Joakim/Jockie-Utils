@@ -32,9 +32,11 @@ public interface ICooldown {
 		}
 	}
 	
+	public void applyContext(MessageReceivedEvent event);
+	
 	public Scope getScope();
 	
-	public String getKey();
+	public String getContextKey();
 	
 	public Instant getTimeStarted();
 	public ZonedDateTime getTimeStarted(ZoneId zone);
@@ -49,15 +51,16 @@ public interface ICooldown {
 	
 	public boolean hasExpired();
 	
-	public void updateDuration(long time);
-	public void updateDuration(long time, TimeUnit unit);
+	public void updateDuration(long duration);
+	public void updateDuration(long duration, TimeUnit unit);
 	
-	public void increase(long time);
-	public void increase(long time, TimeUnit unit);
+	public void increase(long duration);
+	public void increase(long duration, TimeUnit unit);
 	
-	public void decrease(long time);
-	public void decrease(long time, TimeUnit unit);
+	public void decrease(long duration);
+	public void decrease(long duration, TimeUnit unit);
 	
+	public void start();
 	public void reset();
 	public void cancel();
 	

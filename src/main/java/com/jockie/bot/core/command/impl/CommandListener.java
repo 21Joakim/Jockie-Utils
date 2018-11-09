@@ -19,7 +19,9 @@ import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.VerifiedArgument;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.ICommand.OptionPolicy;
+import com.jockie.bot.core.command.exception.CancelException;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 import com.jockie.bot.core.cooldown.impl.CooldownManager;
@@ -34,7 +36,6 @@ import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.events.Event;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.core.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.core.exceptions.PermissionException;
 import net.dv8tion.jda.core.hooks.EventListener;
 import net.dv8tion.jda.core.utils.Checks;
@@ -42,6 +43,7 @@ import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class CommandListener implements EventListener {
 	
+	/* More specific goes first */
 	private static final Comparator<Pair<String, ICommand>> COMMAND_COMPARATOR = new Comparator<Pair<String, ICommand>>() {
 		public int compare(Pair<String, ICommand> pair, Pair<String, ICommand> pair2) {
 			ICommand command = pair.getRight(), command2 = pair2.getRight();
@@ -109,24 +111,26 @@ public class CommandListener implements EventListener {
 				return 1;
 			}else if(arguments > 0 && arguments2 == 0) {
 				return -1;
+			}else if(command.isCaseSensitive() && !command2.isCaseSensitive()) {
+				return -1;
+			}else if(!command.isCaseSensitive() && command2.isCaseSensitive()) {
+				return 1;
 			}
 			
 			return 0;
 		}
 	};
 	
-	private Permission[] genericPermissions = {};
-	
 	private String[] defaultPrefixes = {"!"};
 	
 	private Function<MessageReceivedEvent, String[]> prefixFunction;
 	
-	private TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, MessageBuilder> helperFunction;
+	private TriFunction<MessageReceivedEvent, String, List<ICommand>, MessageBuilder> helperFunction;
 	
 	private boolean helpEnabled = true;
 	private boolean missingPermissionEnabled = true;
 	
-	private List<Long> developers = new ArrayList<>();
+	private Set<Long> developers = new HashSet<>();
 	
 	private List<CommandStore> commandStores = new ArrayList<>();
 	
@@ -193,6 +197,8 @@ public class CommandListener implements EventListener {
 	 * See {@link #getDefaultPrefixes()}
 	 */
 	public CommandListener setDefaultPrefixes(String... prefixes) {
+		Checks.notNull(prefixes, "Prefixes");
+		
 		/* 
 		 * From the longest prefix to the shortest so that if the bot for instance has two prefixes one being "hello" 
 		 * and the other being "hello there" it would recognize that the prefix is "hello there" instead of it thinking that
@@ -211,22 +217,6 @@ public class CommandListener implements EventListener {
 	 */
 	public String[] getDefaultPrefixes() {
 		return this.defaultPrefixes;
-	}
-	
-	/**
-	 * See {@link #getGenericPermissions()}
-	 */
-	public CommandListener setGenericPermissions(Permission... permissions) {
-		this.genericPermissions = permissions;
-		
-		return this;
-	}
-	
-	/**
-	 * @return a set of permissions which will always be checked for no matter the properties of the command. If the bot does not have these permissions the commands will not work
-	 */
-	public Permission[] getGenericPermissions() {
-		return this.genericPermissions;
 	}
 	
 	/**
@@ -250,8 +240,15 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return the developers which should be checked for in {@link ICommand#verify(MessageReceivedEvent, CommandListener)} if the command has {@link ICommand#isDeveloperCommand()}
 	 */
-	public List<Long> getDevelopers() {
-		return Collections.unmodifiableList(this.developers);
+	public Set<Long> getDevelopers() {
+		return Collections.unmodifiableSet(this.developers);
+	}
+	
+	/**
+	 * @return a boolean that will prove if the provided user id is the id of a developer
+	 */
+	public boolean isDeveloper(long id) {
+		return this.developers.contains(id);
 	}
 	
 	/**
@@ -261,6 +258,8 @@ public class CommandListener implements EventListener {
 	 * for instance you can return guild or user specific prefixes
 	 */
 	public CommandListener setPrefixesFunction(Function<MessageReceivedEvent, String[]> function) {
+		Checks.notNull(function, "Function");
+		
 		this.prefixFunction = function;
 		
 		return this;
@@ -292,7 +291,7 @@ public class CommandListener implements EventListener {
 				
 				return prefixes;
 			}else{
-				System.err.println("The prefix function returned a null object, I will return the default prefixes instead");
+				System.err.println("The prefix function returned a null object, returning the default prefixes instead");
 			}
 		}
 		
@@ -336,18 +335,18 @@ public class CommandListener implements EventListener {
 	 * @param function the function that will be called when a command had the wrong arguments. 
 	 * </br></br>Parameters for the function:
 	 * </br><b>MessageReceivedEvent</b> - The event that triggered this
-	 * </br><b>CommandEvent</b> - Information about the command and context
+	 * </br><b>String</b> - Prefix
 	 * </br><b>List&#60;ICommand&#62;</b> - The possible commands which the message could be referring to
 	 */
-	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, CommandEvent, List<ICommand>, MessageBuilder> function) {
+	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, String, List<ICommand>, MessageBuilder> function) {
 		this.helperFunction = function;
 		
 		return this;
 	}
 	
-	public MessageBuilder getHelp(MessageReceivedEvent event, CommandEvent commandEvent, List<ICommand> commands) {
+	public MessageBuilder getHelp(MessageReceivedEvent event, String prefix, List<ICommand> commands) {
 		if(this.helperFunction != null) {
-			MessageBuilder builder = this.helperFunction.apply(event, commandEvent, commands);
+			MessageBuilder builder = this.helperFunction.apply(event, prefix, commands);
 			
 			if(builder != null) {
 				return builder;
@@ -432,33 +431,15 @@ public class CommandListener implements EventListener {
 			
 			Set<ICommand> possibleCommands = new HashSet<>();
 			
-			/* This is probably not the best but it works */
-			List<Pair<ICommand, List<?>>> allCommands = this.getCommandStores().stream()
-				.map(store -> store.getCommands())
+			List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
+				.map(CommandStore::getCommands)
 				.flatMap(List::stream)
 				.map(command -> command.getAllCommandsRecursive(event, ""))
 				.flatMap(List::stream)
-				.filter(pair -> pair.getLeft().verify(event, this))
-				.filter(pair -> !pair.getLeft().isPassive())
+				.filter(pair -> pair.getRight().verify(event, this))
+				.filter(pair -> !pair.getRight().isPassive())
+				.sorted(COMMAND_COMPARATOR)
 				.collect(Collectors.toList());
-			
-			List<Pair<String, ICommand>> commands = new ArrayList<>();
-			for(Pair<ICommand, List<?>> pair : allCommands) {
-				for(Object obj : pair.getRight()) {
-					if(obj instanceof String) {
-						commands.add(Pair.of((String) obj, pair.getLeft()));
-					}else if(obj instanceof Pair) {
-						@SuppressWarnings("unchecked")
-						Pair<ICommand, List<String>> pairs = (Pair<ICommand, List<String>>) obj;
-						
-						for(String trigger : pairs.getRight()) {
-							commands.add(Pair.of(trigger, pairs.getLeft()));
-						}
-					}
-				}
-			}
-			
-			commands.sort(COMMAND_COMPARATOR);
 			
 			COMMANDS :
 			for(Pair<String, ICommand> pair : commands) {
@@ -622,8 +603,8 @@ public class CommandListener implements EventListener {
 						if(msg.length() > 0) {
 							if(msg.startsWith(" ")) {
 								msg = msg.substring(1);
-							}else{
-								/* When does it get here? */
+							}else{ /* When does it get here? */
+								possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
 								
 								continue COMMANDS;
 							}
@@ -711,22 +692,28 @@ public class CommandListener implements EventListener {
 					
 					/* There is more content than the arguments handled */
 					if(msg.length() > 0) {
-						continue COMMANDS;
+						if(command.getContentOverflowPolicy().equals(ContentOverflowPolicy.FAIL)) {
+							possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+							
+							continue COMMANDS;
+						}
 					}
 					
 					/* Not the correct amount of arguments for the command */
 					if(command.getArguments().length != argumentCount) {
+						possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+						
 						continue COMMANDS;
 					}
 				}
 				
-				CommandEvent commandEvent = new CommandEvent(event, this, prefix, cmd, pair.getLeft(), options);
+				CommandEvent commandEvent = new CommandEvent(event, this, command, arguments, prefix, cmd, pair.getLeft(), options);
 				if(command.isExecuteAsync()) {
 					this.commandExecutor.submit(() -> {
-						this.executeCommand(command, event, commandEvent, commandStarted, arguments);
+						this.execute(command, event, commandEvent, commandStarted, arguments);
 					});
 				}else{
-					this.executeCommand(command, event, commandEvent, commandStarted, arguments);
+					this.execute(command, event, commandEvent, commandStarted, arguments);
 				}
 				
 				return;
@@ -750,7 +737,7 @@ public class CommandListener implements EventListener {
 				}
 				
 				/* The alias for the CommandEvent is just everything after the prefix since there is no way to do it other than having a list of CommandEvent or aliases */
-				event.getChannel().sendMessage(this.getHelp(event, new CommandEvent(event, this, prefix, message, null, null), new ArrayList<>(possibleCommands)).build()).queue();
+				event.getChannel().sendMessage(this.getHelp(event, prefix, new ArrayList<>(possibleCommands)).build()).queue();
 			}
 		}
 	}
@@ -759,7 +746,7 @@ public class CommandListener implements EventListener {
 		if(event.getChannelType().isGuild()) {
 			Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
 			
-			long permissionsNeeded = Permission.getRaw(this.genericPermissions) | Permission.getRaw(command.getBotDiscordPermissionsNeeded());
+			long permissionsNeeded = Permission.getRaw(command.getBotDiscordPermissionsNeeded());
 			
 			StringBuilder missingPermissions = new StringBuilder();
 			for(Permission permission : Permission.getPermissions(permissionsNeeded)) {
@@ -795,7 +782,7 @@ public class CommandListener implements EventListener {
 		return true;
 	}
 	
-	private void executeCommand(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, long timeStarted, Object... arguments) {
+	private void execute(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, long timeStarted, Object... arguments) {
 		if(this.checkPermissions(event, commandEvent, command)) {
 			ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
 			
@@ -808,7 +795,30 @@ public class CommandListener implements EventListener {
 						/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
 						this.cooldownManager.createCooldown(actualCommand, event);
 						
+						/* Additional features surrounding this will come in the future */
+						for(Function<CommandEvent, Object> function : command.getBeforeExecuteFunctions()) {
+							try {
+								function.apply(commandEvent);
+							}catch(CancelException e) {
+								if(command.getCooldownDuration() > 0) {
+									this.cooldownManager.removeCooldown(actualCommand, event);
+								}
+								
+								return;
+							}catch(Exception e) {
+								e.printStackTrace();
+							}
+						}
+						
 						command.execute(event, commandEvent, arguments);
+						
+						for(Function<CommandEvent, Object> function : command.getAfterExecuteFunctions()) {
+							try {
+								function.apply(commandEvent);
+							}catch(Exception e) {
+								e.printStackTrace();
+							}
+						}
 					}else{
 						event.getChannel().sendMessage("Slow down, try again in " + ((double) timeRemaining/1000) + " seconds").queue();
 					}
@@ -830,6 +840,10 @@ public class CommandListener implements EventListener {
 					this.cooldownManager.removeCooldown(actualCommand, event);
 				}
 				
+				if(e instanceof CancelException) {
+					return;
+				}
+				
 				if(e instanceof PermissionException) {
 					System.err.println("Attempted to execute command (" + commandEvent.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
 						", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
@@ -845,7 +859,7 @@ public class CommandListener implements EventListener {
 					}
 					
 					if(this.missingPermissionEnabled) {
-						event.getChannel().sendMessage("Missing permission **" + ((InsufficientPermissionException) e).getPermission().getName() + "**").queue();
+						event.getChannel().sendMessage("Missing permission **" + ((PermissionException) e).getPermission().getName() + "**").queue();
 					}
 					
 					return;
