@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.jockie.bot.core.argument.IArgument;
@@ -20,8 +21,14 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.VerifiedArgument;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
-import com.jockie.bot.core.command.ICommand.OptionPolicy;
+import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.exception.CancelException;
+import com.jockie.bot.core.command.exception.parser.ArgumentParseException;
+import com.jockie.bot.core.command.exception.parser.ContentOverflowException;
+import com.jockie.bot.core.command.exception.parser.InvalidArgumentCountException;
+import com.jockie.bot.core.command.exception.parser.MissingRequiredArgumentException;
+import com.jockie.bot.core.command.exception.parser.OutOfContentException;
+import com.jockie.bot.core.command.exception.parser.UnknownOptionException;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 import com.jockie.bot.core.cooldown.impl.CooldownManager;
@@ -125,7 +132,7 @@ public class CommandListener implements EventListener {
 	
 	private Function<MessageReceivedEvent, String[]> prefixFunction;
 	
-	private TriFunction<MessageReceivedEvent, String, List<ICommand>, MessageBuilder> helperFunction;
+	private TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> helperFunction;
 	
 	private boolean helpEnabled = true;
 	private boolean missingPermissionEnabled = true;
@@ -139,6 +146,8 @@ public class CommandListener implements EventListener {
 	private ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
 	private ICooldownManager cooldownManager = new CooldownManager();
+	
+	private List<Predicate<MessageReceivedEvent>> preParseChecks = new ArrayList<>();
 	
 	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
 		for(CommandEventListener commandEventListener : commandEventListeners) {
@@ -338,15 +347,15 @@ public class CommandListener implements EventListener {
 	 * </br><b>String</b> - Prefix
 	 * </br><b>List&#60;ICommand&#62;</b> - The possible commands which the message could be referring to
 	 */
-	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, String, List<ICommand>, MessageBuilder> function) {
+	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> function) {
 		this.helperFunction = function;
 		
 		return this;
 	}
 	
-	public MessageBuilder getHelp(MessageReceivedEvent event, String prefix, List<ICommand> commands) {
+	public MessageBuilder getHelp(MessageReceivedEvent event, String prefix, List<Failure> failures) {
 		if(this.helperFunction != null) {
-			MessageBuilder builder = this.helperFunction.apply(event, prefix, commands);
+			MessageBuilder builder = this.helperFunction.apply(event, prefix, failures);
 			
 			if(builder != null) {
 				return builder;
@@ -355,15 +364,19 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
+		failures = failures.stream()
+			.filter(failure -> !(failure.getCommand() instanceof DummyCommand))
+			.collect(Collectors.toList());
+		
 		StringBuilder description = new StringBuilder();
-		for(int i = 0; i < commands.size(); i++) {
-			ICommand command = commands.get(i);
+		for(int i = 0; i < failures.size(); i++) {
+			ICommand command = failures.get(i).getCommand();
 			
 			description.append(command.getCommandTrigger())
 				.append(" ")
 				.append(command.getArgumentInfo());
 			
-			if(i < commands.size() - 1) {
+			if(i < failures.size() - 1) {
 				description.append("\n");
 			}
 		}
@@ -373,6 +386,9 @@ public class CommandListener implements EventListener {
 			.setAuthor("Help", null, event.getJDA().getSelfUser().getEffectiveAvatarUrl()).build());
 	}
 	
+	/**
+	 * Set the cooldown manager which will be used to handle cooldowns on commands
+	 */
 	public CommandListener setCooldownManager(ICooldownManager cooldownHandler) {
 		Checks.notNull(cooldownHandler, "ICooldownManager");
 		
@@ -381,8 +397,32 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	/**
+	 * @return the {@link ICooldownManager} which is handling the command cooldowns
+	 */
 	public ICooldownManager getCoooldownManager() {
 		return this.cooldownManager;
+	}
+	
+	/**
+	 * Adds a pre-parse check which will determine whether or not the message should be parsed, this could be useful if you for instance blacklist a user or server
+	 */
+	public CommandListener addPreParseCheck(Predicate<MessageReceivedEvent> predicate) {
+		Checks.notNull(predicate, "Predicate");
+		
+		this.preParseChecks.add(predicate);
+		
+		return this;
+	}
+	
+	public CommandListener removePreParseCheck(Predicate<MessageReceivedEvent> predicate) {
+		this.preParseChecks.remove(predicate);
+		
+		return this;
+	}
+	
+	public List<Predicate<MessageReceivedEvent>> getPreParseChecks() {
+		return Collections.unmodifiableList(this.preParseChecks);
 	}
 	
 	public void onEvent(Event event) {
@@ -391,8 +431,36 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
+	public static class Failure {
+		
+		private ICommand command;
+		
+		private Throwable reason;
+		
+		public Failure(ICommand command, Throwable reason) {
+			this.command = command;
+			this.reason = reason;
+		}
+		
+		public ICommand getCommand() {
+			return this.command;
+		}
+		
+		public Throwable getReason() {
+			return this.reason;
+		}
+	}
+	
 	/* Would it be possible to split this event in to different steps, opinions? */
 	public void onMessageReceived(MessageReceivedEvent event) {
+		for(Predicate<MessageReceivedEvent> predicate : this.preParseChecks) {
+			try {
+				if(!predicate.test(event)) {
+					return;
+				}
+			}catch(Exception e) {}
+		}
+		
 		String[] prefixes = this.getPrefixes(event);
 		
 		String message = event.getMessage().getContentRaw(), prefix = null;
@@ -429,7 +497,7 @@ public class CommandListener implements EventListener {
 			
 			message = message.substring(prefix.length());
 			
-			Set<ICommand> possibleCommands = new HashSet<>();
+			List<Failure> possibleCommands = new ArrayList<>();
 			
 			List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
 				.map(CommandStore::getCommands)
@@ -444,18 +512,6 @@ public class CommandListener implements EventListener {
 			COMMANDS :
 			for(Pair<String, ICommand> pair : commands) {
 				ICommand command = pair.getRight();
-				
-				boolean developer = this.developers.contains(event.getAuthor().getIdLong());
-				
-				Map<String, IOption> optionMap = new HashMap<>();
-				for(IOption option : command.getOptions()) {
-					if(option.isDeveloperOption() && developer) {
-						optionMap.put(option.getName(), option);
-						for(String alias : option.getAliases()) {
-							optionMap.put(alias, option);
-						}
-					}
-				}
 				
 				String msg = message, cmd = pair.getLeft();
 				
@@ -480,40 +536,55 @@ public class CommandListener implements EventListener {
 				
 				Object[] arguments = new Object[command.getArguments().length];
 				
-				List<String> options = new ArrayList<>();
-				
 				IArgument<?>[] args = command.getArguments();
+				
+				boolean developer = this.isDeveloper(event.getAuthor().getIdLong());
+				
+				/* Creates a map of all the options which can be used by this user */
+				Map<String, IOption> optionMap = new HashMap<>();
+				for(IOption option : command.getOptions()) {
+					if(option.isDeveloperOption() && !developer) {
+						continue;
+					}
+						
+					optionMap.put(option.getName(), option);
+					for(String alias : option.getAliases()) {
+						optionMap.put(alias, option);
+					}
+				}
 				
 				/* Pre-processing */
 				StringBuilder builder = new StringBuilder();
 				
+				List<String> options = new ArrayList<>();
 				for(int i = 0; i < msg.length(); i++) {
-					if(msg.charAt(i) == ' ') {
-						if(msg.length() - i > 3) {
-							if(msg.charAt(i + 1) == '-' && msg.charAt(i + 2) == '-') {
-								if(msg.charAt(i + 3) != ' ') {
-									String optionStr = msg.substring(i + 1);
-									optionStr = optionStr.substring(2, (optionStr.contains(" ")) ? optionStr.indexOf(" ") : optionStr.length()).toLowerCase();
-									
-									IOption option = optionMap.get(optionStr);
-									if(option != null) {
-										options.add(optionStr);
-										
-										i += (optionStr.length() + 2);
-										
-										continue;
-									}else{
-										if(command.getOptionPolicy().equals(OptionPolicy.IGNORE)) {
-											i += (optionStr.length() + 2);
-											
-											continue;
-										}else if(command.getOptionPolicy().equals(OptionPolicy.FAIL)) {
-											possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
-											
-											continue COMMANDS;
-										}
-									}
-								}
+					if(msg.charAt(i) == ' ' && msg.length() - i > 3 && (msg.charAt(i + 1) == '-' && msg.charAt(i + 2) == '-') && msg.charAt(i + 3) != ' ') {
+						String optionStr = msg.substring(i + 1);
+						optionStr = optionStr.substring(2, (optionStr.contains(" ")) ? optionStr.indexOf(" ") : optionStr.length()).toLowerCase();
+						
+						IOption option = optionMap.get(optionStr);
+						if(option != null) {
+							options.add(optionStr);
+							
+							i += (optionStr.length() + 2);
+							
+							continue;
+						}else{
+							if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.ADD)) {
+								options.add(optionStr);
+								
+								i += (optionStr.length() + 2);
+								
+								continue;
+							}else if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.IGNORE)) {
+								i += (optionStr.length() + 2);
+								
+								continue;
+							}else if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.FAIL)) {
+								/* The specified option does not exist */
+								possibleCommands.add(new Failure(command, new UnknownOptionException(optionStr)));
+								
+								continue COMMANDS;
 							}
 						}
 					}
@@ -524,6 +595,7 @@ public class CommandListener implements EventListener {
 				msg = builder.toString();
 				/* End pre-processing */
 				
+				/* Handle command as key-value (This needs to be updated) */
 				Map<String, String> map = new HashMap<>();
 				
 				String tempMsg = msg;
@@ -575,10 +647,13 @@ public class CommandListener implements EventListener {
 					for(int i = 0; i < args.length; i++) {
 						IArgument<?> argument = args[i];
 						if(map.containsKey(argument.getName())) {
-							VerifiedArgument<?> verified = argument.verify(event, map.get(argument.getName()));
+							String value = map.get(argument.getName());
+							
+							VerifiedArgument<?> verified = argument.verify(event, value);
 							switch(verified.getVerifiedType()) {
 								case INVALID: {
-									possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+									/* The content does not make for a valid argument */
+									possibleCommands.add(new Failure(command, new ArgumentParseException(argument, value)));
 									
 									continue COMMANDS;
 								}
@@ -592,7 +667,8 @@ public class CommandListener implements EventListener {
 							
 							arguments[i] = verified.getObject();
 						}else{
-							possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+							/* Missing argument */
+							possibleCommands.add(new Failure(command, new MissingRequiredArgumentException(argument)));
 							
 							continue COMMANDS;
 						}
@@ -604,7 +680,8 @@ public class CommandListener implements EventListener {
 							if(msg.startsWith(" ")) {
 								msg = msg.substring(1);
 							}else{ /* When does it get here? */
-								possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+								/* The argument for some reason does not start with a space */
+								possibleCommands.add(new Failure(command, new ArgumentParseException(null, msg)));
 								
 								continue COMMANDS;
 							}
@@ -613,17 +690,18 @@ public class CommandListener implements EventListener {
 						IArgument<?> argument = args[i];
 						
 						VerifiedArgument<?> verified;
+						String content = null;
 						if(argument.isEndless()) {
 							if(msg.length() == 0 && !argument.acceptEmpty()) {
-								possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+								/* There is no more content and the argument does not accept no content */
+								possibleCommands.add(new Failure(command, new OutOfContentException(argument)));
 								
 								continue COMMANDS;
 							}
 							
-							verified = argument.verify(event, msg);
+							verified = argument.verify(event, content = msg);
 							msg = "";
 						}else{
-							String content = null;
 							if(msg.length() > 0) {
 								/* Is this even worth having? Not quite sure if I like the implementation */
 								if(argument instanceof IEndlessArgument) {
@@ -662,8 +740,9 @@ public class CommandListener implements EventListener {
 								content = "";
 							}
 							
+							/* There is no more content and the argument does not accept no content */
 							if(content.length() == 0 && !argument.acceptEmpty()) {
-								possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+								possibleCommands.add(new Failure(command, new OutOfContentException(argument)));
 								
 								continue COMMANDS;
 							}
@@ -672,8 +751,9 @@ public class CommandListener implements EventListener {
 						}
 						
 						switch(verified.getVerifiedType()) {
+							/* The content does not make for a valid argument */
 							case INVALID: {
-								possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+								possibleCommands.add(new Failure(command, new ArgumentParseException(argument, content)));
 								
 								continue COMMANDS;
 							}
@@ -693,7 +773,7 @@ public class CommandListener implements EventListener {
 					/* There is more content than the arguments handled */
 					if(msg.length() > 0) {
 						if(command.getContentOverflowPolicy().equals(ContentOverflowPolicy.FAIL)) {
-							possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+							possibleCommands.add(new Failure(command, new ContentOverflowException(msg)));
 							
 							continue COMMANDS;
 						}
@@ -701,13 +781,18 @@ public class CommandListener implements EventListener {
 					
 					/* Not the correct amount of arguments for the command */
 					if(command.getArguments().length != argumentCount) {
-						possibleCommands.add((command instanceof DummyCommand) ? command.getParent() : command);
+						Object[] temp = new Object[argumentCount];
+						for(int i = 0; i < temp.length; i++) {
+							temp[i] = arguments[i];
+						}
+						
+						possibleCommands.add(new Failure(command, new InvalidArgumentCountException(command.getArguments(), temp)));
 						
 						continue COMMANDS;
 					}
 				}
 				
-				CommandEvent commandEvent = new CommandEvent(event, this, command, arguments, prefix, cmd, pair.getLeft(), options);
+				CommandEvent commandEvent = new CommandEvent(event, this, command, arguments, prefix, pair.getLeft(), options);
 				if(command.isExecuteAsync()) {
 					this.commandExecutor.submit(() -> {
 						this.execute(command, event, commandEvent, commandStarted, arguments);
@@ -736,7 +821,6 @@ public class CommandListener implements EventListener {
 					}
 				}
 				
-				/* The alias for the CommandEvent is just everything after the prefix since there is no way to do it other than having a list of CommandEvent or aliases */
 				event.getChannel().sendMessage(this.getHelp(event, prefix, new ArrayList<>(possibleCommands)).build()).queue();
 			}
 		}
@@ -875,17 +959,17 @@ public class CommandListener implements EventListener {
 				}
 				
 				try {
+					/* This should probably be changed due to illegal access */
 					Field field = Throwable.class.getDeclaredField("detailMessage");
-					if(!field.canAccess(e)) {
-						field.setAccessible(true);
-					}
-					
+					field.setAccessible(true);
 					field.set(e, "Attempted to execute command (" + commandEvent.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + " but failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
 				}catch(Exception e1) {
 					e1.printStackTrace();
 				}
 				
 				e.printStackTrace();
+				
+				return;
 			}
 			
 			System.out.println("Executed command (" + commandEvent.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));

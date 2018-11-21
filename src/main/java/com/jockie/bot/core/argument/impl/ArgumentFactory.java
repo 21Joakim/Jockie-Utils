@@ -37,9 +37,9 @@ public class ArgumentFactory {
 			Member member = ArgumentUtility.getMemberByIdOrName(event.getGuild(), value, true);
 			
 			if(member != null) {
-				return new VerifiedArgument<Member>(VerifiedType.VALID, member);
+				return new VerifiedArgument<>(VerifiedType.VALID, member);
 			}else{
-				return new VerifiedArgument<Member>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -47,9 +47,9 @@ public class ArgumentFactory {
 			TextChannel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
 			
 			if(channel != null) {
-				return new VerifiedArgument<TextChannel>(VerifiedType.VALID, channel);
+				return new VerifiedArgument<>(VerifiedType.VALID, channel);
 			}else{
-				return new VerifiedArgument<TextChannel>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -57,9 +57,9 @@ public class ArgumentFactory {
 			VoiceChannel channel = ArgumentUtility.getVoiceChannelByIdOrName(event.getGuild(), value, true);
 			
 			if(channel != null) {
-				return new VerifiedArgument<VoiceChannel>(VerifiedType.VALID, channel);
+				return new VerifiedArgument<>(VerifiedType.VALID, channel);
 			}else{
-				return new VerifiedArgument<VoiceChannel>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -68,9 +68,9 @@ public class ArgumentFactory {
 			Channel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
 			
 			if(channel != null || (channel = ArgumentUtility.getVoiceChannelByIdOrName(event.getGuild(), value, true)) != null) {
-				return new VerifiedArgument<Channel>(VerifiedType.VALID, channel);
+				return new VerifiedArgument<>(VerifiedType.VALID, channel);
 			}else{
-				return new VerifiedArgument<Channel>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -78,9 +78,9 @@ public class ArgumentFactory {
 			Category category = ArgumentUtility.getCategoryByIdOrName(event.getGuild(), value, true);
 			
 			if(category != null) {
-				return new VerifiedArgument<Category>(VerifiedType.VALID, category);
+				return new VerifiedArgument<>(VerifiedType.VALID, category);
 			}else{
-				return new VerifiedArgument<Category>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -88,9 +88,9 @@ public class ArgumentFactory {
 			Role role = ArgumentUtility.getRoleByIdOrName(event.getGuild(), value, true);
 			
 			if(role != null) {
-				return new VerifiedArgument<Role>(VerifiedType.VALID, role);
+				return new VerifiedArgument<>(VerifiedType.VALID, role);
 			}else{
-				return new VerifiedArgument<Role>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -98,9 +98,9 @@ public class ArgumentFactory {
 			Emote emote = ArgumentUtility.getEmoteByIdOrName(event.getGuild(), value, true);
 			
 			if(emote != null) {
-				return new VerifiedArgument<Emote>(VerifiedType.VALID, emote);
+				return new VerifiedArgument<>(VerifiedType.VALID, emote);
 			}else{
-				return new VerifiedArgument<Emote>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 		
@@ -108,9 +108,9 @@ public class ArgumentFactory {
 			User user = ArgumentUtility.getUser(event.getJDA(), value);
 			
 			if(user != null) {
-				return new VerifiedArgument<User>(VerifiedType.VALID, user);
+				return new VerifiedArgument<>(VerifiedType.VALID, user);
 			}else{
-				return new VerifiedArgument<User>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 		});
 	}
@@ -122,73 +122,73 @@ public class ArgumentFactory {
 		if(type.isAssignableFrom(Byte.class) || type.isAssignableFrom(byte.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Byte.parseByte(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Byte.parseByte(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Short.class) || type.isAssignableFrom(short.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Short.parseShort(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Short.parseShort(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Integer.class) || type.isAssignableFrom(int.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Integer.parseInt(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Integer.parseInt(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Long.class) || type.isAssignableFrom(long.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Long.parseLong(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Long.parseLong(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Float.class) || type.isAssignableFrom(float.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Float.parseFloat(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Float.parseFloat(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Double.class) || type.isAssignableFrom(double.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				try {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Double.parseDouble(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Double.parseDouble(value));
 				}catch(NumberFormatException e) {
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(Boolean.class) || type.isAssignableFrom(boolean.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				if(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) Boolean.parseBoolean(value));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Boolean.parseBoolean(value));
 				}
 				
-				return new VerifiedArgument<ReturnType>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			});
 		}else if(type.isAssignableFrom(Character.class) || type.isAssignableFrom(char.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				if(value.length() == 1) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) (Object) value.charAt(0));
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) value.charAt(0));
 				}else{
-					return new VerifiedArgument<ReturnType>(null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			});
 		}else if(type.isAssignableFrom(String.class)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
 				if(argument.isEndless()) {
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID_END_NOW, (ReturnType) value);
+					return new VerifiedArgument<>(VerifiedType.VALID_END_NOW, (ReturnType) value);
 				}else{
-					return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) value);
+					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) value);
 				}
 			});
 		}else if(type.isEnum()) {
@@ -197,11 +197,11 @@ public class ArgumentFactory {
 				
 				for(Enum<?> enumEntry : enums) {
 					if(enumEntry.name().equalsIgnoreCase(value)) {
-						return new VerifiedArgument<ReturnType>(VerifiedType.VALID, (ReturnType) enumEntry);
+						return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) enumEntry);
 					}
 				}
 				
-				return new VerifiedArgument<ReturnType>(null);
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			});
 		}else if(ArgumentFactory.arguments.containsKey(type)) {
 			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {

@@ -170,8 +170,8 @@ public class DummyCommand implements ICommand {
 		return this.command.getOptions();
 	}
 	
-	public OptionPolicy getOptionPolicy() {
-		return this.command.getOptionPolicy();
+	public InvalidOptionPolicy getInvalidOptionPolicy() {
+		return this.command.getInvalidOptionPolicy();
 	}
 	
 	public ContentOverflowPolicy getContentOverflowPolicy() {

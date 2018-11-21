@@ -36,7 +36,7 @@ public class CommandStore {
 		
 		for(Method method : moduleClass.getDeclaredMethods()) {
 			if(method.isAnnotationPresent(Command.class)) {
-				commands.add(CommandImpl.createFrom(method.getName().replace("_", " "), module, method));
+				commands.add(MethodCommand.createFrom(method.getName().replace("_", " "), module, method));
 			}
 		}
 		

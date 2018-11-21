@@ -35,7 +35,6 @@ import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageChannel;
-import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.impl.GuildImpl;
 import net.dv8tion.jda.core.entities.impl.JDAImpl;
 import net.dv8tion.jda.core.entities.impl.MemberImpl;
@@ -75,8 +74,8 @@ public class CommandImpl implements ICommand {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getBeforeExecuteFunction(Class<T> type) {
-		return CommandImpl.beforeExecuteAnnotation.get(type);
+	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getBeforeExecuteFunction(Class<T> annotationType) {
+		return CommandImpl.beforeExecuteAnnotation.get(annotationType);
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -91,11 +90,11 @@ public class CommandImpl implements ICommand {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getAfterExecuteFunction(Class<T> type) {
-		return CommandImpl.afterExecuteAnnotation.get(type);
+	public static <T extends Annotation> BiFunction<CommandEvent, T, Object> getAfterExecuteFunction(Class<T> annotationType) {
+		return CommandImpl.afterExecuteAnnotation.get(annotationType);
 	}
 	
-	private static Object getContextVariable(MessageReceivedEvent event, CommandEvent commandEvent, Object[] arguments, Parameter parameter) {
+	public static Object getContextVariable(MessageReceivedEvent event, CommandEvent commandEvent, Object[] arguments, Parameter parameter) {
 		if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class)) {
 			return event;
 		}else if(parameter.getType().isAssignableFrom(CommandEvent.class)) {
@@ -164,95 +163,6 @@ public class CommandImpl implements ICommand {
 		}
 		
 		return null;
-	}
-	
-	public static void executeMethodCommand(Object invoker, Method command, MessageReceivedEvent event, CommandEvent commandEvent, Object... args) throws Throwable {
-		int contextCount = 0;
-		for(Parameter parameter : command.getParameters()) {
-			if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class) || parameter.getType().isAssignableFrom(CommandEvent.class)) {
-				contextCount++;
-			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
-				contextCount++;
-			}
-		}
-		
-		Object[] arguments = new Object[args.length + contextCount];
-		
-		for(int i = 0, i2 = 0; i < arguments.length; i++) {
-			Parameter parameter = command.getParameters()[i];
-			if(parameter.getType().equals(MessageReceivedEvent.class)) {
-				arguments[i] = event;
-			}else if(parameter.getType().equals(CommandEvent.class)) {
-				arguments[i] = commandEvent;
-			}else{
-				Object context = CommandImpl.getContextVariable(event, commandEvent, args, parameter);
-				if(context != null) {
-					arguments[i] = context;
-				}else{
-					arguments[i] = args[i2++];
-				}
-			}
-		}
-		
-		try {
-			if(!command.canAccess(invoker)) {
-				command.setAccessible(true);
-			}
-			
-			Object obj = command.invoke(invoker, arguments);
-			if(obj != null) {
-				if(obj instanceof Message) {
-					event.getChannel().sendMessage((Message) obj).queue();
-				}else if(obj instanceof MessageEmbed) {
-					event.getChannel().sendMessage((MessageEmbed) obj).queue();
-				}else if(obj instanceof CharSequence) {
-					event.getChannel().sendMessage((CharSequence) obj).queue();
-				}else{
-					System.err.println(obj.getClass() + " is an unsupported return type for a command method");
-				}
-			}
-		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			if(e instanceof IllegalArgumentException) {
-				StringBuilder information = new StringBuilder();
-				
-				information.append("Argument type mismatch for command \"" + commandEvent.getCommandTrigger() + "\"\n");
-				
-				information.append("    Arguments provided:\n");
-				for(Object argument : arguments) {
-					if(argument != null) {
-						information.append("        " + argument.getClass().getName() + "\n");
-					}else{
-						information.append("        null\n");
-					}
-				}
-				
-				information.append("    Arguments expected:\n");
-				for(Class<?> clazz : command.getParameterTypes()) {
-					information.append("        " + clazz.getName() + "\n");
-				}
-				
-				information.append("    Argument values: " + Arrays.deepToString(arguments));
-				
-				/* No need to throw an Exception for this, the stack trace doesn't add any additional information. I guess we should add some sort of event for this though, maybe they don't want it in the console */
-				System.err.println(information);
-			}else{
-				if(e instanceof InvocationTargetException) {
-					if(e instanceof Exception) {
-						try {
-							throw ((Exception) e.getCause());
-						}catch(ClassCastException e2) {
-							try {
-								throw e.getCause();
-							}catch(Throwable e1) {
-								e1.printStackTrace();
-							}
-						}
-					}
-				}
-				
-				throw e;
-			}
-		}
 	}
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
@@ -421,65 +331,6 @@ public class CommandImpl implements ICommand {
 		return dummyCommands;
 	}
 	
-	@SuppressWarnings("unchecked")
-	public static MethodCommand createFrom(String name, Object invoker, Method method) {
-		MethodCommand methodCommand;
-		if(method.isAnnotationPresent(Command.class)) {
-			Command commandAnnotation = method.getAnnotation(Command.class);
-			
-			methodCommand = new MethodCommand(commandAnnotation.command().length() == 0 ? (name != null ? name : "") : commandAnnotation.command(), invoker, method);
-			methodCommand.setAliases(commandAnnotation.aliases());
-			methodCommand.setAuthorDiscordPermissionsNeeded(commandAnnotation.authorPermissionsNeeded());
-			methodCommand.setBotDiscordPermissionsNeeded(commandAnnotation.botPermissionsNeeded());
-			methodCommand.setBotTriggerable(commandAnnotation.botTriggerable());
-			methodCommand.setCaseSensitive(commandAnnotation.caseSensitive());
-			methodCommand.setCooldownDuration(commandAnnotation.cooldown(), commandAnnotation.cooldownUnit());
-			methodCommand.setCooldownScope(commandAnnotation.cooldownScope());
-			methodCommand.setDescription(commandAnnotation.description());
-			methodCommand.setDeveloperCommand(commandAnnotation.developerCommand());
-			methodCommand.setExecuteAsync(commandAnnotation.async());
-			methodCommand.setGuildTriggerable(commandAnnotation.guildTriggerable());
-			methodCommand.setHidden(commandAnnotation.hidden());
-			methodCommand.setPrivateTriggerable(commandAnnotation.privateTriggerable());
-			methodCommand.setShortDescription(commandAnnotation.shortDescription());
-			methodCommand.setExamples(commandAnnotation.examples());
-			
-			for(Annotation annotation : method.getAnnotations()) {
-				BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.beforeExecuteAnnotation.get(annotation.getClass());
-				if(function != null) {
-					methodCommand.registerBeforeExecute(commandEvent -> {
-						return function.apply(commandEvent, annotation);
-					});
-				}
-			}
-			
-			for(Annotation annotation : method.getAnnotations()) {
-				BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.afterExecuteAnnotation.get(annotation.getClass());
-				if(function != null) {
-					methodCommand.registerAfterExecute(commandEvent -> {
-						return function.apply(commandEvent, annotation);
-					});
-				}
-			}
-		}else{
-			methodCommand = new MethodCommand(name != null ? name : "", invoker, method);
-		}
-		
-		return methodCommand;
-	}
-	
-	public static MethodCommand createFrom(Object invoker, Method method) {
-		return CommandImpl.createFrom(null, invoker, method);
-	}
-	
-	public MethodCommand createFrom(String name, Method method) {		
-		return CommandImpl.createFrom(name, this, method);
-	}
-	
-	public MethodCommand createFrom(Method method) {
-		return this.createFrom(null, method);
-	}
-	
 	private String command;
 	
 	private String description, shortDescription;
@@ -498,7 +349,7 @@ public class CommandImpl implements ICommand {
 	private IArgument<?>[] arguments = {};
 	private IOption[] options = {};
 	
-	private OptionPolicy optionPolicy = OptionPolicy.INCLUDE;
+	private InvalidOptionPolicy optionPolicy = InvalidOptionPolicy.INCLUDE;
 	
 	private ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
@@ -569,7 +420,7 @@ public class CommandImpl implements ICommand {
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
-						this.addSubCommand(this.createFrom(this.commandMethods.get(i).getName().replace("_", " "), this.commandMethods.get(i)));
+						this.addSubCommand(MethodCommand.createFrom(this.commandMethods.get(i).getName().replace("_", " "), this, this.commandMethods.get(i)));
 					}
 					
 					if(arguments.length > 0) {
@@ -583,7 +434,7 @@ public class CommandImpl implements ICommand {
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
 					if(method.isAnnotationPresent(Command.class)) {
-						this.addSubCommand(this.createFrom(method.getName().replace("_", " "), method));
+						this.addSubCommand(MethodCommand.createFrom(method.getName().replace("_", " "), this, method));
 					}
 				}
 			}
@@ -661,7 +512,7 @@ public class CommandImpl implements ICommand {
 		return this.options;
 	}
 	
-	public OptionPolicy getOptionPolicy() {
+	public InvalidOptionPolicy getInvalidOptionPolicy() {
 		return this.optionPolicy;
 	}
 	
@@ -820,7 +671,7 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	protected CommandImpl setOptionPolicy(OptionPolicy optionPolicy) {
+	protected CommandImpl setOptionPolicy(InvalidOptionPolicy optionPolicy) {
 		this.optionPolicy = optionPolicy;
 		
 		return this;
@@ -989,7 +840,7 @@ public class CommandImpl implements ICommand {
 	
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) throws Throwable {
 		if(!this.passive && this.commandMethods.size() == 1) {
-			CommandImpl.executeMethodCommand(this, this.commandMethods.get(0), event, commandEvent, args);
+			MethodCommand.executeMethodCommand(this, this.commandMethods.get(0), event, commandEvent, args);
 		}
 	}
 	
@@ -1010,7 +861,7 @@ public class CommandImpl implements ICommand {
 			return false;
 		}
 		
-		if(this.developerCommand && !commandListener.getDevelopers().contains(event.getAuthor().getIdLong())) {
+		if(this.developerCommand && !commandListener.isDeveloper(event.getAuthor().getIdLong())) {
 			return false;
 		}
 		

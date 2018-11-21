@@ -7,7 +7,7 @@ import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
-import com.jockie.bot.core.cooldown.ICooldown.Scope;
+import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.Permission;
@@ -61,19 +61,40 @@ public interface ICommand {
 	 */
 	public String[] getAliases();
 	
+	/**
+	 * @return a list of functions which will be executed before the actual command is
+	 */
 	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions();
+	
+	/**
+	 * @return a list of functions which will be executed after the actual command has been executed
+	 */
 	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions();
 	
+	/**
+	 * @return all options for this command
+	 */
 	public IOption[] getOptions();
 	
-	public OptionPolicy getOptionPolicy();
+	/**
+	 * The {@link InvalidOptionPolicy} is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
+	 */
+	public InvalidOptionPolicy getInvalidOptionPolicy();
 	
-	public enum OptionPolicy {
+	public enum InvalidOptionPolicy {
+		/** Adds the option which can then be accessed through {@link CommandEvent#getOptionsPresent()}  */
+		ADD,
+		/** Includes the option content as an argument instead of an option */
 		INCLUDE,
+		/** Ignores (removes) the option from the message */
 		IGNORE,
+		/** Fails the command */
 		FAIL;
 	}
 	
+	/**
+	 * The {@link ContentOverflowPolicy} is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
+	 */
 	public ContentOverflowPolicy getContentOverflowPolicy();
 	
 	public enum ContentOverflowPolicy {
@@ -119,7 +140,11 @@ public interface ICommand {
 	 */
 	public long getCooldownDuration();
 	
-	public Scope getCooldownScope();
+	/**
+	 * @return the scope of which the cooldown should be applied to, for instance if {@link ICooldown.Scope#USER_GUILD}
+	 * is used it will be applied for a user per a guild basis.
+	 */
+	public ICooldown.Scope getCooldownScope();
 	
 	/**
 	 * @return a boolean that will tell whether the command should be executed on a separate thread or not
@@ -137,6 +162,9 @@ public interface ICommand {
 	 */
 	public boolean isPassive();
 	
+	/**
+	 * @return all sub-commands for this command
+	 */
 	public List<ICommand> getSubCommands();
 	
 	/**
@@ -223,6 +251,9 @@ public interface ICommand {
 		return command;
 	}
 	
+	/**
+	 * @return the top parent which was got by recursively getting the parent of the commands
+	 */
 	public default ICommand getTopParent() {
 		if(this.hasParent()) {
 			ICommand parent = this.getParent();

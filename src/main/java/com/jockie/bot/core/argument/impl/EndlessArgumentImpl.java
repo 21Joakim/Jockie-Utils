@@ -98,7 +98,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 				}else{
 					/* When does this happen? */
 					
-					return new VerifiedArgument<Type[]>(VerifiedType.INVALID, null);
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 			}
 			
@@ -128,14 +128,16 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 			}
 			
 			if(content.length() == 0 && !this.argument.acceptEmpty()) {
-				return new VerifiedArgument<Type[]>("may not be empty");
+				/* Content may not be empty */
+				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			}
 			
 			VerifiedArgument<Type> verified = this.argument.verify(event, content);
-			
 			switch(verified.getVerifiedType()) {
 				case INVALID: {
-					return new VerifiedArgument<Type[]>("is invalid, argument at index " + (i + 1) + " is not valid");
+					
+					/* "is invalid, argument at index " + (i + 1) + " is not valid" */
+					return new VerifiedArgument<>(VerifiedType.INVALID, null);
 				}
 				case VALID: {
 					arguments[args++] = (Type) verified.getObject();
@@ -151,13 +153,13 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		}
 		
 		if(value.length() > 0) {
-			/* When does this happen? */
+			/* Content overflow, when does this happen? */
 			
-			return new VerifiedArgument<Type[]>(null);
+			return new VerifiedArgument<>(VerifiedType.INVALID, null);
 		}
 		
 		if(args < this.minArguments || ((this.maxArguments > 0) ? args > this.maxArguments : false)) {
-			return new VerifiedArgument<Type[]>("incorrect amount of arguments");
+			return new VerifiedArgument<>(VerifiedType.INVALID, null);
 		}
 		
 		Type[] objects = (Type[]) Array.newInstance(this.clazz, args);
@@ -168,9 +170,9 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		arguments = objects;
 		
 		if(this.isEndless()) {
-			return new VerifiedArgument<Type[]>(VerifiedType.VALID_END_NOW, arguments);
+			return new VerifiedArgument<>(VerifiedType.VALID_END_NOW, arguments);
 		}else{
-			return new VerifiedArgument<Type[]>(VerifiedType.VALID, arguments);
+			return new VerifiedArgument<>(VerifiedType.VALID, arguments);
 		}
 	}
 }

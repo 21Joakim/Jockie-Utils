@@ -1,14 +1,23 @@
 package com.jockie.bot.core.option;
 
+import com.jockie.bot.core.command.impl.CommandListener;
+
 public interface IOption {
 	
 	public String getName();
 	
 	public String getDescription();
 	
+	/**
+	 * @return all the possible aliases for this option
+	 */
 	public String[] getAliases();
 	
 	public boolean isHidden();
+	
+	/**
+	 * @return whether or not this option is limited to users who match {@link CommandListener#isDeveloper(long)}
+	 */
 	public boolean isDeveloperOption();
 	
 	public abstract class Builder<Type extends IOption, BuilderType extends Builder<Type, BuilderType>> {

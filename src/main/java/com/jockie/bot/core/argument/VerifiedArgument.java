@@ -12,17 +12,17 @@ public class VerifiedArgument<Type> {
 	
 	private Type object;
 	
-	private String error = null;
+	public VerifiedArgument() {
+		this(VerifiedType.INVALID, null);
+	}
+	
+	public VerifiedArgument(Type object) {
+		this((object != null) ? VerifiedType.VALID : VerifiedType.INVALID, object);
+	}
 	
 	public VerifiedArgument(VerifiedType type, Type object) {
 		this.type = type;
 		this.object = object;
-	}
-	
-	public VerifiedArgument(String error) {
-		this(VerifiedType.INVALID, null);
-		
-		this.error = error;
 	}
 	
 	public VerifiedType getVerifiedType() {
@@ -31,9 +31,5 @@ public class VerifiedArgument<Type> {
 	
 	public Type getObject() {
 		return this.object;
-	}
-	
-	public String getError() {
-		return this.error;
 	}
 }
