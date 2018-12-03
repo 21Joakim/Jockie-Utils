@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -135,7 +136,67 @@ public class CommandListener implements EventListener {
 	private TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> helperFunction;
 	
 	private boolean helpEnabled = true;
-	private boolean missingPermissionEnabled = true;
+	
+	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_PERMISSION_FUNCTION = (event, permissions) -> {
+		StringBuilder missingPermissions = new StringBuilder();
+		for(Permission permission : permissions) {
+			missingPermissions.append(permission.getName() + "\n");
+		}
+		
+		StringBuilder message = new StringBuilder()
+			.append("Missing permission" + (missingPermissions.length() > 1 ? "s" : "") + " to execute **")
+			.append(event.getCommandTrigger()).append("** in ")
+			.append(event.getChannel().getName())
+			.append(", ")
+			.append(event.getGuild().getName())
+			.append("\n```")
+			.append(missingPermissions)
+			.append("```");
+		
+		MessageChannel channel;
+		if(!event.getGuild().getSelfMember().hasPermission(event.getTextChannel(), Permission.MESSAGE_WRITE)) {
+			channel = event.getAuthor().openPrivateChannel().complete();
+		}else{
+			channel = event.getChannel();
+		}
+		
+		channel.sendMessage(message).queue();
+	};
+	
+	public static final BiConsumer<CommandEvent, Permission> DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION = (event, permission) -> {
+		CommandListener.DEFAULT_MISSING_PERMISSION_FUNCTION.accept(event, List.of(permission));
+	};
+	
+	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION = (event, permissions) -> {
+		StringBuilder message = new StringBuilder()
+			.append("You are missing the");
+		
+		for(int i = 0; i < permissions.size(); i++) {
+			message.append(" **" + permissions.get(i).getName() + "**");
+			
+			if(i != (permissions.size() - 1)) {
+				if(i == (permissions.size() - 2)) {
+					message.append(" and");
+				}else{
+					message.append(",");
+				}
+			}
+		}
+		
+		message.append(" permission" + (permissions.size() == 1 ? "" : "s") + " to execute that command");
+		
+		event.reply(message).queue();
+	};
+	
+	private BiConsumer<CommandEvent, Permission> missingPermissionExceptionFunction = DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION;
+	private BiConsumer<CommandEvent, List<Permission>> missingPermissionFunction = DEFAULT_MISSING_PERMISSION_FUNCTION;
+	private BiConsumer<CommandEvent, List<Permission>> missingAuthorPermissionFunction = DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION;
+	
+	public static final BiConsumer<CommandEvent, ICooldown> DEFAULT_COOLDOWN_FUNCTION = (event, cooldown) -> {
+		event.reply("Slow down, try again in " + ((double) cooldown.getTimeRemainingMillis()/1000) + " seconds").queue();
+	};
+	
+	private BiConsumer<CommandEvent, ICooldown> cooldownFunction = DEFAULT_COOLDOWN_FUNCTION;
 	
 	private Set<Long> developers = new HashSet<>();
 	
@@ -323,29 +384,71 @@ public class CommandListener implements EventListener {
 		return this.helpEnabled;
 	}
 	
+	
 	/**
-	 * See {@link #isMissingPermissionsEnabled()}
+	 * @param consumer
+	 * The function which will be called when the command failed due to missing permission 
+	 * ({@link net.dv8tion.jda.core.exceptions.PermissionException PermissionException} being thrown)
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
+	 * </br><b>CommandEvent</b> - The command which was triggered's event
+	 * </br><b>Permission</b> - The missing permission which was acquired through {@link PermissionException#getPermission()}
 	 */
-	public CommandListener setMissingPermissionsEnabled(boolean enabled) {
-		this.missingPermissionEnabled = enabled;
+	public CommandListener setMissingPermissionExceptionFunction(BiConsumer<CommandEvent, Permission> consumer) {
+		this.missingPermissionExceptionFunction = consumer;
 		
 		return this;
 	}
 	
 	/**
-	 * Whether or not the bot should return a message when the command failed due to missing permissions 
-	 * ({@link net.dv8tion.jda.core.exceptions.PermissionException PermissionException} being thrown)
+	 * @param consumer
+	 * The function which will be called when the bot does not have the required permissions to execute the command, gotten from {@link ICommand#getBotDiscordPermissionsNeeded()}
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
+	 * </br><b>CommandEvent</b> - The command which was triggered's event
+	 * </br><b>List&#60;Permission&#62;</b> - The missing permission which was acquired through {@link PermissionException#getPermission()}
 	 */
-	public boolean isMissingPermissionsEnabled() {
-		return this.missingPermissionEnabled;
+	public CommandListener setMissingPermissionFunction(BiConsumer<CommandEvent, List<Permission>> consumer) {
+		this.missingPermissionFunction = consumer;
+		
+		return this;
 	}
 	
 	/**
-	 * @param function the function that will be called when a command had the wrong arguments. 
-	 * </br></br>Parameters for the function:
+	 * @param consumer
+	 * The function which will be called when the author does not have the required permissions to execute the command, gotten from {@link ICommand#getAuthorDiscordPermissionsNeeded()}
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
+	 * </br><b>CommandEvent</b> - The command which was triggered's event
+	 * </br><b>List&#60;Permission&#62;</b> - The missing permission which was acquired through {@link PermissionException#getPermission()}
+	 */
+	public CommandListener setMissingAuthorPermissionFunction(BiConsumer<CommandEvent, List<Permission>> consumer) {
+		this.missingAuthorPermissionFunction = consumer;
+		
+		return this;
+	}
+	
+	/**
+	 * @param consumer
+	 * The function which will be called if a command (for the current context) is on cooldown
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
+	 * </br><b>CommandEvent</b> - The command which was triggered's event
+	 * </br><b>ICooldown</b> - The cooldown which was hindering the command from being executed
+	 */
+	public CommandListener setCooldownFunction(BiConsumer<CommandEvent, ICooldown> consumer) {
+		this.cooldownFunction = consumer;
+		
+		return this;
+	}
+	
+	/**
+	 * @param function the function that will be called when a command had the wrong arguments.
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
 	 * </br><b>MessageReceivedEvent</b> - The event that triggered this
-	 * </br><b>String</b> - Prefix
-	 * </br><b>List&#60;ICommand&#62;</b> - The possible commands which the message could be referring to
+	 * </br><b>String</b> - The prefix used to trigger this command
+	 * </br><b>List&#60;Failure&#62;</b> - A list of all failures which happened throughout the parsing of the message
 	 */
 	public CommandListener setHelpFunction(TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> function) {
 		this.helperFunction = function;
@@ -364,13 +467,21 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
-		failures = failures.stream()
-			.filter(failure -> !(failure.getCommand() instanceof DummyCommand))
+		List<ICommand> commands = failures.stream()
+			.map(failure -> {
+				ICommand command = failure.getCommand();
+				if(command instanceof DummyCommand) {
+					return command.getParent();
+				}
+				
+				return command;
+			})
+			.distinct()
 			.collect(Collectors.toList());
 		
 		StringBuilder description = new StringBuilder();
-		for(int i = 0; i < failures.size(); i++) {
-			ICommand command = failures.get(i).getCommand();
+		for(int i = 0; i < commands.size(); i++) {
+			ICommand command = commands.get(i);
 			
 			description.append(command.getCommandTrigger())
 				.append(" ")
@@ -471,13 +582,10 @@ public class CommandListener implements EventListener {
 			prefix = message.substring(0, message.indexOf(" ") + 1);
 			
 			if(message.equals(prefix + "prefix") || message.equals(prefix + "prefixes")) {
-				String allPrefixes = Arrays.deepToString(prefixes);
-				allPrefixes = allPrefixes.substring(1, allPrefixes.length() - 1);
-				
 				event.getChannel().sendMessage(new MessageBuilder()
 					.append("My prefix")
 					.append(prefixes.length > 1 ? "es are " : " is ")
-					.append(allPrefixes, Formatting.BOLD)
+					.append(String.join(", ", prefixes), Formatting.BOLD)
 					.build()).queue();
 				
 				return;
@@ -501,12 +609,12 @@ public class CommandListener implements EventListener {
 			
 			List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
 				.map(CommandStore::getCommands)
-				.flatMap(List::stream)
+				.flatMap(Set::stream)
 				.map(command -> command.getAllCommandsRecursive(event, ""))
 				.flatMap(List::stream)
 				.filter(pair -> pair.getRight().verify(event, this))
 				.filter(pair -> !pair.getRight().isPassive())
-				.sorted(COMMAND_COMPARATOR)
+				.sorted(CommandListener.COMMAND_COMPARATOR)
 				.collect(Collectors.toList());
 			
 			COMMANDS :
@@ -595,53 +703,8 @@ public class CommandListener implements EventListener {
 				msg = builder.toString();
 				/* End pre-processing */
 				
-				/* Handle command as key-value (This needs to be updated) */
-				Map<String, String> map = new HashMap<>();
-				
-				String tempMsg = msg;
-				while(map != null && tempMsg.length() > 0) {
-					if(tempMsg.startsWith(" ")) {
-						tempMsg = tempMsg.substring(1);
-					}
-					
-					if(tempMsg.contains("=")) {
-						String key = tempMsg.substring(0, tempMsg.indexOf("="));
-						tempMsg = tempMsg.substring(key.length() + 1);
-						
-						key = key.trim();
-						
-						if(!key.contains(" ")) {
-							if(tempMsg.startsWith(" ")) {
-								tempMsg = tempMsg.substring(1);
-							}
-							
-							String value = null;
-							if(tempMsg.charAt(0) == '"') {
-								int nextQuote = 0;
-								while((nextQuote = tempMsg.indexOf('"', nextQuote + 1)) != -1 && tempMsg.charAt(nextQuote - 1) == '\\');
-								
-								if(nextQuote != -1) {
-									value = tempMsg.substring(1, nextQuote);
-									
-									tempMsg = tempMsg.substring(value.length() + 2);
-									
-									value = value.replace("\\\"", "\"");
-								}
-							}
-							
-							if(value == null) {
-								value = tempMsg.substring(0, (tempMsg.contains(" ")) ? tempMsg.indexOf(" ") : tempMsg.length());
-								tempMsg = tempMsg.substring(value.length());
-							}
-							
-							map.put(key, value);
-						}else{
-							map = null;
-						}
-					}else{
-						map = null;
-					}
-				}
+				/* Handle command as key-value */
+				Map<String, String> map = this.asMap(msg);
 				
 				if(map != null) {
 					for(int i = 0; i < args.length; i++) {
@@ -826,38 +889,69 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
-	private boolean checkPermissions(MessageReceivedEvent event, CommandEvent commandEvent, ICommand command) {
-		if(event.getChannelType().isGuild()) {
-			Member bot = event.getGuild().getMember(event.getJDA().getSelfUser());
-			
-			long permissionsNeeded = Permission.getRaw(command.getBotDiscordPermissionsNeeded());
-			
-			StringBuilder missingPermissions = new StringBuilder();
-			for(Permission permission : Permission.getPermissions(permissionsNeeded)) {
-				if(!bot.hasPermission(event.getTextChannel(), permission)) {
-					missingPermissions.append(permission.getName() + "\n");
-				}
+	/* This should probably be re-worked */
+	private Map<String, String> asMap(String command) {
+		Map<String, String> map = new HashMap<>();
+		
+		String message = command;
+		while(map != null && message.length() > 0) {
+			if(message.startsWith(" ")) {
+				message = message.substring(1);
 			}
 			
-			if(missingPermissions.length() > 0) {
-				StringBuilder message = new StringBuilder()
-					.append("Missing permission" + (missingPermissions.length() > 1 ? "s" : "") + " to execute **")
-					.append(commandEvent.getCommandTrigger()).append("** in ")
-					.append(event.getChannel().getName())
-					.append(", ")
-					.append(event.getGuild().getName())
-					.append("\n```")
-					.append(missingPermissions)
-					.append("```");
+			if(message.contains("=")) {
+				String key = message.substring(0, message.indexOf("="));
+				message = message.substring(key.length() + 1);
 				
-				MessageChannel channel;
-				if(!bot.hasPermission(event.getTextChannel(), Permission.MESSAGE_WRITE)) {
-					channel = event.getAuthor().openPrivateChannel().complete();
+				key = key.trim();
+				
+				if(!key.contains(" ")) {
+					if(message.startsWith(" ")) {
+						message = message.substring(1);
+					}
+					
+					String value = null;
+					if(message.charAt(0) == '"') {
+						int nextQuote = 0;
+						while((nextQuote = message.indexOf('"', nextQuote + 1)) != -1 && message.charAt(nextQuote - 1) == '\\');
+						
+						if(nextQuote != -1) {
+							value = message.substring(1, nextQuote);
+							
+							message = message.substring(value.length() + 2);
+							
+							value = value.replace("\\\"", "\"");
+						}
+					}
+					
+					if(value == null) {
+						value = message.substring(0, (message.contains(" ")) ? message.indexOf(" ") : message.length());
+						message = message.substring(value.length());
+					}
+					
+					map.put(key, value);
 				}else{
-					channel = event.getChannel();
+					map = null;
 				}
-				
-				channel.sendMessage(message).queue();
+			}else{
+				map = null;
+			}
+		}
+		
+		return map;
+	}
+	
+	private boolean checkPermissions(MessageReceivedEvent event, CommandEvent commandEvent, ICommand command) {
+		if(event.getChannelType().isGuild()) {
+			long neededPermissions = Permission.getRaw(command.getBotDiscordPermissionsNeeded()) | Permission.MESSAGE_WRITE.getRawValue();
+			long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+			
+			long permissions = (neededPermissions & ~currentPermissions);
+			
+			if(permissions != 0) {
+				if(this.missingPermissionFunction != null) {
+					this.missingPermissionFunction.accept(commandEvent, Permission.getPermissions(permissions));
+				}
 				
 				return false;
 			}
@@ -869,6 +963,21 @@ public class CommandListener implements EventListener {
 	private void execute(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, long timeStarted, Object... arguments) {
 		if(this.checkPermissions(event, commandEvent, command)) {
 			ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
+			
+			if(event.getChannelType().isGuild()) {
+				if(actualCommand.getAuthorDiscordPermissionsNeeded().length > 0) {
+					List<Permission> permissions = Permission.getPermissions(Permission.getRaw(actualCommand.getAuthorDiscordPermissionsNeeded()) &
+						~Permission.getRaw(event.getMember().getPermissions(event.getTextChannel())));
+					
+					if(permissions.size() > 0) {
+						if(this.missingAuthorPermissionFunction != null) {
+							this.missingAuthorPermissionFunction.accept(commandEvent, permissions);
+						}
+						
+						return;
+					}
+				}
+			}
 			
 			try {
 				if(command.getCooldownDuration() > 0) {
@@ -904,7 +1013,11 @@ public class CommandListener implements EventListener {
 							}
 						}
 					}else{
-						event.getChannel().sendMessage("Slow down, try again in " + ((double) timeRemaining/1000) + " seconds").queue();
+						if(this.cooldownFunction != null) {
+							this.cooldownFunction.accept(commandEvent, cooldown);
+						}
+						
+						return;
 					}
 				}else{
 					command.execute(event, commandEvent, arguments);
@@ -942,8 +1055,8 @@ public class CommandListener implements EventListener {
 						}
 					}
 					
-					if(this.missingPermissionEnabled) {
-						event.getChannel().sendMessage("Missing permission **" + ((PermissionException) e).getPermission().getName() + "**").queue();
+					if(this.missingPermissionExceptionFunction != null) {
+						this.missingPermissionExceptionFunction.accept(commandEvent, ((PermissionException) e).getPermission());
 					}
 					
 					return;

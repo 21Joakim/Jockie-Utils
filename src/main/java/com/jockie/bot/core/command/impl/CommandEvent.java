@@ -15,6 +15,7 @@ import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.MessageEmbed;
+import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.requests.restaction.MessageAction;
@@ -59,6 +60,21 @@ public class CommandEvent {
 		return this.event.getJDA();
 	}
 	
+	/** Equivalent to {@link JDA#getSelfUser()} */
+	public User getSelfUser() {
+		return this.getJDA().getSelfUser();
+	}
+	
+	/** Equivalent to {@link Guild#getSelfMember()}
+	 * 
+	 * @return possibly-null if the event is not from a guild
+	 */
+	public Member getSelfMember() {
+		Guild guild = this.getGuild();
+		
+		return guild != null ? guild.getSelfMember() : null;
+	}
+	
 	/** Equivalent to {@link MessageReceivedEvent#getAuthor()} */
 	public User getAuthor() {
 		return this.event.getAuthor();
@@ -72,6 +88,11 @@ public class CommandEvent {
 	/** Equivalent to {@link MessageReceivedEvent#getChannel()} */
 	public MessageChannel getChannel() {
 		return this.event.getChannel();
+	}
+	
+	/** Equivalent to {@link MessageReceivedEvent#getTextChannel()} */
+	public TextChannel getTextChannel() {
+		return this.event.getTextChannel();
 	}
 	
 	/** Equivalent to {@link MessageReceivedEvent#getChannelType()} */

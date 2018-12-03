@@ -2,8 +2,6 @@ package com.jockie.bot.core.cooldown;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -39,7 +37,6 @@ public interface ICooldown {
 	public String getContextKey();
 	
 	public Instant getTimeStarted();
-	public ZonedDateTime getTimeStarted(ZoneId zone);
 	
 	public TimeUnit getDurationUnit();
 	

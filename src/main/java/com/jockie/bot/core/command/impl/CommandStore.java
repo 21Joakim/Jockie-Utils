@@ -6,7 +6,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableSet;
@@ -36,7 +38,7 @@ public class CommandStore {
 		
 		for(Method method : moduleClass.getDeclaredMethods()) {
 			if(method.isAnnotationPresent(Command.class)) {
-				commands.add(MethodCommand.createFrom(method.getName().replace("_", " "), module, method));
+				commands.add(MethodCommand.createFrom(method.getName().replace("_", " "), method, module));
 			}
 		}
 		
@@ -58,7 +60,6 @@ public class CommandStore {
 						
 						continue;
 					}catch(NoSuchMethodException | SecurityException e) {}
-					
 				}catch(InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
 					e.printStackTrace();
 				}
@@ -68,7 +69,7 @@ public class CommandStore {
 		return commands;
 	}
 	
-	private List<ICommand> commands = new ArrayList<ICommand>();
+	private Set<ICommand> commands = new HashSet<ICommand>();
 	
 	public CommandStore loadFrom(String packagePath) {
 		return this.loadFrom(packagePath, true);
@@ -92,14 +93,16 @@ public class CommandStore {
 				
 				if(LoaderUtility.isDeepImplementation(loadedClass, ICommand.class)) {
 					try {
-						ICommand command = (ICommand) loadedClass.getConstructor().newInstance();
-						
-						commands.add(command);
+						commands.add((ICommand) loadedClass.getConstructor().newInstance());
 					}catch(Exception e1) {
 						throw new Exception("Failed to load class " + loadedClass, e1);
 					}
 				}else if(loadedClass.isAnnotationPresent(Module.class) || LoaderUtility.isDeepImplementation(loadedClass, IModule.class)) {
-					commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
+					try {
+						commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
+					}catch(Exception e1) {
+						throw new Exception("Failed to load class " + loadedClass, e1);
+					}
 				}
 			}
 		}catch(Exception e) {
@@ -121,10 +124,7 @@ public class CommandStore {
 			if(object instanceof ICommand) {
 				ICommand command = (ICommand) object;
 				
-				ICommand topParent = command.getTopParent();
-				if(!this.commands.contains(topParent)) {
-					this.commands.add(topParent);
-				}
+				this.commands.add(command.getTopParent());
 				
 				continue;
 			}
@@ -158,11 +158,11 @@ public class CommandStore {
 		return this.removeCommands(commands.toArray(new ICommand[0]));
 	}
 	
-	public List<ICommand> getCommands() {
-		return Collections.unmodifiableList(this.commands);
+	public Set<ICommand> getCommands() {
+		return Collections.unmodifiableSet(this.commands);
 	}
 	
-	public List<ICommand> getCommandsAuthorized(MessageReceivedEvent event, CommandListener commandListener) {
-		return Collections.unmodifiableList(this.commands.stream().filter(c -> c.verify(event, commandListener)).collect(Collectors.toList()));
+	public Set<ICommand> getCommandsAuthorized(MessageReceivedEvent event, CommandListener commandListener) {
+		return Collections.unmodifiableSet(this.commands.stream().filter(c -> c.verify(event, commandListener)).collect(Collectors.toSet()));
 	}
 }

@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.jockie.bot.core.argument.IArgument;
+import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.option.IOption;
@@ -32,8 +33,9 @@ public class DummyCommand implements ICommand {
 		
 		this.arguments = Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
 			public boolean test(IArgument<?> argument) {
-				if(!argument.hasDefault())
+				if(!argument.hasDefault()) {
 					return true;
+				}
 				
 				for(int i = 0; i < command.getArguments().length; i++) {
 					if(command.getArguments()[i].equals(argument)) {
@@ -184,5 +186,9 @@ public class DummyCommand implements ICommand {
 	
 	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions() {
 		return this.command.getAfterExecuteFunctions();
+	}
+	
+	public ICategory getCategory() {
+		return this.command.getCategory();
 	}
 }

@@ -3,6 +3,7 @@ package com.jockie.bot.core.command.impl;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Objects;
@@ -21,29 +22,31 @@ public class MethodCommand extends CommandImpl {
 	private Object invoker;
 	private Method method;
 
-	public MethodCommand(String command, Object invoker, Method method) {
-		super(command, false, CommandImpl.generateDefaultArguments(method));
-		
-		this.invoker = invoker;
-		
-		Objects.requireNonNull(method);
+	public MethodCommand(String command, Method method, Object invoker) {
+		super(command, false, CommandImpl.generateDefaultArguments(Objects.requireNonNull(method)));
 		
 		this.method = method;
+		
+		if(invoker == null && !Modifier.isStatic(method.getModifiers())) {
+			throw new IllegalArgumentException("Non-static method can not have a null invoker");
+		}
+		
+		this.invoker = invoker;
 		
 		super.setOptions(CommandImpl.generateOptions(method));
 	}
 	
-	public static MethodCommand createFrom(Object invoker, Method method) {
-		return MethodCommand.createFrom(null, invoker, method);
+	public static MethodCommand createFrom(Method method, Object invoker) {
+		return MethodCommand.createFrom(null, method, invoker);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static MethodCommand createFrom(String name, Object invoker, Method method) {
+	public static MethodCommand createFrom(String name, Method method, Object invoker) {
 		MethodCommand methodCommand;
 		if(method.isAnnotationPresent(Command.class)) {
 			Command commandAnnotation = method.getAnnotation(Command.class);
 			
-			methodCommand = new MethodCommand(commandAnnotation.command().length() == 0 ? (name != null ? name : "") : commandAnnotation.command(), invoker, method);
+			methodCommand = new MethodCommand(commandAnnotation.command().length() == 0 ? (name != null ? name : "") : commandAnnotation.command(), method, invoker);
 			methodCommand.setAliases(commandAnnotation.aliases());
 			methodCommand.setAuthorDiscordPermissionsNeeded(commandAnnotation.authorPermissionsNeeded());
 			methodCommand.setBotDiscordPermissionsNeeded(commandAnnotation.botPermissionsNeeded());
@@ -59,26 +62,26 @@ public class MethodCommand extends CommandImpl {
 			methodCommand.setPrivateTriggerable(commandAnnotation.privateTriggerable());
 			methodCommand.setShortDescription(commandAnnotation.shortDescription());
 			methodCommand.setExamples(commandAnnotation.examples());
-			
-			for(Annotation annotation : method.getAnnotations()) {
-				BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getBeforeExecuteFunction(annotation.getClass());
-				if(function != null) {
-					methodCommand.registerBeforeExecute(commandEvent -> {
-						return function.apply(commandEvent, annotation);
-					});
-				}
-			}
-			
-			for(Annotation annotation : method.getAnnotations()) {
-				BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getAfterExecuteFunction(annotation.getClass());
-				if(function != null) {
-					methodCommand.registerAfterExecute(commandEvent -> {
-						return function.apply(commandEvent, annotation);
-					});
-				}
-			}
 		}else{
-			methodCommand = new MethodCommand(name != null ? name : "", invoker, method);
+			methodCommand = new MethodCommand(name != null ? name : "", method, invoker);
+		}
+		
+		for(Annotation annotation : method.getAnnotations()) {
+			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getBeforeExecuteFunction(annotation.getClass());
+			if(function != null) {
+				methodCommand.registerBeforeExecute(commandEvent -> {
+					return function.apply(commandEvent, annotation);
+				});
+			}
+		}
+		
+		for(Annotation annotation : method.getAnnotations()) {
+			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getAfterExecuteFunction(annotation.getClass());
+			if(function != null) {
+				methodCommand.registerAfterExecute(commandEvent -> {
+					return function.apply(commandEvent, annotation);
+				});
+			}
 		}
 		
 		return methodCommand;

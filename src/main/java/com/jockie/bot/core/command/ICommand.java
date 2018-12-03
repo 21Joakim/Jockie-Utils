@@ -5,6 +5,7 @@ import java.util.function.Function;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
+import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.cooldown.ICooldown;
@@ -156,6 +157,8 @@ public interface ICommand {
 	public default boolean hasParent() {
 		return this.getParent() != null;
 	}
+	
+	public ICategory getCategory();
 	
 	/**
 	 * @return a boolean to prove whether this command is passive or not, a passive command will not have any executable method and might for instance only have sub-commands.

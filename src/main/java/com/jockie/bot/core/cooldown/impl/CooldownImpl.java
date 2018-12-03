@@ -3,8 +3,6 @@ package com.jockie.bot.core.cooldown.impl;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.cooldown.ICooldown;
@@ -52,10 +50,6 @@ public class CooldownImpl implements ICooldown {
 	
 	public Instant getTimeStarted() {
 		return this.timeStarted;
-	}
-	
-	public ZonedDateTime getTimeStarted(ZoneId zone) {
-		return this.timeStarted.atZone(zone);
 	}
 	
 	public long getDuration() {

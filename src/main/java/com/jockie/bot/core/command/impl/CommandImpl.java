@@ -21,6 +21,7 @@ import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
+import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
@@ -374,6 +375,8 @@ public class CommandImpl implements ICommand {
 	
 	private ICommand parent;
 	
+	private ICategory category;
+	
 	private List<ICommand> subCommands = new ArrayList<>();
 	
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
@@ -420,7 +423,7 @@ public class CommandImpl implements ICommand {
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
-						this.addSubCommand(MethodCommand.createFrom(this.commandMethods.get(i).getName().replace("_", " "), this, this.commandMethods.get(i)));
+						this.addSubCommand(MethodCommand.createFrom(this.commandMethods.get(i).getName().replace("_", " "), this.commandMethods.get(i), this));
 					}
 					
 					if(arguments.length > 0) {
@@ -434,7 +437,7 @@ public class CommandImpl implements ICommand {
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
 					if(method.isAnnotationPresent(Command.class)) {
-						this.addSubCommand(MethodCommand.createFrom(method.getName().replace("_", " "), this, method));
+						this.addSubCommand(MethodCommand.createFrom(method.getName().replace("_", " "), method, this));
 					}
 				}
 			}
@@ -568,6 +571,10 @@ public class CommandImpl implements ICommand {
 		return this.parent;
 	}
 	
+	public ICategory getCategory() {
+		return this.category;
+	}
+	
 	public boolean isPassive() {
 		if(this.passive) {
 			return true;
@@ -581,7 +588,7 @@ public class CommandImpl implements ICommand {
 			}
 		}catch(Exception e) {}
 		
-		return this.passive;
+		return false;
 	}
 	
 	public List<ICommand> getSubCommands() {
@@ -742,6 +749,22 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
+	protected CommandImpl setCategory(ICategory category) {
+		ICategory old = this.category;
+		
+		this.category = category;
+		
+		if(old != null) {
+			this.category.removeCommand(this);
+		}
+		
+		if(this.category != null) {
+			this.category.addCommand(this);
+		}
+		
+		return this;
+	}
+	
 	protected CommandImpl setPassive(boolean passive) {
 		this.passive = passive;
 		
@@ -863,17 +886,6 @@ public class CommandImpl implements ICommand {
 		
 		if(this.developerCommand && !commandListener.isDeveloper(event.getAuthor().getIdLong())) {
 			return false;
-		}
-		
-		if(event.getChannelType().isGuild()) {
-			if(this.authorDiscordPermissionsNeeded.length > 0) {
-				if(event.getMember() != null) {
-					Permission[] permissions = this.authorDiscordPermissionsNeeded;
-					if(!event.getMember().hasPermission(event.getTextChannel(), permissions) && !event.getMember().hasPermission(permissions)) {
-						return false;
-					}
-				}
-			}
 		}
 		
 		for(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> function : this.customVerifications) {
