@@ -11,11 +11,11 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements IEndlessArgument<Type> {
 	
-	private IArgument<Type> argument;
+	private final IArgument<Type> argument;
 	
-	private int minArguments, maxArguments;
+	private final int minArguments, maxArguments;
 	
-	private Class<Type> clazz;
+	private final Class<Type> clazz;
 	
 	public static class Builder<Type> extends IEndlessArgument.Builder<Type, IEndlessArgument<Type>, Builder<Type>> {
 		

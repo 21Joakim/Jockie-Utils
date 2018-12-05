@@ -1,6 +1,5 @@
 package com.jockie.bot.core.argument;
 
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -19,7 +18,7 @@ public interface IArgument<Type> {
 	
 	public String getName();
 	
-	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent);
+	public Type getDefault(CommandEvent commandEvent);
 	
 	public VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 	
@@ -30,7 +29,7 @@ public interface IArgument<Type> {
 		
 		protected String name, error;
 		
-		protected BiFunction<MessageReceivedEvent, CommandEvent, RT> defaultValueFunction;
+		protected Function<CommandEvent, RT> defaultValueFunction;
 		
 		public BT setEndless(boolean endless) {
 			this.endless = endless;
@@ -56,26 +55,20 @@ public interface IArgument<Type> {
 			return this.self();
 		}
 		
-		public BT setDefaultValue(BiFunction<MessageReceivedEvent, CommandEvent, RT> defaultValueFunction) {
+		public BT setDefaultValue(Function<CommandEvent, RT> defaultValueFunction) {
 			this.defaultValueFunction = defaultValueFunction;
 			
 			return this.self();
 		}
 		
 		public BT setDefaultValue(RT defaultValue) {
-			return this.setDefaultValue((event, commandEvent) -> {
+			return this.setDefaultValue((commandEvent) -> {
 				return defaultValue;
 			});
 		}
 		
-		public BT setDefaultValue(Function<MessageReceivedEvent, RT> defaultValueFunction) {
-			return this.setDefaultValue((event, commandEvent) -> {
-				return defaultValueFunction.apply(event);
-			});
-		}
-		
 		public BT setDefaultAsNull() {			
-			return this.setDefaultValue((a, b) -> null);
+			return this.setDefaultValue((a) -> null);
 		}
 		
 		public boolean isEndless() {
@@ -94,7 +87,7 @@ public interface IArgument<Type> {
 			return this.name;
 		}
 		
-		public BiFunction<MessageReceivedEvent, CommandEvent, RT> getDefaultValueFunction() {
+		public Function<CommandEvent, RT> getDefaultValueFunction() {
 			return this.defaultValueFunction;
 		}
 		

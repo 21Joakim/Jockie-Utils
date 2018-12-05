@@ -59,7 +59,7 @@ public class DummyCommand implements ICommand {
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {
 			if(this.indexes.get(i) != null) {
-				args[i] = this.indexes.get(i).getDefault(event, commandEvent);
+				args[i] = this.indexes.get(i).getDefault(commandEvent);
 			}else{
 				args[i] = arguments[offset];
 				offset = offset + 1;

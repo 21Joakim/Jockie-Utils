@@ -6,8 +6,8 @@ import java.util.Map;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.VerifiedArgument;
 import com.jockie.bot.core.argument.VerifiedArgument.VerifiedType;
+import com.jockie.bot.core.argument.impl.parser.IArgumentParser;
 import com.jockie.bot.core.utility.ArgumentUtility;
-import com.jockie.bot.core.utility.TriFunction;
 
 import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.Channel;
@@ -17,15 +17,13 @@ import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.VoiceChannel;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class ArgumentFactory {
 	
-	private static Map<Class<?>, TriFunction<MessageReceivedEvent, SimpleArgument<?>, String, VerifiedArgument<?>>> arguments = new HashMap<>();
+	private static Map<Class<?>, IArgumentParser<?>> arguments = new HashMap<>();
 	
-	@SuppressWarnings("unchecked")
-	public static <T> void registerArgument(Class<T> clazz, TriFunction<MessageReceivedEvent, SimpleArgument<T>, String, VerifiedArgument<T>> function) {
-		ArgumentFactory.arguments.put(clazz, (TriFunction<MessageReceivedEvent, SimpleArgument<?>, String, VerifiedArgument<?>>) (Object) function);
+	public static <T> void registerArgument(Class<T> clazz, IArgumentParser<T> function) {
+		ArgumentFactory.arguments.put(clazz, function);
 	}
 	
 	public static void unregisterArgument(Class<?> clazz) {
@@ -115,12 +113,12 @@ public class ArgumentFactory {
 		});
 	}
 	
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static <ReturnType> IArgument.Builder<ReturnType, ?, ?> of(Class<ReturnType> type) {
 		IArgument.Builder<ReturnType, ?, ?> builder = null;
 		
 		if(type.isAssignableFrom(Byte.class) || type.isAssignableFrom(byte.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Byte.parseByte(value));
 				}catch(NumberFormatException e) {
@@ -128,7 +126,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Short.class) || type.isAssignableFrom(short.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Short.parseShort(value));
 				}catch(NumberFormatException e) {
@@ -136,7 +134,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Integer.class) || type.isAssignableFrom(int.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Integer.parseInt(value));
 				}catch(NumberFormatException e) {
@@ -144,7 +142,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Long.class) || type.isAssignableFrom(long.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Long.parseLong(value));
 				}catch(NumberFormatException e) {
@@ -152,7 +150,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Float.class) || type.isAssignableFrom(float.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Float.parseFloat(value));
 				}catch(NumberFormatException e) {
@@ -160,7 +158,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Double.class) || type.isAssignableFrom(double.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				try {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Double.parseDouble(value));
 				}catch(NumberFormatException e) {
@@ -168,7 +166,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(Boolean.class) || type.isAssignableFrom(boolean.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				if(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) Boolean.parseBoolean(value));
 				}
@@ -176,7 +174,7 @@ public class ArgumentFactory {
 				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			});
 		}else if(type.isAssignableFrom(Character.class) || type.isAssignableFrom(char.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				if(value.length() == 1) {
 					return new VerifiedArgument<>(VerifiedType.VALID, (ReturnType) (Object) value.charAt(0));
 				}else{
@@ -184,7 +182,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isAssignableFrom(String.class)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				if(argument.isEndless()) {
 					return new VerifiedArgument<>(VerifiedType.VALID_END_NOW, (ReturnType) value);
 				}else{
@@ -192,7 +190,7 @@ public class ArgumentFactory {
 				}
 			});
 		}else if(type.isEnum()) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
 				Enum<?>[] enums = (Enum[]) type.getEnumConstants();
 				
 				for(Enum<?> enumEntry : enums) {
@@ -204,8 +202,8 @@ public class ArgumentFactory {
 				return new VerifiedArgument<>(VerifiedType.INVALID, null);
 			});
 		}else if(ArgumentFactory.arguments.containsKey(type)) {
-			builder = new SimpleArgument.Builder<ReturnType>().setFunction((event, argument, value) -> {
-				return (VerifiedArgument<ReturnType>) ArgumentFactory.arguments.get(type).apply(event, argument, value);
+			builder = new SimpleArgument.Builder<ReturnType>().setParser((event, argument, value) -> {
+				return (VerifiedArgument<ReturnType>) ArgumentFactory.arguments.get(type).parse(event, (IArgument) argument, value);
 			});
 		}
 		

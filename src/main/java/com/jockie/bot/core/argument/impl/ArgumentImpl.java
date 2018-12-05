@@ -1,20 +1,17 @@
 package com.jockie.bot.core.argument.impl;
 
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.VerifiedArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
-
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	
-	private BiFunction<MessageReceivedEvent, CommandEvent, Type> defaultValueFunction;
+	private final Function<CommandEvent, Type> defaultValueFunction;
 	
-	private boolean endless, empty, quote;
+	private final boolean endless, empty, quote;
 	
-	private String name;
+	private final String name;
 	
 	public <BuilderType extends IArgument.Builder<Type, ?, ?>> ArgumentImpl(BuilderType builder) {
 		this.endless = builder.isEndless();
@@ -28,9 +25,9 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 		return this.defaultValueFunction != null;
 	}
 	
-	public Type getDefault(MessageReceivedEvent event, CommandEvent commandEvent) {
+	public Type getDefault(CommandEvent commandEvent) {
 		if(this.defaultValueFunction != null) {
-			return this.defaultValueFunction.apply(event, commandEvent);
+			return this.defaultValueFunction.apply(commandEvent);
 		}
 		
 		return null;
@@ -51,6 +48,4 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	public String getName() {
 		return this.name;
 	}
-	
-	public abstract VerifiedArgument<Type> verify(MessageReceivedEvent event, String value);
 }

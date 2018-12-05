@@ -3,11 +3,15 @@ package com.jockie.bot.core.command.impl;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,6 +20,7 @@ import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
 import com.jockie.bot.core.utility.LoaderUtility;
@@ -33,14 +38,59 @@ public class CommandStore {
 	}
 	
 	public static List<ICommand> loadModule(Object module) {
+		Objects.requireNonNull(module);
+		
 		List<ICommand> commands = new ArrayList<>();
 		Class<?> moduleClass = module.getClass();
 		
-		for(Method method : moduleClass.getDeclaredMethods()) {
+		Map<String, MethodCommand> methodCommands = new HashMap<>();
+		
+		Method[] methods = moduleClass.getDeclaredMethods();
+		for(Method method : methods) {
 			if(method.isAnnotationPresent(Command.class)) {
-				commands.add(MethodCommand.createFrom(method.getName().replace("_", " "), method, module));
+				methodCommands.put(method.getName(), MethodCommand.createFrom(method.getName().replace("_", " "), method, module));
 			}
 		}
+		
+		for(Method method : methods) {
+			if(method.isAnnotationPresent(Initialize.class)) {
+				Initialize initialize = method.getAnnotation(Initialize.class);
+				if(initialize.all()) {
+					for(MethodCommand command : methodCommands.values()) {
+						try {
+							method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+						}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+							e.printStackTrace();
+						}
+					}
+				}else if(initialize.value().length == 0) {
+					if(methodCommands.containsKey(method.getName())) {
+						MethodCommand command = methodCommands.get(method.getName());
+						
+						try {
+							method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+						}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+							e.printStackTrace();
+						}
+					}
+				}else{
+					for(int i = 0; i < initialize.value().length; i++) {
+						String name = initialize.value()[i];
+						if(methodCommands.containsKey(name)) {
+							MethodCommand command = methodCommands.get(name);
+							
+							try {
+								method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+							}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		commands.addAll(methodCommands.values());
 		
 		for(Class<?> clazz : moduleClass.getClasses()) {
 			if(LoaderUtility.isDeepImplementation(clazz, ICommand.class)) {

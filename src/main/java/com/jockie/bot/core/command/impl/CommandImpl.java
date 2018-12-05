@@ -604,55 +604,55 @@ public class CommandImpl implements ICommand {
 		return this.aliasesFunction;
 	}
 	
-	protected CommandImpl setProperty(String key, Object value) {
+	public CommandImpl setProperty(String key, Object value) {
 		this.customProperties.put(key, value);
 		
 		return this;
 	}
 	
-	protected CommandImpl setDeveloperCommand(boolean developerCommand) {
+	public CommandImpl setDeveloperCommand(boolean developerCommand) {
 		this.developerCommand = developerCommand;
 		
 		return this;
 	}
 	
-	protected CommandImpl setBotTriggerable(boolean botTriggerable) {
+	public CommandImpl setBotTriggerable(boolean botTriggerable) {
 		this.botTriggerable = botTriggerable;
 		
 		return this;
 	}
 	
-	protected CommandImpl setBotDiscordPermissionsNeeded(Permission... permissions) {
+	public CommandImpl setBotDiscordPermissionsNeeded(Permission... permissions) {
 		this.botDiscordPermissionsNeeded = permissions;
 		
 		return this;
 	}
 	
-	protected CommandImpl setAuthorDiscordPermissionsNeeded(Permission... permissions) {
+	public CommandImpl setAuthorDiscordPermissionsNeeded(Permission... permissions) {
 		this.authorDiscordPermissionsNeeded = permissions;
 		
 		return this;
 	}
 	
-	protected CommandImpl setDescription(String description) {
+	public CommandImpl setDescription(String description) {
 		this.description = description;
 		
 		return this;
 	}
 	
-	protected CommandImpl setShortDescription(String shortDescription) {
+	public CommandImpl setShortDescription(String shortDescription) {
 		this.shortDescription = shortDescription;
 		
 		return this;
 	}
 	
-	protected CommandImpl setExamples(String... examples) {
+	public CommandImpl setExamples(String... examples) {
 		this.examples = examples;
 		
 		return this;
 	}
 	
-	protected CommandImpl setAliases(String... aliases) {
+	public CommandImpl setAliases(String... aliases) {
 		/* 
 		 * From the longest alias to the shortest so that if the command for instance has two aliases one being "hello" 
 		 * and the other being "hello there" it would recognize that the command is "hello there" instead of it thinking that
@@ -665,50 +665,50 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	protected CommandImpl setArguments(IArgument<?>... arguments) {
+	public CommandImpl setArguments(IArgument<?>... arguments) {
 		this.arguments = arguments;
 		this.dummyCommands = CommandImpl.generateDummyCommands(this);
 		
 		return this;
 	}
 	
-	protected CommandImpl setOptions(IOption... options) {
+	public CommandImpl setOptions(IOption... options) {
 		this.options = options;
 		
 		return this;
 	}
 	
-	protected CommandImpl setOptionPolicy(InvalidOptionPolicy optionPolicy) {
+	public CommandImpl setOptionPolicy(InvalidOptionPolicy optionPolicy) {
 		this.optionPolicy = optionPolicy;
 		
 		return this;
 	}
 	
-	protected CommandImpl setContentOverflowPolicy(ContentOverflowPolicy overflowPolicy) {
+	public CommandImpl setContentOverflowPolicy(ContentOverflowPolicy overflowPolicy) {
 		this.overflowPolicy = overflowPolicy;
 		
 		return this;
 	}
 	
-	protected CommandImpl setGuildTriggerable(boolean triggerable) {
+	public CommandImpl setGuildTriggerable(boolean triggerable) {
 		this.guildTriggerable = triggerable;
 		
 		return this;
 	}
 	
-	protected CommandImpl setPrivateTriggerable(boolean triggerable) {
+	public CommandImpl setPrivateTriggerable(boolean triggerable) {
 		this.privateTriggerable = triggerable;
 		
 		return this;
 	}
 	
-	protected CommandImpl setCaseSensitive(boolean caseSensitive) {
+	public CommandImpl setCaseSensitive(boolean caseSensitive) {
 		this.caseSensitive = caseSensitive;
 		
 		return this;
 	}
 	
-	protected CommandImpl setHidden(boolean hidden) {
+	public CommandImpl setHidden(boolean hidden) {
 		this.hidden = hidden;
 		
 		return this;
@@ -718,7 +718,7 @@ public class CommandImpl implements ICommand {
 	 * See {@link #getCooldownDuration()}
 	 * @param duration milliseconds
 	 */
-	protected CommandImpl setCooldownDuration(long duration) {
+	public CommandImpl setCooldownDuration(long duration) {
 		this.cooldownDuration = duration;
 		
 		return this;
@@ -727,29 +727,29 @@ public class CommandImpl implements ICommand {
 	/**
 	 * See {@link #getCooldownDuration()}
 	 */
-	protected CommandImpl setCooldownDuration(long duration, TimeUnit unit) {
+	public CommandImpl setCooldownDuration(long duration, TimeUnit unit) {
 		return this.setCooldownDuration(unit.toMillis(duration));
 	}
 	
-	protected CommandImpl setCooldownScope(Scope scope) {
+	public CommandImpl setCooldownScope(Scope scope) {
 		this.cooldownScope = scope;
 		
 		return this;
 	}
 	
-	protected CommandImpl setExecuteAsync(boolean executeAsync) {
+	public CommandImpl setExecuteAsync(boolean executeAsync) {
 		this.executeAsync = executeAsync;
 		
 		return this;
 	}
 	
-	protected CommandImpl setParent(ICommand parent) {
+	public CommandImpl setParent(ICommand parent) {
 		this.parent = parent;
 		
 		return this;
 	}
 	
-	protected CommandImpl setCategory(ICategory category) {
+	public CommandImpl setCategory(ICategory category) {
 		ICategory old = this.category;
 		
 		this.category = category;
@@ -765,13 +765,13 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	protected CommandImpl setPassive(boolean passive) {
+	public CommandImpl setPassive(boolean passive) {
 		this.passive = passive;
 		
 		return this;
 	}
 	
-	protected CommandImpl addSubCommand(ICommand command) {
+	public CommandImpl addSubCommand(ICommand command) {
 		this.subCommands.add(command);
 		
 		if(command instanceof CommandImpl) {
@@ -782,37 +782,37 @@ public class CommandImpl implements ICommand {
 	}
 	
 	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */
-	protected CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
+	public CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
 		this.customVerifications.add(verification);
 		
 		return this;
 	}
 	
-	protected CommandImpl addVerification(BiFunction<MessageReceivedEvent, CommandImpl, Boolean> verification) {
+	public CommandImpl addVerification(BiFunction<MessageReceivedEvent, CommandImpl, Boolean> verification) {
 		this.customVerifications.add((event, listener, impl) -> verification.apply(event, impl));
 		
 		return this;
 	}
 	
-	protected CommandImpl addVerification(Function<MessageReceivedEvent, Boolean> verification) {
+	public CommandImpl addVerification(Function<MessageReceivedEvent, Boolean> verification) {
 		this.customVerifications.add((event, listener, impl) -> verification.apply(event));
 		
 		return this;
 	}
 	
-	protected CommandImpl registerBeforeExecute(Function<CommandEvent, Object> beforeExecute) {
+	public CommandImpl registerBeforeExecute(Function<CommandEvent, Object> beforeExecute) {
 		this.beforeExecute.add(beforeExecute);
 		
 		return this;
 	}
 	
-	protected CommandImpl registerAfterExecute(Function<CommandEvent, Object> afterExecute) {
+	public CommandImpl registerAfterExecute(Function<CommandEvent, Object> afterExecute) {
 		this.afterExecute.add(afterExecute);
 		
 		return this;
 	}
 	
-	protected CommandImpl setAliases(BiFunction<CommandImpl, MessageReceivedEvent, String[]> function) {
+	public CommandImpl setAliases(BiFunction<CommandImpl, MessageReceivedEvent, String[]> function) {
 		if(function != null) {
 			this.aliasesFunction = function;
 		}else{
@@ -822,7 +822,7 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	protected CommandImpl setAliases(Function<MessageReceivedEvent, String[]> function) {
+	public CommandImpl setAliases(Function<MessageReceivedEvent, String[]> function) {
 		if(function != null) {
 			this.aliasesFunction = (command, event) -> function.apply(event);
 		}else{

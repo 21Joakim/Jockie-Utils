@@ -18,7 +18,11 @@ public class CategoryImpl implements ICategory {
 	
 	private final Set<ICommand> commands = new HashSet<>();
 	
-	private CategoryImpl(String name, String description, ICategory parent) {
+	public CategoryImpl(String name, String description) {
+		this(name, description, null);
+	}
+	
+	public CategoryImpl(String name, String description, ICategory parent) {
 		this.name = name;
 		this.description = description;
 		this.parent = parent;
