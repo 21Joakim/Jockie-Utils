@@ -24,6 +24,7 @@ import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.Option;
@@ -367,6 +368,7 @@ public class CommandImpl implements ICommand {
 	private boolean developerCommand;
 	
 	private boolean hidden;
+	private boolean nsfw = false;
 	
 	private boolean executeAsync;
 	
@@ -404,7 +406,7 @@ public class CommandImpl implements ICommand {
 				this.options = CommandImpl.generateOptions(commandMethod);
 				
 				for(Annotation annotation : commandMethod.getAnnotations()) {
-					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.beforeExecuteAnnotation.get(annotation.getClass());
+					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.beforeExecuteAnnotation.get(annotation.annotationType());
 					if(function != null) {
 						this.registerBeforeExecute(commandEvent -> {
 							return function.apply(commandEvent, annotation);
@@ -413,7 +415,7 @@ public class CommandImpl implements ICommand {
 				}
 				
 				for(Annotation annotation : commandMethod.getAnnotations()) {
-					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.afterExecuteAnnotation.get(annotation.getClass());
+					BiFunction<CommandEvent, Annotation, Object> function = CommandImpl.afterExecuteAnnotation.get(annotation.annotationType());
 					if(function != null) {
 						this.registerAfterExecute(commandEvent -> {
 							return function.apply(commandEvent, annotation);
@@ -555,11 +557,15 @@ public class CommandImpl implements ICommand {
 		return this.hidden;
 	}
 	
+	public boolean isNSFW() {
+		return this.nsfw;
+	}
+	
 	public long getCooldownDuration() {
 		return this.cooldownDuration;
 	}
 	
-	public Scope getCooldownScope() {
+	public ICooldown.Scope getCooldownScope() {
 		return this.cooldownScope;
 	}
 	
@@ -714,6 +720,12 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
+	public CommandImpl setNSFW(boolean nsfw) {
+		this.nsfw = nsfw;
+		
+		return this;
+	}
+	
 	/**
 	 * See {@link #getCooldownDuration()}
 	 * @param duration milliseconds
@@ -832,7 +844,21 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
+	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
+		List<ICommand> commands = new ArrayList<>();
+		
+		for(ICommand command : this.subCommands) {
+			commands.addAll(command.getAllCommandsRecursive(includeDummyCommands));
+		}
+		
+		if(includeDummyCommands) {
+			commands.addAll(this.dummyCommands);
+		}
+		
+		return commands;
+	}
+	
+	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
 		List<Pair<String, ICommand>> commands = new ArrayList<>();
 		
 		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
@@ -843,10 +869,10 @@ public class CommandImpl implements ICommand {
 		}
 		
 		for(ICommand command : this.getSubCommands()) {
-			commands.addAll(command.getAllCommandsRecursive(event, (prefix + " " + this.getCommand()).trim()));
+			commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + this.getCommand()).trim()));
 			
 			for(String alias : aliases) {
-				commands.addAll(command.getAllCommandsRecursive(event, (prefix + " " + alias).trim()));
+				commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + alias).trim()));
 			}
 		}
 		

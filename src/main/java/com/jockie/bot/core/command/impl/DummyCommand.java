@@ -153,7 +153,11 @@ public class DummyCommand implements ICommand {
 		return new ArrayList<>();
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix) {
+	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
+		return Collections.emptyList();
+	}
+	
+	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		return Collections.emptyList();
 	}
 	
@@ -190,5 +194,9 @@ public class DummyCommand implements ICommand {
 	
 	public ICategory getCategory() {
 		return this.command.getCategory();
+	}
+	
+	public boolean isNSFW() {
+		return this.command.isNSFW();
 	}
 }

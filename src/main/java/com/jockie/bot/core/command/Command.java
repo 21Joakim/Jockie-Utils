@@ -40,4 +40,6 @@ public @interface Command {
 	
 	public boolean async() default false;
 	
+	public boolean nsfw() default false;
+	
 }

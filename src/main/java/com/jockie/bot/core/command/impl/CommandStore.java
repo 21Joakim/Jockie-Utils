@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
@@ -24,8 +23,6 @@ import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
 import com.jockie.bot.core.utility.LoaderUtility;
-
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandStore {
 	
@@ -210,9 +207,5 @@ public class CommandStore {
 	
 	public Set<ICommand> getCommands() {
 		return Collections.unmodifiableSet(this.commands);
-	}
-	
-	public Set<ICommand> getCommandsAuthorized(MessageReceivedEvent event, CommandListener commandListener) {
-		return Collections.unmodifiableSet(this.commands.stream().filter(c -> c.verify(event, commandListener)).collect(Collectors.toSet()));
 	}
 }

@@ -21,7 +21,8 @@ public class MethodCommand extends CommandImpl {
 	
 	private Object invoker;
 	private Method method;
-
+	
+	@SuppressWarnings("unchecked")
 	public MethodCommand(String command, Method method, Object invoker) {
 		super(command, false, CommandImpl.generateDefaultArguments(Objects.requireNonNull(method)));
 		
@@ -34,13 +35,32 @@ public class MethodCommand extends CommandImpl {
 		this.invoker = invoker;
 		
 		super.setOptions(CommandImpl.generateOptions(method));
+		
+		for(Annotation annotation : method.getAnnotations()) {
+			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getBeforeExecuteFunction(annotation.annotationType());
+			
+			if(function != null) {
+				this.registerBeforeExecute(commandEvent -> {
+					return function.apply(commandEvent, annotation);
+				});
+			}
+		}
+		
+		for(Annotation annotation : method.getAnnotations()) {
+			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getAfterExecuteFunction(annotation.annotationType());
+			
+			if(function != null) {
+				this.registerAfterExecute(commandEvent -> {
+					return function.apply(commandEvent, annotation);
+				});
+			}
+		}
 	}
 	
 	public static MethodCommand createFrom(Method method, Object invoker) {
 		return MethodCommand.createFrom(null, method, invoker);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public static MethodCommand createFrom(String name, Method method, Object invoker) {
 		MethodCommand methodCommand;
 		if(method.isAnnotationPresent(Command.class)) {
@@ -62,26 +82,9 @@ public class MethodCommand extends CommandImpl {
 			methodCommand.setPrivateTriggerable(commandAnnotation.privateTriggerable());
 			methodCommand.setShortDescription(commandAnnotation.shortDescription());
 			methodCommand.setExamples(commandAnnotation.examples());
+			methodCommand.setNSFW(commandAnnotation.nsfw());
 		}else{
 			methodCommand = new MethodCommand(name != null ? name : "", method, invoker);
-		}
-		
-		for(Annotation annotation : method.getAnnotations()) {
-			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getBeforeExecuteFunction(annotation.getClass());
-			if(function != null) {
-				methodCommand.registerBeforeExecute(commandEvent -> {
-					return function.apply(commandEvent, annotation);
-				});
-			}
-		}
-		
-		for(Annotation annotation : method.getAnnotations()) {
-			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getAfterExecuteFunction(annotation.getClass());
-			if(function != null) {
-				methodCommand.registerAfterExecute(commandEvent -> {
-					return function.apply(commandEvent, annotation);
-				});
-			}
 		}
 		
 		return methodCommand;

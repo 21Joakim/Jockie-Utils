@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -198,6 +199,12 @@ public class CommandListener implements EventListener {
 	
 	private BiConsumer<CommandEvent, ICooldown> cooldownFunction = DEFAULT_COOLDOWN_FUNCTION;
 	
+	public static final Consumer<CommandEvent> DEFAULT_NSFW_FUNCTION = (event) -> {
+		event.reply("NSFW commands are not allowed in non-NSFW channels!").queue();
+	};
+	
+	private Consumer<CommandEvent> nsfwFunction = DEFAULT_NSFW_FUNCTION;
+	
 	private Set<Long> developers = new HashSet<>();
 	
 	private List<CommandStore> commandStores = new ArrayList<>();
@@ -230,6 +237,59 @@ public class CommandListener implements EventListener {
 	
 	public List<CommandEventListener> getCommandEventListeners() {
 		return Collections.unmodifiableList(this.commandEventListeners);
+	}
+	
+	/**
+	 * @return a list of all registered commands, does not include developer ({@link ICommand#isDeveloperCommand()}) or hidden ({@link ICommand#isHidden()}) commands
+	 */
+	public List<ICommand> getAllCommands() {
+		return this.getAllCommands(false, false);
+	}
+	
+	/**
+	 * @param includeDeveloper whether or not commands that match {@link ICommand#isDeveloperCommand()} should be returned
+	 * @param includeHidden whether or not commands that match {@link ICommand#isHidden()} should be returned
+	 * 
+	 * @return a list of all registered commands
+	 */
+	public List<ICommand> getAllCommands(boolean includeDeveloper, boolean includeHidden) {
+		return this.getCommandStores().stream()
+			.map(CommandStore::getCommands)
+			.flatMap(Set::stream)
+			.map(command -> command.getAllCommandsRecursive(false))
+			.flatMap(List::stream)
+			.filter(command -> !command.isPassive())
+			.filter(command -> !(!includeDeveloper && command.isDeveloperCommand()))
+			.filter(command -> !(!includeHidden && command.isHidden()))
+			.collect(Collectors.toList());
+	}
+	
+	/**
+	 * @param event the event which will be used to verify the commands
+	 * 
+	 * @return a list of all registered commands verified ({@link ICommand#verify(MessageReceivedEvent, CommandListener)}) with the current event, 
+	 * this does not include hidden ({@link ICommand#isHidden()}) commands
+	 */
+	public List<ICommand> getAllCommands(MessageReceivedEvent event) {
+		return this.getAllCommands(event, false);
+	}
+	
+	/**
+	 * @param event the event which will be used to verify the commands
+	 * @param includeHidden whether or not commands that match {@link ICommand#isHidden()} should be returned
+	 * 
+	 * @return a list of all registered commands verified ({@link ICommand#verify(MessageReceivedEvent, CommandListener)}) with the current event
+	 */
+	public List<ICommand> getAllCommands(MessageReceivedEvent event, boolean includeHidden) {
+		return this.getCommandStores().stream()
+			.map(CommandStore::getCommands)
+			.flatMap(Set::stream)
+			.map(command -> command.getAllCommandsRecursive(false))
+			.flatMap(List::stream)
+			.filter(command -> !command.isPassive())
+			.filter(command -> !(!includeHidden && command.isHidden()))
+			.filter(command -> command.verify(event, this))
+			.collect(Collectors.toList());
 	}
 	
 	/**
@@ -292,19 +352,31 @@ public class CommandListener implements EventListener {
 	/**
 	 * See {@link #getDevelopers()}
 	 */
-	public CommandListener addDeveloper(long id) {
-		this.developers.add(id);
+	public CommandListener addDevelopers(long... ids) {
+		for(long id : ids) {
+			this.developers.add(id);
+		}
 		
 		return this;
+	}
+	
+	public CommandListener addDeveloper(long id) {
+		return this.addDevelopers(id);
 	}
 	
 	/**
 	 * See {@link #getDevelopers()}
 	 */
-	public CommandListener removeDeveloper(long id) {
-		this.developers.remove(id);
+	public CommandListener removeDevelopers(long... ids) {
+		for(long id : ids) {
+			this.developers.remove(id);
+		}
 		
 		return this;
+	}
+	
+	public CommandListener removeDeveloper(long id) {
+		return this.removeDevelopers(id);
 	}
 	
 	/**
@@ -384,7 +456,6 @@ public class CommandListener implements EventListener {
 		return this.helpEnabled;
 	}
 	
-	
 	/**
 	 * @param consumer
 	 * The function which will be called when the command failed due to missing permission 
@@ -438,6 +509,19 @@ public class CommandListener implements EventListener {
 	 */
 	public CommandListener setCooldownFunction(BiConsumer<CommandEvent, ICooldown> consumer) {
 		this.cooldownFunction = consumer;
+		
+		return this;
+	}
+	
+	/**
+	 * @param consumer
+	 * The function which will be called if a command is NSFW and the channel which it was triggered in is not an NSFW channel
+	 * </br></br>
+	 * <b>Parameter type definitions:</b>
+	 * </br><b>CommandEvent</b> - The command which was triggered's event
+	 */
+	public CommandListener setNSFWFunction(Consumer<CommandEvent> consumer) {
+		this.nsfwFunction = consumer;
 		
 		return this;
 	}
@@ -610,7 +694,7 @@ public class CommandListener implements EventListener {
 			List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
 				.map(CommandStore::getCommands)
 				.flatMap(Set::stream)
-				.map(command -> command.getAllCommandsRecursive(event, ""))
+				.map(command -> command.getAllCommandsRecursiveWithTriggers(event, ""))
 				.flatMap(List::stream)
 				.filter(pair -> pair.getRight().verify(event, this))
 				.filter(pair -> !pair.getRight().isPassive())
@@ -889,6 +973,11 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
+	/** Method used to convert a command to a map, for instance 
+	 * </br><b>color=#00FFFF name="a cyan role" permissions=8</b>
+	 * </br>would be parsed to a map with all the values, like this
+	 * </br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
+	 */
 	/* This should probably be re-worked */
 	private Map<String, String> asMap(String command) {
 		Map<String, String> map = new HashMap<>();
@@ -977,6 +1066,14 @@ public class CommandListener implements EventListener {
 						return;
 					}
 				}
+				
+				if(actualCommand.isNSFW() && !event.getTextChannel().isNSFW()) {
+					if(this.nsfwFunction != null) {
+						this.nsfwFunction.accept(commandEvent);
+					}
+					
+					return;
+				}
 			}
 			
 			try {
@@ -1020,7 +1117,30 @@ public class CommandListener implements EventListener {
 						return;
 					}
 				}else{
+					/* Additional features surrounding this will come in the future */
+					for(Function<CommandEvent, Object> function : command.getBeforeExecuteFunctions()) {
+						try {
+							function.apply(commandEvent);
+						}catch(CancelException e) {
+							if(command.getCooldownDuration() > 0) {
+								this.cooldownManager.removeCooldown(actualCommand, event);
+							}
+							
+							return;
+						}catch(Exception e) {
+							e.printStackTrace();
+						}
+					}
+					
 					command.execute(event, commandEvent, arguments);
+					
+					for(Function<CommandEvent, Object> function : command.getAfterExecuteFunctions()) {
+						try {
+							function.apply(commandEvent);
+						}catch(Exception e) {
+							e.printStackTrace();
+						}
+					}
 				}
 				
 				for(CommandEventListener listener : this.commandEventListeners) {

@@ -1,5 +1,6 @@
 package com.jockie.bot.core.command;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -78,10 +79,13 @@ public interface ICommand {
 	public IOption[] getOptions();
 	
 	/**
-	 * The {@link InvalidOptionPolicy} is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
+	 * @return a {@link InvalidOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
 	 */
 	public InvalidOptionPolicy getInvalidOptionPolicy();
 	
+	/**
+	 * This is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
+	 */
 	public enum InvalidOptionPolicy {
 		/** Adds the option which can then be accessed through {@link CommandEvent#getOptionsPresent()}  */
 		ADD,
@@ -94,10 +98,13 @@ public interface ICommand {
 	}
 	
 	/**
-	 * The {@link ContentOverflowPolicy} is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
+	 * @return a {@link ContentOverflowPolicy} which is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
 	 */
 	public ContentOverflowPolicy getContentOverflowPolicy();
 	
+	/**
+	 * This is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
+	 */
 	public enum ContentOverflowPolicy {
 		IGNORE,
 		FAIL;
@@ -152,8 +159,17 @@ public interface ICommand {
 	 */
 	public boolean isExecuteAsync();
 	
+	/**
+	 * @return the parent of this command, a parent is used to get the full trigger for this command, 
+	 * for instance if the parent's command trigger was "mute" and this command's trigger was "all" the whole trigger would be "mute all"
+	 */
 	public ICommand getParent();
 	
+	/**
+	 * @return a boolean that will tell whether or not this command has a parent
+	 * 
+	 * @see ICommand#getParent()
+	 */
 	public default boolean hasParent() {
 		return this.getParent() != null;
 	}
@@ -164,6 +180,11 @@ public interface ICommand {
 	 * @return a boolean to prove whether this command is passive or not, a passive command will not have any executable method and might for instance only have sub-commands.
 	 */
 	public boolean isPassive();
+	
+	/**
+	 * @return a boolean to prove whether this command is NSFW or not, NSFW commands will not be usable in non-NSFW channels
+	 */
+	public boolean isNSFW();
 	
 	/**
 	 * @return all sub-commands for this command
@@ -187,7 +208,52 @@ public interface ICommand {
 	 */
 	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Throwable;
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursive(MessageReceivedEvent event, String prefix);
+	/**
+	 * @param event the context
+	 * @param prefix the start of the trigger, used for recursively getting sub-commands
+	 * 
+	 * @return all commands which are related to this command, sub-commands and dummy commands as well as all the aliases, with the appropriate triggers
+	 */
+	
+	/* Including a default implementation in-case people wants to make their own ICommand implementation */
+	public default List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
+		List<Pair<String, ICommand>> commands = new ArrayList<>();
+		
+		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
+		
+		String[] aliases = this.getAliases();
+		for(String alias : aliases) {
+			commands.add(Pair.of((prefix + " " + alias).trim(), this));
+		}
+		
+		for(ICommand command : this.getSubCommands()) {
+			commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + this.getCommand()).trim()));
+			
+			for(String alias : aliases) {
+				commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + alias).trim()));
+			}
+		}
+		
+		return commands;
+	}
+	
+	/** 
+	 * @param includeDummyCommands whether or not {@link com.jockie.bot.core.command.impl.DummyCommand DummyCommand}s should be included
+	 * 
+	 * @return all commands which are related to this command, sub-commands and optional dummy commands
+	 */
+	
+	/* Including a default implementation in-case people wants to make their own ICommand implementation */
+	/* Not sure if the includeDummyCommands variable should exist or not, it is more or less an internal thing and is not really supposed to be used */
+	public default List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
+		List<ICommand> commands = new ArrayList<>();
+		
+		for(ICommand command : this.getSubCommands()) {
+			commands.addAll(command.getAllCommandsRecursive(includeDummyCommands));
+		}
+		
+		return commands;
+	}
 	
 	/**
 	 * @return information about the arguments
@@ -236,6 +302,11 @@ public interface ICommand {
 		return builder.toString();
 	}
 	
+	/**
+	 * @return full usage information about the command but without a prefix
+	 * 
+	 * @see ICommand#getUsage(String)
+	 */
 	public default String getUsage() {
 		return this.getUsage("");
 	}
