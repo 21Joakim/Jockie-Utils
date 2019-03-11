@@ -18,7 +18,6 @@ public class ModuleMath {
 	@Initialize(all=true)
 	public void init(CommandImpl command) {
 		command.setCategory(Categories.MATH);
-		command.setAllowedArgumentParsingTypes(ArgumentParsingType.POSITIONAL);
 	}
 	
 	@Command(description="Multiply two numbers")
