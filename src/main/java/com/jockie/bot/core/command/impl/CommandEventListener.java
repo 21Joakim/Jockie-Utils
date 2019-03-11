@@ -9,11 +9,17 @@ import net.dv8tion.jda.core.exceptions.PermissionException;
 public class CommandEventListener {
 	
 	/** This will be sent after the command has been called. Depending on how the executed command is made, async or blocking, the command might not have finished executed when this is called */
-	public void onCommandExecuted(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent) {}
+	public void onCommandExecuted(ICommand command, CommandEvent event) {}
 	
 	/** This will be sent after an exception passed by uncaught */
-	public void onCommandExecutionException(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, Throwable e) {}
+	public void onCommandExecutionException(ICommand command, CommandEvent event, Throwable e) {}
 	
-	public void onCommandMissingPermissions(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, PermissionException e) {}
+	public void onCommandMissingPermissions(ICommand command, CommandEvent event, PermissionException e) {}
+	
+	/** This will be sent if a message starts with a registered prefix, this is triggered no matter if a command was triggered or not */
+	public void onPrefixedMessage(MessageReceivedEvent event, String prefix) {}
+	
+	/** This will be sent if a message starts with a registered prefix and passed by without any matches */
+	public void onUnknownCommand(MessageReceivedEvent event, String prefix) {}
 	
 }

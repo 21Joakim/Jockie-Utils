@@ -3,7 +3,6 @@ package com.jockie.bot.core.command.impl;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
@@ -20,6 +20,7 @@ import com.google.common.reflect.ClassPath.ClassInfo;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.Initialize;
+import com.jockie.bot.core.command.impl.factory.MethodCommandFactory;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
 import com.jockie.bot.core.utility.LoaderUtility;
@@ -34,18 +35,110 @@ public class CommandStore {
 		return new CommandStore().loadFrom(packagePath, subPackages);
 	}
 	
+	private static final BiFunction<Method, Object, ? extends MethodCommand> DEFAULT_CREATE_FUNCTION = (method, module) -> {
+		return MethodCommandFactory.getDefaultFactory().create(getCommandName(method), method, module);
+	};
+	
+	private static String getCommandName(Method method) {
+		return method.getName().replace("_", " ");
+	}
+	
+	private static Method getCommandCreateMethod(Method[] methods) {
+		for(Method method : methods) {
+			if(method.getName().equals("createCommand")) {
+				if(!method.getReturnType().isAssignableFrom(MethodCommand.class)) {
+					continue;
+				}
+				
+				Class<?>[] types = method.getParameterTypes();
+				if(types.length == 1) {
+					if(types[0].isAssignableFrom(Method.class)) {
+						return method;
+					}
+				}else if(types.length == 2) {
+					if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+						return method;
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
+	
+	private static Method getOnCommandLoadMethod(Method[] methods) {
+		for(Method method : methods) {
+			if(method.getName().equals("onCommandLoad")) {
+				if(method.getParameterCount() == 1) {
+					if(method.getParameterTypes()[0].isAssignableFrom(MethodCommand.class)) {
+						return method;
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
+	
+	private static Method getOnModuleLoad(Method[] methods) {
+		for(Method method : methods) {
+			if(method.getName().equals("onModuleLoad")) {
+				if(method.getParameterCount() == 0) {
+					return method;
+				}
+			}
+		}
+		
+		return null;
+	}
+	
 	public static List<ICommand> loadModule(Object module) {
 		Objects.requireNonNull(module);
 		
 		List<ICommand> commands = new ArrayList<>();
 		Class<?> moduleClass = module.getClass();
 		
+		Method[] methods = moduleClass.getDeclaredMethods();
+		
+		Method createCommand = getCommandCreateMethod(methods);
+		Method onCommandLoadMethod = getOnCommandLoadMethod(methods);
+		Method onModuleLoad = getOnModuleLoad(methods);
+		
+		BiFunction<Method, Object, ? extends MethodCommand> createFunction;
+		if(createCommand != null) {
+			createFunction = (method, container) -> {
+				MethodCommand result = null;
+				
+				try {
+					Class<?>[] types = createCommand.getParameterTypes();
+					if(types.length == 1) {
+						if(types[0].isAssignableFrom(Method.class)) {
+							result = (MethodCommand) createCommand.invoke(container, method);
+						}
+					}else if(types.length == 2) {
+						if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+							result = (MethodCommand) createCommand.invoke(container, method, getCommandName(method));
+						}
+					}
+				}catch(InvocationTargetException | IllegalAccessException | IllegalArgumentException e) {
+					e.printStackTrace();
+				}
+				
+				if(result == null) {
+					result = DEFAULT_CREATE_FUNCTION.apply(method, container);
+				}
+				
+				return result;
+			};
+		}else{
+			createFunction = DEFAULT_CREATE_FUNCTION;
+		}
+		
 		Map<String, MethodCommand> methodCommands = new HashMap<>();
 		
-		Method[] methods = moduleClass.getDeclaredMethods();
 		for(Method method : methods) {
 			if(method.isAnnotationPresent(Command.class)) {
-				methodCommands.put(method.getName(), MethodCommand.createFrom(method.getName().replace("_", " "), method, module));
+				methodCommands.put(method.getName(), createFunction.apply(method, module));
 			}
 		}
 		
@@ -55,7 +148,7 @@ public class CommandStore {
 				if(initialize.all()) {
 					for(MethodCommand command : methodCommands.values()) {
 						try {
-							method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+							method.invoke(module, command);
 						}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							e.printStackTrace();
 						}
@@ -65,7 +158,7 @@ public class CommandStore {
 						MethodCommand command = methodCommands.get(method.getName());
 						
 						try {
-							method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+							method.invoke(module, command);
 						}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							e.printStackTrace();
 						}
@@ -77,7 +170,7 @@ public class CommandStore {
 							MethodCommand command = methodCommands.get(name);
 							
 							try {
-								method.invoke(Modifier.isStatic(method.getModifiers()) ? null : module, command);
+								method.invoke(module, command);
 							}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 								e.printStackTrace();
 							}
@@ -88,6 +181,16 @@ public class CommandStore {
 		}
 		
 		commands.addAll(methodCommands.values());
+		
+		if(onCommandLoadMethod != null) {
+			for(ICommand command : commands) {
+				try {
+					onCommandLoadMethod.invoke(module, (MethodCommand) command);
+				}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 		
 		for(Class<?> clazz : moduleClass.getClasses()) {
 			if(LoaderUtility.isDeepImplementation(clazz, ICommand.class)) {
@@ -110,6 +213,14 @@ public class CommandStore {
 				}catch(InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
 					e.printStackTrace();
 				}
+			}
+		}
+		
+		if(onModuleLoad != null) {
+			try {
+				onModuleLoad.invoke(module);
+			}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
 			}
 		}
 		

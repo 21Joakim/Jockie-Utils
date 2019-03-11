@@ -19,11 +19,7 @@ public class CommandCoinFlip extends CommandImpl {
 	}
 	
 	/* If the argument is not endless it will only take the first word as the argument */
-	public void onCommand(MessageReceivedEvent event, @Argument(name="question", endless=true) String question) {
-		if(this.random.nextBoolean()) {
-			event.getChannel().sendMessage("That is true!").queue();
-		}else{
-			event.getChannel().sendMessage("That is not true!").queue();
-		}
+	public String onCommand(MessageReceivedEvent event, @Argument(value="question", endless=true) String question) {
+		return "That is " + (this.random.nextBoolean() ? " true!" : " not true!");
 	}
 }

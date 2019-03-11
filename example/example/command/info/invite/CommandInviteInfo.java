@@ -2,12 +2,13 @@ package example.command.info.invite;
 
 import java.util.stream.Collectors;
 
+import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Invite;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandInviteInfo extends CommandImpl {
 
@@ -15,7 +16,7 @@ public class CommandInviteInfo extends CommandImpl {
 		super("invite info");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, String code) {
+	public void onCommand(CommandEvent event, @Argument("code") String code) {
 		event.getGuild().getInvites().queue(invites -> {
 			invites = invites.stream().filter(invite -> invite.getCode().equalsIgnoreCase(code)).collect(Collectors.toList());
 			
@@ -51,7 +52,7 @@ public class CommandInviteInfo extends CommandImpl {
 			builder.addField("Created", Main.FORMATTER.format(invite.getCreationTime()), true);
 			builder.addBlankField(true);
 			
-			event.getChannel().sendMessage(builder.build()).queue();
+			event.reply(builder.build()).queue();
 		});
 	}
 }

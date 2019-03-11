@@ -3,13 +3,14 @@ package example.command.info.channel;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Invite;
 import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandTextChannelInfo extends CommandImpl {
 
@@ -17,7 +18,7 @@ public class CommandTextChannelInfo extends CommandImpl {
 		super("info");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, TextChannel channel) {
+	public void onCommand(CommandEvent event, @Argument("channel") TextChannel channel) {
 		channel.getInvites().queue(i -> {
 			List<Invite> invites = i.stream().sorted((a, b) -> b.getUses() - a.getUses()).collect(Collectors.toList());
 			
@@ -48,7 +49,7 @@ public class CommandTextChannelInfo extends CommandImpl {
 				
 				builder.addField("Topic", channel.getTopic().length() > 0 ? channel.getTopic() : "None", false);
 				
-				event.getChannel().sendMessage(builder.build()).queue();
+				event.reply(builder.build()).queue();
 			});
 		});
 	}

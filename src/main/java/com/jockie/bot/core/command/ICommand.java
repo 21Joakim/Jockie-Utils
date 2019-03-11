@@ -2,7 +2,6 @@ package com.jockie.bot.core.command;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
@@ -13,6 +12,7 @@ import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.Permission;
+import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
@@ -64,16 +64,6 @@ public interface ICommand {
 	public String[] getAliases();
 	
 	/**
-	 * @return a list of functions which will be executed before the actual command is
-	 */
-	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions();
-	
-	/**
-	 * @return a list of functions which will be executed after the actual command has been executed
-	 */
-	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions();
-	
-	/**
 	 * @return all options for this command
 	 */
 	public IOption[] getOptions();
@@ -111,14 +101,30 @@ public interface ICommand {
 	}
 	
 	/**
+	 * @return an array of {@link ArgumentParsingType}s which is used to determine how the arguments are allowed to be defined
+	 */
+	public ArgumentParsingType[] getAllowedArgumentParsingTypes();
+	
+	public enum ArgumentParsingType {
+		/** Positional arguments are arguments which are not specified by key=value but rather the order/index they are in, for instance
+		 * <b>!create role hello 8</b> where "hello" is the role name and "8" is the raw Discord permissions
+		 */
+		POSITIONAL,
+		/** Named arguments are arguments which are not specified by their order/index but rather key=value, for instance 
+		 * <b>!create role name=hello permissions=8</b>
+		 */
+		NAMED;
+	}
+	
+	/**
 	 * @return the discord permissions required for this command to function correctly.
 	 */
-	public Permission[] getBotDiscordPermissionsNeeded();
+	public Permission[] getBotDiscordPermissions();
 	
 	/**
 	 * @return the discord permissions the author is required to have to trigger this command, if the user does not have these permissions the command will not be visible to them.
 	 */
-	public Permission[] getAuthorDiscordPermissionsNeeded();
+	public Permission[] getAuthorDiscordPermissions();
 	
 	/**
 	 * @return a boolean that will prove if this command is a <strong>developer</strong> command, if it is a developer command it can only be triggered by developers/authorised users
@@ -160,6 +166,11 @@ public interface ICommand {
 	public boolean isExecuteAsync();
 	
 	/**
+	 * @return a possibly-null object that will determine what order asynchronous commands should be executed in
+	 */
+	public Object getAsyncOrderingKey(CommandEvent event);
+	
+	/**
 	 * @return the parent of this command, a parent is used to get the full trigger for this command, 
 	 * for instance if the parent's command trigger was "mute" and this command's trigger was "all" the whole trigger would be "mute all"
 	 */
@@ -198,7 +209,29 @@ public interface ICommand {
 	 */
 	
 	/* Should this be renamed to something else, such as isAccessible? Since it checks whether the user has access to the command or not, maybe canAccess? */
-	public boolean verify(MessageReceivedEvent event, CommandListener commandListener);
+	public default boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
+		if(event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
+			return false;
+		}
+		
+		if(!this.isBotTriggerable() && event.getAuthor().isBot()) {
+			return false;
+		}
+		
+		if(!this.isGuildTriggerable() && event.getChannelType().isGuild()) {
+			return false;
+		}
+		
+		if(!this.isPrivateTriggerable() && event.getChannelType().equals(ChannelType.PRIVATE)) {
+			return false;
+		}
+		
+		if(this.isDeveloperCommand() && !commandListener.isDeveloper(event.getAuthor().getIdLong())) {
+			return false;
+		}
+		
+		return true;
+	}
 	
 	/**
 	 * This is what should be executed when this command is considered to be valid.
@@ -206,7 +239,7 @@ public interface ICommand {
 	 * @param event the event which triggered the command.
 	 * @param arguments the arguments which triggered the command.
 	 */
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Throwable;
+	public void execute(CommandEvent event, Object... arguments) throws Throwable;
 	
 	/**
 	 * @param event the context

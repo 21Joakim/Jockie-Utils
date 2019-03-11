@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,6 +23,7 @@ import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.VerifiedArgument;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.exception.CancelException;
@@ -39,10 +41,10 @@ import com.jockie.bot.core.utility.TriFunction;
 
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
-import net.dv8tion.jda.core.MessageBuilder.Formatting;
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.MessageChannel;
+import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.Event;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.exceptions.PermissionException;
@@ -53,7 +55,7 @@ import net.dv8tion.jda.core.utils.tuple.Pair;
 public class CommandListener implements EventListener {
 	
 	/* More specific goes first */
-	private static final Comparator<Pair<String, ICommand>> COMMAND_COMPARATOR = new Comparator<Pair<String, ICommand>>() {
+	protected static final Comparator<Pair<String, ICommand>> COMMAND_COMPARATOR = new Comparator<Pair<String, ICommand>>() {
 		public int compare(Pair<String, ICommand> pair, Pair<String, ICommand> pair2) {
 			ICommand command = pair.getRight(), command2 = pair2.getRight();
 			
@@ -130,13 +132,15 @@ public class CommandListener implements EventListener {
 		}
 	};
 	
-	private String[] defaultPrefixes = {"!"};
+	protected String[] defaultPrefixes = {"!"};
 	
-	private Function<MessageReceivedEvent, String[]> prefixFunction;
+	protected Function<MessageReceivedEvent, String[]> prefixFunction;
 	
-	private TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> helperFunction;
+	protected TriFunction<MessageReceivedEvent, String, List<Failure>, MessageBuilder> helperFunction;
 	
-	private boolean helpEnabled = true;
+	protected boolean helpEnabled = true;
+	
+	protected boolean allowMentionPrefix = true;
 	
 	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_PERMISSION_FUNCTION = (event, permissions) -> {
 		StringBuilder missingPermissions = new StringBuilder();
@@ -189,33 +193,34 @@ public class CommandListener implements EventListener {
 		event.reply(message).queue();
 	};
 	
-	private BiConsumer<CommandEvent, Permission> missingPermissionExceptionFunction = DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION;
-	private BiConsumer<CommandEvent, List<Permission>> missingPermissionFunction = DEFAULT_MISSING_PERMISSION_FUNCTION;
-	private BiConsumer<CommandEvent, List<Permission>> missingAuthorPermissionFunction = DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION;
+	protected BiConsumer<CommandEvent, Permission> missingPermissionExceptionFunction = DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION;
+	protected BiConsumer<CommandEvent, List<Permission>> missingPermissionFunction = DEFAULT_MISSING_PERMISSION_FUNCTION;
+	protected BiConsumer<CommandEvent, List<Permission>> missingAuthorPermissionFunction = DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION;
 	
 	public static final BiConsumer<CommandEvent, ICooldown> DEFAULT_COOLDOWN_FUNCTION = (event, cooldown) -> {
 		event.reply("Slow down, try again in " + ((double) cooldown.getTimeRemainingMillis()/1000) + " seconds").queue();
 	};
 	
-	private BiConsumer<CommandEvent, ICooldown> cooldownFunction = DEFAULT_COOLDOWN_FUNCTION;
+	protected BiConsumer<CommandEvent, ICooldown> cooldownFunction = DEFAULT_COOLDOWN_FUNCTION;
 	
 	public static final Consumer<CommandEvent> DEFAULT_NSFW_FUNCTION = (event) -> {
 		event.reply("NSFW commands are not allowed in non-NSFW channels!").queue();
 	};
 	
-	private Consumer<CommandEvent> nsfwFunction = DEFAULT_NSFW_FUNCTION;
+	protected Consumer<CommandEvent> nsfwFunction = DEFAULT_NSFW_FUNCTION;
 	
-	private Set<Long> developers = new HashSet<>();
+	protected Set<Long> developers = new HashSet<>();
 	
-	private List<CommandStore> commandStores = new ArrayList<>();
+	protected List<CommandStore> commandStores = new ArrayList<>();
 	
-	private List<CommandEventListener> commandEventListeners = new ArrayList<>();
+	protected List<CommandEventListener> commandEventListeners = new ArrayList<>();
 	
-	private ExecutorService commandExecutor = Executors.newCachedThreadPool();
+	protected ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
-	private ICooldownManager cooldownManager = new CooldownManager();
+	protected ICooldownManager cooldownManager = new CooldownManager();
 	
-	private List<Predicate<MessageReceivedEvent>> preParseChecks = new ArrayList<>();
+	protected List<Predicate<MessageReceivedEvent>> preParseChecks = new ArrayList<>();
+	protected List<BiPredicate<ICommand, CommandEvent>> preExecuteChecks = new ArrayList<>();
 	
 	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
 		for(CommandEventListener commandEventListener : commandEventListeners) {
@@ -350,6 +355,26 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
+	 * This is true by default and should most of the times be enabled as it is a pretty good thing to have, a bot's tag is defined as <@{@link User#getId()}>
+	 * 
+	 * @param allowMentionPrefix a boolean that will determine whether or not the bot's tag can be used as a prefix
+	 * 
+	 * @return the object which this was invoked on
+	 */
+	public CommandListener setAllowMentionPrefix(boolean allowMentionPrefix) {
+		this.allowMentionPrefix = allowMentionPrefix;
+		
+		return this;
+	}
+	
+	/**
+	 * @return a boolean that determines whether or not the bot's tag can be used as a prefix
+	 */
+	public boolean isAllowMentionPrefix() {
+		return this.allowMentionPrefix;
+	}
+	
+	/**
 	 * See {@link #getDevelopers()}
 	 */
 	public CommandListener addDevelopers(long... ids) {
@@ -473,7 +498,7 @@ public class CommandListener implements EventListener {
 	
 	/**
 	 * @param consumer
-	 * The function which will be called when the bot does not have the required permissions to execute the command, gotten from {@link ICommand#getBotDiscordPermissionsNeeded()}
+	 * The function which will be called when the bot does not have the required permissions to execute the command, gotten from {@link ICommand#getBotDiscordPermissions()}
 	 * </br></br>
 	 * <b>Parameter type definitions:</b>
 	 * </br><b>CommandEvent</b> - The command which was triggered's event
@@ -487,7 +512,7 @@ public class CommandListener implements EventListener {
 	
 	/**
 	 * @param consumer
-	 * The function which will be called when the author does not have the required permissions to execute the command, gotten from {@link ICommand#getAuthorDiscordPermissionsNeeded()}
+	 * The function which will be called when the author does not have the required permissions to execute the command, gotten from {@link ICommand#getAuthorDiscordPermissions()}
 	 * </br></br>
 	 * <b>Parameter type definitions:</b>
 	 * </br><b>CommandEvent</b> - The command which was triggered's event
@@ -620,6 +645,29 @@ public class CommandListener implements EventListener {
 		return Collections.unmodifiableList(this.preParseChecks);
 	}
 	
+	/**
+	 * Adds a pre command execution check which will determine whether or not the command should be executed, this could be useful if you for instance have disabled commands
+	 * </br></br>
+	 * This is checked before anything else in {@link CommandListener#execute(ICommand, CommandEvent, long, Object...)}, such as permission and cooldown checks
+	 */
+	public CommandListener addPreExecuteCheck(BiPredicate<ICommand, CommandEvent> predicate) {
+		Checks.notNull(predicate, "Predicate");
+		
+		this.preExecuteChecks.add(predicate);
+		
+		return this;
+	}
+	
+	public CommandListener removePreExecuteCheck(BiPredicate<ICommand, CommandEvent> predicate) {
+		this.preExecuteChecks.remove(predicate);
+		
+		return this;
+	}
+	
+	public List<BiPredicate<ICommand, CommandEvent>> getPreExecuteChecks() {
+		return Collections.unmodifiableList(this.preExecuteChecks);
+	}
+	
 	public void onEvent(Event event) {
 		if(event instanceof MessageReceivedEvent) {
 			this.onMessageReceived((MessageReceivedEvent) event);
@@ -646,36 +694,16 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
-	/* Would it be possible to split this event in to different steps, opinions? */
-	public void onMessageReceived(MessageReceivedEvent event) {
-		for(Predicate<MessageReceivedEvent> predicate : this.preParseChecks) {
-			try {
-				if(!predicate.test(event)) {
-					return;
-				}
-			}catch(Exception e) {}
-		}
-		
-		String[] prefixes = this.getPrefixes(event);
-		
-		String message = event.getMessage().getContentRaw(), prefix = null;
+	protected String extractPrefix(MessageReceivedEvent event) {
+		String message = event.getMessage().getContentRaw();
+		String prefix = null;
 		
 		/* Needs to work for both non-nicked mention and nicked mention */
-		if(message.startsWith("<@" + event.getJDA().getSelfUser().getId() + "> ") || message.startsWith("<@!" + event.getJDA().getSelfUser().getId() + "> ")) {
-			/* I want every bot to have this feature therefore it will be a hard coded one, arguments against it? */
+		long botId = event.getJDA().getSelfUser().getIdLong();
+		if(this.allowMentionPrefix && (message.startsWith("<@" + botId + "> ") || message.startsWith("<@!" + botId + "> "))) {
 			prefix = message.substring(0, message.indexOf(" ") + 1);
-			
-			if(message.equals(prefix + "prefix") || message.equals(prefix + "prefixes")) {
-				event.getChannel().sendMessage(new MessageBuilder()
-					.append("My prefix")
-					.append(prefixes.length > 1 ? "es are " : " is ")
-					.append(String.join(", ", prefixes), Formatting.BOLD)
-					.build()).queue();
-				
-				return;
-			}
 		}else{
-			for(String p : prefixes) {
+			for(String p : this.getPrefixes(event)) {
 				if(message.startsWith(p)) {
 					prefix = p;
 					
@@ -684,143 +712,185 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
-		if(prefix != null) {
-			long commandStarted = System.nanoTime();
+		return prefix;
+	}
+	
+	protected Map<Object, Object> orderingKeys = new HashMap<Object, Object>();
+	
+	/* Would it be possible to split this event in to different steps, opinions? */
+	protected void onMessageReceived(MessageReceivedEvent event) {
+		long timeStarted = System.nanoTime();
+		
+		for(Predicate<MessageReceivedEvent> predicate : this.preParseChecks) {
+			try {
+				if(!predicate.test(event)) {
+					return;
+				}
+			}catch(Exception e) {}
+		}
+		
+		String message = event.getMessage().getContentRaw();
+		
+		String prefix = this.extractPrefix(event);
+		if(prefix == null) {
+			return;
+		}
+		
+		for(CommandEventListener listener : this.commandEventListeners) {
+			try {
+				listener.onPrefixedMessage(event, prefix);
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		message = message.substring(prefix.length());
+		
+		List<Failure> possibleCommands = new ArrayList<>();
+		
+		List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
+			.map(CommandStore::getCommands)
+			.flatMap(Set::stream)
+			.map(command -> command.getAllCommandsRecursiveWithTriggers(event, ""))
+			.flatMap(List::stream)
+			.filter(pair -> pair.getRight().verify(event, this))
+			.filter(pair -> !pair.getRight().isPassive())
+			.sorted(CommandListener.COMMAND_COMPARATOR)
+			.collect(Collectors.toList());
+		
+		COMMANDS:
+		for(Pair<String, ICommand> pair : commands) {
+			ICommand command = pair.getRight();
 			
-			message = message.substring(prefix.length());
+			String msg = message, cmd = pair.getLeft();
 			
-			List<Failure> possibleCommands = new ArrayList<>();
+			if(!command.isCaseSensitive()) {
+				msg = msg.toLowerCase();
+				cmd = cmd.toLowerCase();
+			}
 			
-			List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
-				.map(CommandStore::getCommands)
-				.flatMap(Set::stream)
-				.map(command -> command.getAllCommandsRecursiveWithTriggers(event, ""))
-				.flatMap(List::stream)
-				.filter(pair -> pair.getRight().verify(event, this))
-				.filter(pair -> !pair.getRight().isPassive())
-				.sorted(CommandListener.COMMAND_COMPARATOR)
-				.collect(Collectors.toList());
+			if(!msg.startsWith(cmd)) {
+				continue COMMANDS;
+			}
 			
-			COMMANDS :
-			for(Pair<String, ICommand> pair : commands) {
-				ICommand command = pair.getRight();
-				
-				String msg = message, cmd = pair.getLeft();
-				
-				if(!command.isCaseSensitive()) {
-					msg = msg.toLowerCase();
-					cmd = cmd.toLowerCase();
+			msg = message.substring(cmd.length());
+			
+			/* Happens if the command for instance would be "ping" and the content is "pingasd"*/
+			if(msg.length() > 0 && msg.charAt(0) != ' ') {
+				continue COMMANDS;
+			}
+			
+			int argumentCount = 0;
+			
+			Object[] arguments = new Object[command.getArguments().length];
+			
+			IArgument<?>[] args = command.getArguments();
+			
+			boolean developer = this.isDeveloper(event.getAuthor().getIdLong());
+			
+			/* Creates a map of all the options which can be used by this user */
+			Map<String, IOption> optionMap = new HashMap<>();
+			for(IOption option : command.getOptions()) {
+				if(option.isDeveloper() && !developer) {
+					continue;
 				}
 				
-				if(!msg.startsWith(cmd)) {
-					continue COMMANDS;
+				optionMap.put(option.getName(), option);
+				for(String alias : option.getAliases()) {
+					optionMap.put(alias, option);
 				}
-				
-				msg = message.substring(cmd.length());
-				
-				if(msg.length() > 0 && msg.charAt(0) != ' ') {
-					/* Can it even get to this? */
+			}
+			
+			/* Pre-processing */
+			StringBuilder builder = new StringBuilder();
+			
+			List<String> options = new ArrayList<>();
+			for(int i = 0; i < msg.length(); i++) {
+				if(msg.startsWith(" --", i) && msg.length() - i > 3 && msg.charAt(i + 3) != ' ') {
+					String optionStr = msg.substring(i + 1);
+					optionStr = optionStr.substring(2, (optionStr.contains(" ")) ? optionStr.indexOf(" ") : optionStr.length()).toLowerCase();
 					
-					continue COMMANDS;
-				}
-				
-				int argumentCount = 0;
-				
-				Object[] arguments = new Object[command.getArguments().length];
-				
-				IArgument<?>[] args = command.getArguments();
-				
-				boolean developer = this.isDeveloper(event.getAuthor().getIdLong());
-				
-				/* Creates a map of all the options which can be used by this user */
-				Map<String, IOption> optionMap = new HashMap<>();
-				for(IOption option : command.getOptions()) {
-					if(option.isDeveloperOption() && !developer) {
+					IOption option = optionMap.get(optionStr);
+					if(option != null) {
+						options.add(optionStr);
+						
+						i += (optionStr.length() + 2);
+						
 						continue;
-					}
-						
-					optionMap.put(option.getName(), option);
-					for(String alias : option.getAliases()) {
-						optionMap.put(alias, option);
-					}
-				}
-				
-				/* Pre-processing */
-				StringBuilder builder = new StringBuilder();
-				
-				List<String> options = new ArrayList<>();
-				for(int i = 0; i < msg.length(); i++) {
-					if(msg.charAt(i) == ' ' && msg.length() - i > 3 && (msg.charAt(i + 1) == '-' && msg.charAt(i + 2) == '-') && msg.charAt(i + 3) != ' ') {
-						String optionStr = msg.substring(i + 1);
-						optionStr = optionStr.substring(2, (optionStr.contains(" ")) ? optionStr.indexOf(" ") : optionStr.length()).toLowerCase();
-						
-						IOption option = optionMap.get(optionStr);
-						if(option != null) {
+					}else{
+						InvalidOptionPolicy optionPolicy = command.getInvalidOptionPolicy();
+						if(optionPolicy.equals(InvalidOptionPolicy.ADD)) {
 							options.add(optionStr);
 							
 							i += (optionStr.length() + 2);
 							
 							continue;
-						}else{
-							if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.ADD)) {
-								options.add(optionStr);
-								
-								i += (optionStr.length() + 2);
-								
-								continue;
-							}else if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.IGNORE)) {
-								i += (optionStr.length() + 2);
-								
-								continue;
-							}else if(command.getInvalidOptionPolicy().equals(InvalidOptionPolicy.FAIL)) {
-								/* The specified option does not exist */
-								possibleCommands.add(new Failure(command, new UnknownOptionException(optionStr)));
-								
-								continue COMMANDS;
-							}
-						}
-					}
-					
-					builder.append(msg.charAt(i));
-				}
-				
-				msg = builder.toString();
-				/* End pre-processing */
-				
-				/* Handle command as key-value */
-				Map<String, String> map = this.asMap(msg);
-				
-				if(map != null) {
-					for(int i = 0; i < args.length; i++) {
-						IArgument<?> argument = args[i];
-						if(map.containsKey(argument.getName())) {
-							String value = map.get(argument.getName());
+						}else if(optionPolicy.equals(InvalidOptionPolicy.IGNORE)) {
+							i += (optionStr.length() + 2);
 							
-							VerifiedArgument<?> verified = argument.verify(event, value);
-							switch(verified.getVerifiedType()) {
-								case INVALID: {
-									/* The content does not make for a valid argument */
-									possibleCommands.add(new Failure(command, new ArgumentParseException(argument, value)));
-									
-									continue COMMANDS;
-								}
-								case VALID:
-								case VALID_END_NOW: {
-									arguments[argumentCount++] = verified.getObject();
-									
-									break;
-								}
-							}
-							
-							arguments[i] = verified.getObject();
-						}else{
-							/* Missing argument */
-							possibleCommands.add(new Failure(command, new MissingRequiredArgumentException(argument)));
+							continue;
+						}else if(optionPolicy.equals(InvalidOptionPolicy.FAIL)) {
+							/* The specified option does not exist */
+							possibleCommands.add(new Failure(command, new UnknownOptionException(optionStr)));
 							
 							continue COMMANDS;
 						}
 					}
-				}else{
+				}
+				
+				builder.append(msg.charAt(i));
+			}
+			
+			msg = builder.toString();
+			/* End pre-processing */
+			
+			ArgumentParsingType parsingType;
+			ARGUMENT_PARSING:
+			{
+				List<ArgumentParsingType> argumentParsingTypes = Arrays.asList(command.getAllowedArgumentParsingTypes());
+				
+				if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
+					/* Handle command as key-value */
+					Map<String, String> map = this.asMap(msg);
+					
+					if(map != null) {
+						for(int i = 0; i < args.length; i++) {
+							IArgument<?> argument = args[i];
+							if(map.containsKey(argument.getName())) {
+								String value = map.get(argument.getName());
+								
+								VerifiedArgument<?> verified = argument.verify(event, value);
+								switch(verified.getVerifiedType()) {
+									case INVALID: {
+										/* The content does not make for a valid argument */
+										possibleCommands.add(new Failure(command, new ArgumentParseException(argument, value)));
+										
+										continue COMMANDS;
+									}
+									case VALID:
+									case VALID_END_NOW: {
+										arguments[argumentCount++] = verified.getObject();
+										
+										break;
+									}
+								}
+								
+								arguments[i] = verified.getObject();
+							}else{
+								/* Missing argument */
+								possibleCommands.add(new Failure(command, new MissingRequiredArgumentException(argument)));
+								
+								continue COMMANDS;
+							}
+						}
+						
+						parsingType = ArgumentParsingType.NAMED;
+						
+						break ARGUMENT_PARSING;
+					}
+				}
+				
+				if(argumentParsingTypes.contains(ArgumentParsingType.POSITIONAL)) {
 					ARGUMENTS:
 					for(int i = 0; i < arguments.length; i++) {
 						if(msg.length() > 0) {
@@ -917,7 +987,7 @@ public class CommandListener implements EventListener {
 						}
 					}
 					
-					/* There is more content than the arguments handled */
+					/* There is more content than the arguments could handle */
 					if(msg.length() > 0) {
 						if(command.getContentOverflowPolicy().equals(ContentOverflowPolicy.FAIL)) {
 							possibleCommands.add(new Failure(command, new ContentOverflowException(msg)));
@@ -937,21 +1007,50 @@ public class CommandListener implements EventListener {
 						
 						continue COMMANDS;
 					}
+					
+					parsingType = ArgumentParsingType.POSITIONAL;
+					
+					break ARGUMENT_PARSING;
 				}
 				
-				CommandEvent commandEvent = new CommandEvent(event, this, command, arguments, prefix, pair.getLeft(), options);
-				if(command.isExecuteAsync()) {
-					this.commandExecutor.submit(() -> {
-						this.execute(command, event, commandEvent, commandStarted, arguments);
-					});
-				}else{
-					this.execute(command, event, commandEvent, commandStarted, arguments);
-				}
-				
-				return;
+				/* If the command for some reason does not have any allowed parsing type */
+				continue COMMANDS;
 			}
 			
-			if(this.helpEnabled && possibleCommands.size() > 0) {
+			CommandEvent commandEvent = new CommandEvent(event, this, command, arguments, prefix, pair.getLeft(), options, parsingType, msg);
+			if(command.isExecuteAsync()) {
+				this.commandExecutor.submit(() -> {
+					Object orderingKey = command.getAsyncOrderingKey(commandEvent);
+					if(orderingKey != null) {
+						if(orderingKey.getClass().isPrimitive() || orderingKey instanceof String) {
+							Object key = this.orderingKeys.get(orderingKey);
+							if(key == null) {
+								key = new Object();
+								
+								this.orderingKeys.put(orderingKey, key);
+							}
+							
+							orderingKey = key;
+						}
+						
+						/* TODO: Implement a sort of OrderedExecutor, similar to 
+						 * https://github.com/sedmelluq/lavaplayer/blob/master/main/src/main/java/com/sedmelluq/discord/lavaplayer/tools/OrderedExecutor.java 
+						 * to prevent the need of creating a new task for every command which has to wait
+						 */
+						synchronized(orderingKey) {
+							this.execute(command, commandEvent, timeStarted, arguments);
+						}
+					}
+				});
+			}else{
+				this.execute(command, commandEvent, timeStarted, arguments);
+			}
+			
+			return;
+		}
+		
+		if(possibleCommands.size() > 0) {
+			if(this.helpEnabled) {
 				if(event.getChannelType().isGuild()) {
 					Member bot = event.getGuild().getSelfMember();
 					
@@ -970,6 +1069,14 @@ public class CommandListener implements EventListener {
 				
 				event.getChannel().sendMessage(this.getHelp(event, prefix, new ArrayList<>(possibleCommands)).build()).queue();
 			}
+		}else{
+			for(CommandEventListener listener : this.commandEventListeners) {
+				try {
+					listener.onUnknownCommand(event, prefix);
+				}catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 	
@@ -979,7 +1086,7 @@ public class CommandListener implements EventListener {
 	 * </br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
 	 */
 	/* This should probably be re-worked */
-	private Map<String, String> asMap(String command) {
+	protected Map<String, String> asMap(String command) {
 		Map<String, String> map = new HashMap<>();
 		
 		String message = command;
@@ -1030,16 +1137,41 @@ public class CommandListener implements EventListener {
 		return map;
 	}
 	
-	private boolean checkPermissions(MessageReceivedEvent event, CommandEvent commandEvent, ICommand command) {
+	protected boolean canExecute(CommandEvent event, ICommand command) {
 		if(event.getChannelType().isGuild()) {
-			long neededPermissions = Permission.getRaw(command.getBotDiscordPermissionsNeeded()) | Permission.MESSAGE_WRITE.getRawValue();
-			long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+			{
+				long neededPermissions = Permission.getRaw(command.getBotDiscordPermissions()) | Permission.MESSAGE_WRITE.getRawValue();
+				long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+				
+				long permissions = (neededPermissions & ~currentPermissions);
+				
+				if(permissions != 0) {
+					if(this.missingPermissionFunction != null) {
+						this.missingPermissionFunction.accept(event, Permission.getPermissions(permissions));
+					}
+					
+					return false;
+				}
+			}
 			
-			long permissions = (neededPermissions & ~currentPermissions);
+			if(command.getAuthorDiscordPermissions().length > 0) {
+				long neededPermissions = Permission.getRaw(command.getAuthorDiscordPermissions());
+				long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+				
+				long permissions = (neededPermissions & ~currentPermissions);
+				
+				if(permissions != 0) {
+					if(this.missingAuthorPermissionFunction != null) {
+						this.missingAuthorPermissionFunction.accept(event, Permission.getPermissions(permissions));
+					}
+					
+					return false;
+				}
+			}
 			
-			if(permissions != 0) {
-				if(this.missingPermissionFunction != null) {
-					this.missingPermissionFunction.accept(commandEvent, Permission.getPermissions(permissions));
+			if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
+				if(this.nsfwFunction != null) {
+					this.nsfwFunction.accept(event);
 				}
 				
 				return false;
@@ -1049,163 +1181,101 @@ public class CommandListener implements EventListener {
 		return true;
 	}
 	
-	private void execute(ICommand command, MessageReceivedEvent event, CommandEvent commandEvent, long timeStarted, Object... arguments) {
-		if(this.checkPermissions(event, commandEvent, command)) {
-			ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
-			
-			if(event.getChannelType().isGuild()) {
-				if(actualCommand.getAuthorDiscordPermissionsNeeded().length > 0) {
-					List<Permission> permissions = Permission.getPermissions(Permission.getRaw(actualCommand.getAuthorDiscordPermissionsNeeded()) &
-						~Permission.getRaw(event.getMember().getPermissions(event.getTextChannel())));
-					
-					if(permissions.size() > 0) {
-						if(this.missingAuthorPermissionFunction != null) {
-							this.missingAuthorPermissionFunction.accept(commandEvent, permissions);
-						}
-						
-						return;
-					}
+	protected void execute(ICommand command, CommandEvent event, long timeStarted, Object... arguments) {
+		for(BiPredicate<ICommand, CommandEvent> predicate : this.preExecuteChecks) {
+			try {
+				if(!predicate.test(command, event)) {
+					return;
 				}
+			}catch(Exception e) {}
+		}
+		
+		ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
+		if(!this.canExecute(event, actualCommand)) {
+			return;
+		}
+		
+		try {
+			if(command.getCooldownDuration() > 0) {
+				ICooldown cooldown = this.cooldownManager.getCooldown(actualCommand, event.getEvent());
+				long timeRemaining = cooldown != null ? cooldown.getTimeRemainingMillis() : -1;
 				
-				if(actualCommand.isNSFW() && !event.getTextChannel().isNSFW()) {
-					if(this.nsfwFunction != null) {
-						this.nsfwFunction.accept(commandEvent);
+				if(timeRemaining > 0) {
+					if(this.cooldownFunction != null) {
+						this.cooldownFunction.accept(event, cooldown);
 					}
 					
 					return;
 				}
+				
+				/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
+				this.cooldownManager.createCooldown(actualCommand, event.getEvent());
 			}
 			
-			try {
-				if(command.getCooldownDuration() > 0) {
-					ICooldown cooldown = this.cooldownManager.getCooldown(actualCommand, event);
-					long timeRemaining = cooldown != null ? cooldown.getTimeRemainingMillis() : -1;
-					
-					if(timeRemaining <= 0) {
-						/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
-						this.cooldownManager.createCooldown(actualCommand, event);
-						
-						/* Additional features surrounding this will come in the future */
-						for(Function<CommandEvent, Object> function : command.getBeforeExecuteFunctions()) {
-							try {
-								function.apply(commandEvent);
-							}catch(CancelException e) {
-								if(command.getCooldownDuration() > 0) {
-									this.cooldownManager.removeCooldown(actualCommand, event);
-								}
-								
-								return;
-							}catch(Exception e) {
-								e.printStackTrace();
-							}
-						}
-						
-						command.execute(event, commandEvent, arguments);
-						
-						for(Function<CommandEvent, Object> function : command.getAfterExecuteFunctions()) {
-							try {
-								function.apply(commandEvent);
-							}catch(Exception e) {
-								e.printStackTrace();
-							}
-						}
-					}else{
-						if(this.cooldownFunction != null) {
-							this.cooldownFunction.accept(commandEvent, cooldown);
-						}
-						
-						return;
-					}
-				}else{
-					/* Additional features surrounding this will come in the future */
-					for(Function<CommandEvent, Object> function : command.getBeforeExecuteFunctions()) {
-						try {
-							function.apply(commandEvent);
-						}catch(CancelException e) {
-							if(command.getCooldownDuration() > 0) {
-								this.cooldownManager.removeCooldown(actualCommand, event);
-							}
-							
-							return;
-						}catch(Exception e) {
-							e.printStackTrace();
-						}
-					}
-					
-					command.execute(event, commandEvent, arguments);
-					
-					for(Function<CommandEvent, Object> function : command.getAfterExecuteFunctions()) {
-						try {
-							function.apply(commandEvent);
-						}catch(Exception e) {
-							e.printStackTrace();
-						}
-					}
+			command.execute(event, arguments);
+			
+			for(CommandEventListener listener : this.commandEventListeners) {
+				/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+				try {
+					listener.onCommandExecuted(command, event);
+				}catch(Exception e) {
+					e.printStackTrace();
 				}
+			}
+		}catch(Throwable e) {
+			if(command.getCooldownDuration() > 0) {
+				/* If the command execution fails then no cooldown should be applied */
+				this.cooldownManager.removeCooldown(actualCommand, event.getEvent());
+			}
+			
+			if(e instanceof CancelException) {
+				return;
+			}
+			
+			if(e instanceof PermissionException) {
+				System.err.println("Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
+					", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
+					", error message (" + e.getMessage() + ")");
 				
 				for(CommandEventListener listener : this.commandEventListeners) {
 					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 					try {
-						listener.onCommandExecuted(command, event, commandEvent);
-					}catch(Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}catch(Throwable e) {
-				if(command.getCooldownDuration() > 0) {
-					/* If the command execution fails then no cooldown should be applied */
-					this.cooldownManager.removeCooldown(actualCommand, event);
-				}
-				
-				if(e instanceof CancelException) {
-					return;
-				}
-				
-				if(e instanceof PermissionException) {
-					System.err.println("Attempted to execute command (" + commandEvent.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
-						", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
-						", error message (" + e.getMessage() + ")");
-					
-					for(CommandEventListener listener : this.commandEventListeners) {
-						/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
-						try {
-							listener.onCommandMissingPermissions(command, event, commandEvent, (PermissionException) e);
-						}catch(Exception e1) {
-							e1.printStackTrace();
-						}
-					}
-					
-					if(this.missingPermissionExceptionFunction != null) {
-						this.missingPermissionExceptionFunction.accept(commandEvent, ((PermissionException) e).getPermission());
-					}
-					
-					return;
-				}
-				
-				for(CommandEventListener listener : this.commandEventListeners) {
-					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
-					try {
-						listener.onCommandExecutionException(command, event, commandEvent, e);
+						listener.onCommandMissingPermissions(command, event, (PermissionException) e);
 					}catch(Exception e1) {
 						e1.printStackTrace();
 					}
 				}
 				
-				try {
-					/* This should probably be changed due to illegal access */
-					Field field = Throwable.class.getDeclaredField("detailMessage");
-					field.setAccessible(true);
-					field.set(e, "Attempted to execute command (" + commandEvent.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + " but failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
-				}catch(Exception e1) {
-					e1.printStackTrace();
+				if(this.missingPermissionExceptionFunction != null) {
+					this.missingPermissionExceptionFunction.accept(event, ((PermissionException) e).getPermission());
 				}
-				
-				e.printStackTrace();
 				
 				return;
 			}
 			
-			System.out.println("Executed command (" + commandEvent.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
+			for(CommandEventListener listener : this.commandEventListeners) {
+				/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+				try {
+					listener.onCommandExecutionException(command, event, e);
+				}catch(Exception e1) {
+					e1.printStackTrace();
+				}
+			}
+			
+			try {
+				/* This should probably be changed due to illegal access */
+				Field field = Throwable.class.getDeclaredField("detailMessage");
+				field.setAccessible(true);
+				field.set(e, "Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + " but failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
+			}catch(Exception e1) {
+				e1.printStackTrace();
+			}
+			
+			e.printStackTrace();
+			
+			return;
 		}
+		
+		System.out.println("Executed command (" + event.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
 	}
 }

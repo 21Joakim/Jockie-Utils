@@ -2,7 +2,7 @@ package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
 
-public class MissingRequiredArgumentException extends Exception {
+public class MissingRequiredArgumentException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	

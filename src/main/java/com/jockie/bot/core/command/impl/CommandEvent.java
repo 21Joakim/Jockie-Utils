@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
+import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
+import com.jockie.bot.core.command.exception.CancelException;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
@@ -15,6 +18,7 @@ import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.MessageEmbed;
+import net.dv8tion.jda.core.entities.PrivateChannel;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
@@ -22,20 +26,25 @@ import net.dv8tion.jda.core.requests.restaction.MessageAction;
 
 public class CommandEvent {
 	
-	private MessageReceivedEvent event;
-	private CommandListener commandListener;
+	protected MessageReceivedEvent event;
+	protected CommandListener commandListener;
 	
-	private ICommand command;
+	protected ICommand command;
 	
-	private Object[] arguments;
+	protected Object[] arguments;
 	
-	private String prefix;
-	private String commandTrigger;
+	protected String prefix;
+	protected String commandTrigger;
 	
-	private List<String> optionsPresent;
+	protected List<String> optionsPresent;
+	
+	protected ArgumentParsingType parsingType;
+	
+	protected String contentOverflow;
 	
 	public CommandEvent(MessageReceivedEvent event, CommandListener listener, ICommand command, 
-			Object[] arguments, String prefix, String commandTrigger, List<String> optionsPresent) {
+			Object[] arguments, String prefix, String commandTrigger, List<String> optionsPresent,
+			ArgumentParsingType parsingType, String contentOverflow) {
 		
 		this.event = event;
 		this.commandListener = listener;
@@ -48,6 +57,10 @@ public class CommandEvent {
 		this.commandTrigger = commandTrigger;
 		
 		this.optionsPresent = optionsPresent;
+		
+		this.parsingType = parsingType;
+		
+		this.contentOverflow = contentOverflow;
 	}
 	
 	/** @return the message event which triggered the command */
@@ -95,6 +108,11 @@ public class CommandEvent {
 		return this.event.getTextChannel();
 	}
 	
+	/** Equivalent to {@link MessageReceivedEvent#getPrivateChannel()} */
+	public PrivateChannel getPrivateChannel() {
+		return this.event.getPrivateChannel();
+	}
+	
 	/** Equivalent to {@link MessageReceivedEvent#getChannelType()} */
 	public ChannelType getChannelType() {
 		return this.event.getChannelType();
@@ -130,6 +148,13 @@ public class CommandEvent {
 		return this.prefix;
 	}
 	
+	/** @return true if the prefix is a mention of the current bot (<@bot_id> or <@!bot_id> bot_id being the value of {@link User#getIdLong()}) */
+	public boolean isPrefixMention() {
+		long id = this.getSelfUser().getIdLong();
+		
+		return this.prefix.equals("<@" + id + ">") || this.prefix.equals("<@!" + id + ">");
+	}
+	
 	/** @return the string which triggered the command, this could the command or an alias */
 	public String getCommandTrigger() {
 		return this.commandTrigger;
@@ -145,19 +170,34 @@ public class CommandEvent {
 		return this.optionsPresent.contains(option);
 	}
 	
+	/** @return the argument parsing type used for the parsing of this command */
+	public ArgumentParsingType getParsingType() {
+		return this.parsingType;
+	}
+	
+	/** @return the overflown content of the parsed command, this will always be empty if {@link ICommand#getContentOverflowPolicy()} is {@link ContentOverflowPolicy#FAIL} */
+	public String getContentOverflow() {
+		return this.contentOverflow;
+	}
+	
 	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
 	public MessageAction reply(CharSequence text) {
 		return this.getChannel().sendMessage(text);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
+	/** Equivalent to {@link MessageChannel#sendMessage(MessageEmbed)}, using the event's channel */
 	public MessageAction reply(MessageEmbed embed) {
 		return this.getChannel().sendMessage(embed);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
+	/** Equivalent to {@link MessageChannel#sendMessage(Message)}, using the event's channel */
 	public MessageAction reply(Message message) {
 		return this.getChannel().sendMessage(message);
+	}
+	
+	/** throws a new CancelException to cancel the execution of the current command */
+	public void cancel() {
+		throw new CancelException();
 	}
 	
 	/** Apply a cooldown to this command */

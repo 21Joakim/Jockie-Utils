@@ -1,13 +1,13 @@
 package example.command.info.emote;
 
 import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Emote;
 import net.dv8tion.jda.core.entities.MessageEmbed;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandEmoteInfo extends CommandImpl {
 
@@ -15,7 +15,7 @@ public class CommandEmoteInfo extends CommandImpl {
 		super("emote info");
 	}
 	
-	public MessageEmbed onCommand(MessageReceivedEvent event, @Argument(name="emote") Emote emote) {
+	public MessageEmbed onCommand(CommandEvent event, @Argument("emote") Emote emote) {
 		EmbedBuilder builder = new EmbedBuilder();
 		
 		builder.setThumbnail(emote.getImageUrl());

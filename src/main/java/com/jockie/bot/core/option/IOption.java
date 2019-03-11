@@ -18,7 +18,7 @@ public interface IOption {
 	/**
 	 * @return whether or not this option is limited to users who match {@link CommandListener#isDeveloper(long)}
 	 */
-	public boolean isDeveloperOption();
+	public boolean isDeveloper();
 	
 	public abstract class Builder<Type extends IOption, BuilderType extends Builder<Type, BuilderType>> {
 		
@@ -55,7 +55,7 @@ public interface IOption {
 			return this.self();
 		}
 		
-		public BuilderType setDeveloperOption(boolean developerOption) {
+		public BuilderType setDeveloper(boolean developerOption) {
 			this.developerOption = developerOption;
 			
 			return this.self();

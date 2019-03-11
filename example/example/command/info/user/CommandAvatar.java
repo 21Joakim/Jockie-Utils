@@ -1,21 +1,24 @@
 package example.command.info.user;
 
-import com.jockie.bot.core.argument.impl.ArgumentFactory;
+import java.util.Optional;
+
+import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandAvatar extends CommandImpl {
 
 	public CommandAvatar() {
-		super("avatar", ArgumentFactory.of(User.class).setName("user").setDefaultValue(event -> event.getAuthor()).build());
+		super("avatar");
 		
 		super.setDescription("Get the avatar of a user");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, User user) {
-		event.getChannel().sendMessage(new EmbedBuilder().setImage(user.getAvatarUrl()).build()).queue();
+	public MessageEmbed onCommand(CommandEvent event, @Argument("user") Optional<User> user) {
+		return new EmbedBuilder().setImage(user.orElse(event.getAuthor()).getAvatarUrl()).build();
 	}
 }

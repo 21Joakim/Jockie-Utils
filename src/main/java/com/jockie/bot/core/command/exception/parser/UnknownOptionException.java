@@ -1,6 +1,6 @@
 package com.jockie.bot.core.command.exception.parser;
 
-public class UnknownOptionException extends Exception {
+public class UnknownOptionException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	

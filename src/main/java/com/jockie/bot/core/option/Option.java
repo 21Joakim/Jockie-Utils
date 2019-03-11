@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 public @interface Option {
 	
-	public String option();
+	public String value();
 	
 	public String description() default "";
 	

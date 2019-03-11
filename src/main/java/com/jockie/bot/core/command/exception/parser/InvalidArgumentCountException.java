@@ -2,7 +2,7 @@ package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
 
-public class InvalidArgumentCountException extends Exception {
+public class InvalidArgumentCountException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	

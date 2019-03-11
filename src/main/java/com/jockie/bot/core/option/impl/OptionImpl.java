@@ -11,14 +11,14 @@ public class OptionImpl implements IOption {
 	private final String[] aliases;
 	
 	private final boolean hidden;
-	private final boolean developerOption;
+	private final boolean developer;
 	
-	private OptionImpl(String name, String description, String[] aliases, boolean hidden, boolean developerOption) {
+	private OptionImpl(String name, String description, String[] aliases, boolean hidden, boolean developer) {
 		this.name = name;
 		this.description = description;
 		this.aliases = aliases;
 		this.hidden = hidden;
-		this.developerOption = developerOption;
+		this.developer = developer;
 	}
 	
 	public String getName() {
@@ -37,8 +37,8 @@ public class OptionImpl implements IOption {
 		return this.hidden;
 	}
 	
-	public boolean isDeveloperOption() {
-		return this.developerOption;
+	public boolean isDeveloper() {
+		return this.developer;
 	}
 	
 	public static class Builder extends IOption.Builder<OptionImpl, Builder> {

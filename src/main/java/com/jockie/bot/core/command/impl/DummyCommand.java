@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.jockie.bot.core.argument.IArgument;
@@ -54,19 +53,18 @@ public class DummyCommand implements ICommand {
 		}).toArray(IArgument[]::new);
 	}
 	
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... arguments) throws Throwable {
+	public void execute(CommandEvent event, Object... arguments) throws Throwable {
 		Object[] args = new Object[this.command.getArguments().length];
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {
 			if(this.indexes.get(i) != null) {
-				args[i] = this.indexes.get(i).getDefault(commandEvent);
+				args[i] = this.indexes.get(i).getDefault(event);
 			}else{
-				args[i] = arguments[offset];
-				offset = offset + 1;
+				args[i] = arguments[offset++];
 			}
 		}
 		
-		this.command.execute(event, commandEvent, args);
+		this.command.execute(event, args);
 	}
 	
 	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
@@ -129,12 +127,12 @@ public class DummyCommand implements ICommand {
 		return this.command.getExamples();
 	}
 	
-	public Permission[] getAuthorDiscordPermissionsNeeded() {
-		return this.command.getAuthorDiscordPermissionsNeeded();
+	public Permission[] getAuthorDiscordPermissions() {
+		return this.command.getAuthorDiscordPermissions();
 	}
 	
-	public Permission[] getBotDiscordPermissionsNeeded() {
-		return this.command.getBotDiscordPermissionsNeeded();
+	public Permission[] getBotDiscordPermissions() {
+		return this.command.getBotDiscordPermissions();
 	}
 	
 	public String getCommand() {
@@ -184,12 +182,8 @@ public class DummyCommand implements ICommand {
 		return this.command.getContentOverflowPolicy();
 	}
 	
-	public List<Function<CommandEvent, Object>> getBeforeExecuteFunctions() {
-		return this.command.getBeforeExecuteFunctions();
-	}
-	
-	public List<Function<CommandEvent, Object>> getAfterExecuteFunctions() {
-		return this.command.getAfterExecuteFunctions();
+	public ArgumentParsingType[] getAllowedArgumentParsingTypes() {
+		return this.command.getAllowedArgumentParsingTypes();
 	}
 	
 	public ICategory getCategory() {
@@ -198,5 +192,9 @@ public class DummyCommand implements ICommand {
 	
 	public boolean isNSFW() {
 		return this.command.isNSFW();
+	}
+	
+	public Object getAsyncOrderingKey(CommandEvent event) {
+		return this.command.getAsyncOrderingKey(event);
 	}
 }

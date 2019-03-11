@@ -1,13 +1,13 @@
 package example.command.info.role;
 
 import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandRoleInfo extends CommandImpl {
 	
@@ -18,7 +18,7 @@ public class CommandRoleInfo extends CommandImpl {
 		super.setDescription("Get information about a role");
 	}
 	
-	public MessageEmbed onCommand(MessageReceivedEvent event, @Argument(name="Role") Role role) {
+	public MessageEmbed onCommand(CommandEvent event, @Argument("Role") Role role) {
 		EmbedBuilder builder = new EmbedBuilder();
 		
 		builder.setColor(role.getColor());
@@ -31,7 +31,7 @@ public class CommandRoleInfo extends CommandImpl {
 		builder.addField("Created", Main.FORMATTER.format(role.getCreationTime()), true);
 		builder.addBlankField(true);
 		builder.addBlankField(true);
-		
+
 		return builder.build();
 	}
 }

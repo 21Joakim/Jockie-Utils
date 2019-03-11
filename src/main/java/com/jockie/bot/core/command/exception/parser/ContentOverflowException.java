@@ -1,6 +1,6 @@
 package com.jockie.bot.core.command.exception.parser;
 
-public class ContentOverflowException extends Exception {
+public class ContentOverflowException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	

@@ -23,7 +23,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		
 		private Class<Type> clazz;
 		
-		public Builder(Class<Type> clazz) {			
+		public Builder(Class<Type> clazz) {
 			if(clazz.isPrimitive()) {
 				throw new IllegalArgumentException("Primitve types are currently not supported for endless arguments");
 			}

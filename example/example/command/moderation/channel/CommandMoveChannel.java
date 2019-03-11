@@ -1,11 +1,13 @@
 package example.command.moderation.channel;
 
+import java.util.Optional;
+
 import com.jockie.bot.core.argument.Argument;
+import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.Channel;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class CommandMoveChannel extends CommandImpl {
 
@@ -13,7 +15,8 @@ public class CommandMoveChannel extends CommandImpl {
 		super("move");
 	}
 	
-	public void onCommand(MessageReceivedEvent event, Channel channel, @Argument(name="category", nullDefault=true) Category category) {
+	public void onCommand(CommandEvent event, Channel channel, @Argument(value="category") Optional<Category> optionalCategory) {
+		Category category = optionalCategory.orElse(null);
 		Category parent = channel.getParent();
 		
 		if(parent == null || !parent.equals(category)) {

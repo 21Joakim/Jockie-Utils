@@ -14,7 +14,7 @@ import net.dv8tion.jda.core.Permission;
 @Target(ElementType.METHOD)
 public @interface Command {
 	
-	public String command() default "";
+	public String value() default "";
 	
 	public String[] aliases() default {};
 	
@@ -26,11 +26,11 @@ public @interface Command {
 	
 	public String[] examples() default {};
 	
-	public Permission[] botPermissionsNeeded() default {};
-	public Permission[] authorPermissionsNeeded() default {};
+	public Permission[] botPermissions() default {};
+	public Permission[] authorPermissions() default {};
 	
 	public boolean caseSensitive() default false;
-	public boolean developerCommand() default false;
+	public boolean developer() default false;
 	public boolean botTriggerable() default false;
 	public boolean hidden() default false;
 	
@@ -39,6 +39,7 @@ public @interface Command {
 	public Scope cooldownScope() default Scope.USER;
 	
 	public boolean async() default false;
+	public String orderingKey() default "";
 	
 	public boolean nsfw() default false;
 	

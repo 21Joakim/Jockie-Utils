@@ -1,16 +1,24 @@
 package com.jockie.bot.core.command.impl;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.BiFunction;
+import java.util.Optional;
 
 import com.jockie.bot.core.Context;
 import com.jockie.bot.core.command.Command;
+import com.jockie.bot.core.command.annotation.Async;
+import com.jockie.bot.core.command.annotation.AuthorPermissions;
+import com.jockie.bot.core.command.annotation.BotPermissions;
+import com.jockie.bot.core.command.annotation.Cooldown;
+import com.jockie.bot.core.command.annotation.Developer;
+import com.jockie.bot.core.command.annotation.Hidden;
+import com.jockie.bot.core.command.annotation.Nsfw;
 import com.jockie.bot.core.option.Option;
 
 import net.dv8tion.jda.core.entities.Message;
@@ -19,12 +27,11 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class MethodCommand extends CommandImpl {
 	
-	private Object invoker;
-	private Method method;
+	protected final Object invoker;
+	protected final Method method;
 	
-	@SuppressWarnings("unchecked")
 	public MethodCommand(String command, Method method, Object invoker) {
-		super(command, false, CommandImpl.generateDefaultArguments(Objects.requireNonNull(method)));
+		super(command, false, CommandImpl.generateArguments(Objects.requireNonNull(method)));
 		
 		this.method = method;
 		
@@ -35,26 +42,18 @@ public class MethodCommand extends CommandImpl {
 		this.invoker = invoker;
 		
 		super.setOptions(CommandImpl.generateOptions(method));
-		
-		for(Annotation annotation : method.getAnnotations()) {
-			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getBeforeExecuteFunction(annotation.annotationType());
-			
-			if(function != null) {
-				this.registerBeforeExecute(commandEvent -> {
-					return function.apply(commandEvent, annotation);
-				});
-			}
-		}
-		
-		for(Annotation annotation : method.getAnnotations()) {
-			BiFunction<CommandEvent, Annotation, Object> function = (BiFunction<CommandEvent, Annotation, Object>) CommandImpl.getAfterExecuteFunction(annotation.annotationType());
-			
-			if(function != null) {
-				this.registerAfterExecute(commandEvent -> {
-					return function.apply(commandEvent, annotation);
-				});
-			}
-		}
+	}
+	
+	public Object getCommandInvoker() {
+		return this.invoker;
+	}
+	
+	public Method getCommandImplementation() {
+		return this.method;
+	}
+	
+	public void execute(CommandEvent event, Object... args) throws Throwable {
+		MethodCommand.executeMethodCommand(this.invoker, this.method, event, args);
 	}
 	
 	public static MethodCommand createFrom(Method method, Object invoker) {
@@ -66,31 +65,91 @@ public class MethodCommand extends CommandImpl {
 		if(method.isAnnotationPresent(Command.class)) {
 			Command commandAnnotation = method.getAnnotation(Command.class);
 			
-			methodCommand = new MethodCommand(commandAnnotation.command().length() == 0 ? (name != null ? name : "") : commandAnnotation.command(), method, invoker);
-			methodCommand.setAliases(commandAnnotation.aliases());
-			methodCommand.setAuthorDiscordPermissionsNeeded(commandAnnotation.authorPermissionsNeeded());
-			methodCommand.setBotDiscordPermissionsNeeded(commandAnnotation.botPermissionsNeeded());
-			methodCommand.setBotTriggerable(commandAnnotation.botTriggerable());
-			methodCommand.setCaseSensitive(commandAnnotation.caseSensitive());
-			methodCommand.setCooldownDuration(commandAnnotation.cooldown(), commandAnnotation.cooldownUnit());
-			methodCommand.setCooldownScope(commandAnnotation.cooldownScope());
-			methodCommand.setDescription(commandAnnotation.description());
-			methodCommand.setDeveloperCommand(commandAnnotation.developerCommand());
-			methodCommand.setExecuteAsync(commandAnnotation.async());
-			methodCommand.setGuildTriggerable(commandAnnotation.guildTriggerable());
-			methodCommand.setHidden(commandAnnotation.hidden());
-			methodCommand.setPrivateTriggerable(commandAnnotation.privateTriggerable());
-			methodCommand.setShortDescription(commandAnnotation.shortDescription());
-			methodCommand.setExamples(commandAnnotation.examples());
-			methodCommand.setNSFW(commandAnnotation.nsfw());
+			methodCommand = new MethodCommand(commandAnnotation.value().length() == 0 ? (name != null ? name : "") : commandAnnotation.value(), method, invoker);
+			methodCommand = MethodCommand.applyCommandAnnotation(methodCommand, commandAnnotation);
 		}else{
 			methodCommand = new MethodCommand(name != null ? name : "", method, invoker);
 		}
 		
-		return methodCommand;
+		return MethodCommand.applyAnnotations(methodCommand, method);
 	}
 	
-	public static void executeMethodCommand(Object invoker, Method command, MessageReceivedEvent event, CommandEvent commandEvent, Object... args) throws Throwable {
+	public static <T extends CommandImpl> T applyCommandAnnotation(T command, Command annotation) {
+		command.setCooldownDuration(annotation.cooldown(), annotation.cooldownUnit());
+		command.setCooldownScope(annotation.cooldownScope());
+		
+		command.setExecuteAsync(annotation.async());
+		command.setAsyncOrderingKey(annotation.orderingKey().length() > 0 ? annotation.orderingKey() : null);
+
+		command.setHidden(annotation.hidden());
+		command.setDeveloper(annotation.developer());
+		command.setNSFW(annotation.nsfw());
+		
+		command.setAuthorDiscordPermissions(annotation.authorPermissions());
+		command.setBotDiscordPermissions(annotation.botPermissions());
+		
+		command.setDescription(annotation.description());
+		command.setShortDescription(annotation.shortDescription());
+		command.setAliases(annotation.aliases());
+		command.setExamples(annotation.examples());
+		
+		command.setBotTriggerable(annotation.botTriggerable());
+		command.setCaseSensitive(annotation.caseSensitive());
+		command.setGuildTriggerable(annotation.guildTriggerable());
+		command.setPrivateTriggerable(annotation.privateTriggerable());
+		
+		return command;
+	}
+	
+	public static <T extends CommandImpl> T applyAnnotations(T command, Method method) {
+		if(method.isAnnotationPresent(Cooldown.class)) {
+			Cooldown cooldown = method.getAnnotation(Cooldown.class);
+			
+			command.setCooldownDuration(cooldown.cooldown(), cooldown.cooldownUnit());
+			command.setCooldownScope(cooldown.cooldownScope());
+		}
+		
+		if(method.isAnnotationPresent(Async.class)) {
+			Async async = method.getAnnotation(Async.class);
+			
+			command.setExecuteAsync(async.value());
+			command.setAsyncOrderingKey(async.orderingKey().length() > 0 ? async.orderingKey() : null);
+		}
+		
+		if(method.isAnnotationPresent(Hidden.class)) {
+			Hidden hidden = method.getAnnotation(Hidden.class);
+			
+			command.setHidden(hidden.value());
+		}
+		
+		if(method.isAnnotationPresent(Developer.class)) {
+			Developer developer = method.getAnnotation(Developer.class);
+			
+			command.setDeveloper(developer.value());
+		}
+		
+		if(method.isAnnotationPresent(Nsfw.class)) {
+			Nsfw nsfw = method.getAnnotation(Nsfw.class);
+			
+			command.setNSFW(nsfw.value());
+		}
+		
+		if(method.isAnnotationPresent(AuthorPermissions.class)) {
+			AuthorPermissions authorPermissions = method.getAnnotation(AuthorPermissions.class);
+			
+			command.setAuthorDiscordPermissions(authorPermissions.value());
+		}
+		
+		if(method.isAnnotationPresent(BotPermissions.class)) {
+			BotPermissions botPermissions = method.getAnnotation(BotPermissions.class);
+			
+			command.setAuthorDiscordPermissions(botPermissions.value());
+		}
+		
+		return command;
+	}
+	
+	public static void executeMethodCommand(Object invoker, Method command, CommandEvent event, Object... args) throws Throwable {
 		int contextCount = 0;
 		for(Parameter parameter : command.getParameters()) {
 			if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class) || parameter.getType().isAssignableFrom(CommandEvent.class)) {
@@ -104,16 +163,37 @@ public class MethodCommand extends CommandImpl {
 		
 		for(int i = 0, i2 = 0; i < arguments.length; i++) {
 			Parameter parameter = command.getParameters()[i];
-			if(parameter.getType().equals(MessageReceivedEvent.class)) {
+			Class<?> type = parameter.getType();
+			
+			if(type.equals(MessageReceivedEvent.class)) {
+				arguments[i] = event.getEvent();
+			}else if(type.equals(CommandEvent.class)) {
 				arguments[i] = event;
-			}else if(parameter.getType().equals(CommandEvent.class)) {
-				arguments[i] = commandEvent;
 			}else{
-				Object context = CommandImpl.getContextVariable(event, commandEvent, args, parameter);
+				Object context = CommandImpl.getContextVariable(event, parameter);
 				if(context != null) {
 					arguments[i] = context;
 				}else{
-					arguments[i] = args[i2++];
+					Object argument = args[i2++];
+					
+					if(type.isAssignableFrom(Optional.class)) {
+						Type parameterType = command.getGenericParameterTypes()[i];
+						
+						try {
+							ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+							
+							Type[] typeArguments = parameterizedType.getActualTypeArguments();
+							if(typeArguments.length > 0) {
+								arguments[i] = Optional.ofNullable(argument);
+							}
+						}catch(Exception e) {
+							e.printStackTrace();
+						}
+					}
+					
+					if(arguments[i] == null) {
+						arguments[i] = argument;
+					}
 				}
 			}
 		}
@@ -139,7 +219,7 @@ public class MethodCommand extends CommandImpl {
 			if(e instanceof IllegalArgumentException) {
 				StringBuilder information = new StringBuilder();
 				
-				information.append("Argument type mismatch for command \"" + commandEvent.getCommandTrigger() + "\"\n");
+				information.append("Argument type mismatch for command \"" + event.getCommandTrigger() + "\"\n");
 				
 				information.append("    Arguments provided:\n");
 				for(Object argument : arguments) {
@@ -163,7 +243,7 @@ public class MethodCommand extends CommandImpl {
 				if(e instanceof InvocationTargetException) {
 					if(e instanceof Exception) {
 						try {
-							throw ((Exception) e.getCause());
+							throw e.getCause();
 						}catch(ClassCastException e2) {
 							try {
 								throw e.getCause();
@@ -177,9 +257,5 @@ public class MethodCommand extends CommandImpl {
 				throw e;
 			}
 		}
-	}
-	
-	public void execute(MessageReceivedEvent event, CommandEvent commandEvent, Object... args) throws Throwable {
-		MethodCommand.executeMethodCommand(this.invoker, this.method, event, commandEvent, args);
 	}
 }

@@ -2,7 +2,7 @@ package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
 
-public class ArgumentParseException extends Throwable {
+public class ArgumentParseException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	

@@ -1,7 +1,6 @@
 apply plugin: 'java'
-apply plugin: 'maven'
 
-version '1.14'
+version '1.20'
 
 sourceCompatibility = 1.9
 
@@ -11,5 +10,5 @@ repositories {
 
 dependencies {
 	compile 'com.google.guava:guava:25.0-jre'
-	compile 'net.dv8tion:JDA:3.8.1_448'
+	compile 'net.dv8tion:JDA:3.8.3_461'
 }
