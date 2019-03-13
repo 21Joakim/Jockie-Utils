@@ -123,6 +123,10 @@ public class DummyCommand implements ICommand {
 		return this.command.getShortDescription();
 	}
 	
+	public String getArgumentInfo() {
+		return this.command.getArgumentInfo();
+	}
+	
 	public String[] getExamples() {
 		return this.command.getExamples();
 	}

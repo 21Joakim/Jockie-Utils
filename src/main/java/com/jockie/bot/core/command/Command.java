@@ -24,6 +24,8 @@ public @interface Command {
 	public String description() default "";
 	public String shortDescription() default "";
 	
+	public String argumentInfo() default "";
+	
 	public String[] examples() default {};
 	
 	public Permission[] botPermissions() default {};

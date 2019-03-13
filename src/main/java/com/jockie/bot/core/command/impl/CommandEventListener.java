@@ -14,6 +14,7 @@ public class CommandEventListener {
 	/** This will be sent after an exception passed by uncaught */
 	public void onCommandExecutionException(ICommand command, CommandEvent event, Throwable e) {}
 	
+	/** This is only called if a PermissionException was thrown and not if it was handled correctly through getBotPermissions and getAuthorPermissions */
 	public void onCommandMissingPermissions(ICommand command, CommandEvent event, PermissionException e) {}
 	
 	/** This will be sent if a message starts with a registered prefix, this is triggered no matter if a command was triggered or not */

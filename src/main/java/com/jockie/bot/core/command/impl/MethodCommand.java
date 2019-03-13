@@ -90,6 +90,7 @@ public class MethodCommand extends CommandImpl {
 		
 		command.setDescription(annotation.description());
 		command.setShortDescription(annotation.shortDescription());
+		command.setArgumentInfo(annotation.argumentInfo());
 		command.setAliases(annotation.aliases());
 		command.setExamples(annotation.examples());
 		

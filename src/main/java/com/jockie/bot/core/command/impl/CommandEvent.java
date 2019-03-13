@@ -21,6 +21,7 @@ import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.PrivateChannel;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.core.entities.VoiceState;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.requests.restaction.MessageAction;
 
@@ -128,6 +129,16 @@ public class CommandEvent {
 		return this.event.getMessage();
 	}
 	
+	/** Equivalent to {@link Member#getVoiceState()} called on the Member that executed this 
+	 *
+	 * @return possibly-null if the event is not from a guild
+	 */
+	public VoiceState getVoiceState() {
+		Member member = this.getMember();
+		
+		return member != null ? member.getVoiceState() : null;
+	}
+	
 	/** @return the {@link CommandListener} which handled the command */
 	public CommandListener getCommandListener() {
 		return this.commandListener;
@@ -153,6 +164,11 @@ public class CommandEvent {
 		long id = this.getSelfUser().getIdLong();
 		
 		return this.prefix.equals("<@" + id + ">") || this.prefix.equals("<@!" + id + ">");
+	}
+	
+	/** @return true if the person that executed this command is a developer ({@link CommandListener#isDeveloper(long)}) */
+	public boolean isDeveloper() {
+		return this.commandListener.isDeveloper(this.event.getAuthor());
 	}
 	
 	/** @return the string which triggered the command, this could the command or an alias */

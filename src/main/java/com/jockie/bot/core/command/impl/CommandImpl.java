@@ -356,6 +356,8 @@ public class CommandImpl implements ICommand {
 	
 	protected String description, shortDescription;
 	
+	protected String argumentInfo;
+	
 	protected String[] examples = {};
 	
 	protected String[] aliases = {};
@@ -492,6 +494,14 @@ public class CommandImpl implements ICommand {
 	
 	public String getDescription() {
 		return this.description;
+	}
+	
+	public String getArgumentInfo() {
+		if(this.argumentInfo == null || this.argumentInfo.length() == 0) {
+			return ICommand.super.getArgumentInfo();
+		}
+		
+		return this.argumentInfo;
 	}
 	
 	public String[] getExamples() {
@@ -655,6 +665,12 @@ public class CommandImpl implements ICommand {
 	
 	public CommandImpl setShortDescription(String shortDescription) {
 		this.shortDescription = shortDescription;
+		
+		return this;
+	}
+	
+	public CommandImpl setArgumentInfo(String argumentInfo) {
+		this.argumentInfo = argumentInfo;
 		
 		return this;
 	}

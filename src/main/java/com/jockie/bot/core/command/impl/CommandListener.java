@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +42,7 @@ import com.jockie.bot.core.utility.TriFunction;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.MessageBuilder;
 import net.dv8tion.jda.core.Permission;
+import net.dv8tion.jda.core.entities.ISnowflake;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.User;
@@ -209,18 +210,76 @@ public class CommandListener implements EventListener {
 	
 	protected Consumer<CommandEvent> nsfwFunction = DEFAULT_NSFW_FUNCTION;
 	
-	protected Set<Long> developers = new HashSet<>();
+	public final BiPredicate<CommandEvent, ICommand> defaultBotPermissionCheck = (event, command) -> {
+		if(event.getChannelType().isGuild()) {
+			long neededPermissions = Permission.getRaw(command.getBotDiscordPermissions()) | Permission.MESSAGE_WRITE.getRawValue();
+			long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+			
+			long permissions = (neededPermissions & ~currentPermissions);
+			
+			if(permissions != 0) {
+				if(this.missingPermissionFunction != null) {
+					this.missingPermissionFunction.accept(event, Permission.getPermissions(permissions));
+				}
+				
+				return false;
+			}
+		}
+		
+		return true;
+	};
 	
-	protected List<CommandStore> commandStores = new ArrayList<>();
+	public final BiPredicate<CommandEvent, ICommand> defaultAuthorPermissionCheck = (event, command) -> {
+		if(event.getChannelType().isGuild()) {
+			if(command.getAuthorDiscordPermissions().length > 0) {
+				long neededPermissions = Permission.getRaw(command.getAuthorDiscordPermissions());
+				long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+				
+				long permissions = (neededPermissions & ~currentPermissions);
+				
+				if(permissions != 0) {
+					if(this.missingAuthorPermissionFunction != null) {
+						this.missingAuthorPermissionFunction.accept(event, Permission.getPermissions(permissions));
+					}
+					
+					return false;
+				}
+			}
+		}
+		
+		return true;
+	};
 	
-	protected List<CommandEventListener> commandEventListeners = new ArrayList<>();
+	public final BiPredicate<CommandEvent, ICommand> defaultNsfwCheck = (event, command) -> {
+		if(event.getChannelType().isGuild()) {
+			if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
+				if(this.nsfwFunction != null) {
+					this.nsfwFunction.accept(event);
+				}
+				
+				return false;
+			}
+		}
+		
+		return true;
+	};
+	
+	protected Set<Long> developers = new LinkedHashSet<>();
+	
+	protected Set<CommandStore> commandStores = new LinkedHashSet<>();
+	
+	protected Set<CommandEventListener> commandEventListeners = new LinkedHashSet<>();
 	
 	protected ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
 	protected ICooldownManager cooldownManager = new CooldownManager();
 	
-	protected List<Predicate<MessageReceivedEvent>> preParseChecks = new ArrayList<>();
-	protected List<BiPredicate<ICommand, CommandEvent>> preExecuteChecks = new ArrayList<>();
+	protected Set<Predicate<MessageReceivedEvent>> preParseChecks = new LinkedHashSet<>();
+	protected Set<BiPredicate<CommandEvent, ICommand>> preExecuteChecks = new LinkedHashSet<>();
+	
+	public CommandListener() {
+		this.addDefaultPreExecuteChecks();
+	}
 	
 	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
 		for(CommandEventListener commandEventListener : commandEventListeners) {
@@ -240,8 +299,8 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
-	public List<CommandEventListener> getCommandEventListeners() {
-		return Collections.unmodifiableList(this.commandEventListeners);
+	public Set<CommandEventListener> getCommandEventListeners() {
+		return Collections.unmodifiableSet(this.commandEventListeners);
 	}
 	
 	/**
@@ -324,8 +383,8 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return a list of CommandStores which are basically like command containers holding all the commands
 	 */
-	public List<CommandStore> getCommandStores() {
-		return Collections.unmodifiableList(this.commandStores);
+	public Set<CommandStore> getCommandStores() {
+		return Collections.unmodifiableSet(this.commandStores);
 	}
 	
 	/**
@@ -368,18 +427,23 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * @return a boolean that determines whether or not the bot's tag can be used as a prefix
+	 * @return a boolean that determines whether or not the bot's mention can be used as a prefix
 	 */
 	public boolean isAllowMentionPrefix() {
 		return this.allowMentionPrefix;
 	}
 	
-	/**
-	 * See {@link #getDevelopers()}
-	 */
 	public CommandListener addDevelopers(long... ids) {
 		for(long id : ids) {
 			this.developers.add(id);
+		}
+		
+		return this;
+	}
+	
+	public CommandListener addDevelopers(ISnowflake... ids) {
+		for(ISnowflake id : ids) {
+			this.developers.add(id.getIdLong());
 		}
 		
 		return this;
@@ -389,9 +453,10 @@ public class CommandListener implements EventListener {
 		return this.addDevelopers(id);
 	}
 	
-	/**
-	 * See {@link #getDevelopers()}
-	 */
+	public CommandListener addDeveloper(ISnowflake id) {
+		return this.addDevelopers(id);
+	}
+	
 	public CommandListener removeDevelopers(long... ids) {
 		for(long id : ids) {
 			this.developers.remove(id);
@@ -400,7 +465,19 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
+	public CommandListener removeDevelopers(ISnowflake... ids) {
+		for(ISnowflake id : ids) {
+			this.developers.remove(id.getIdLong());
+		}
+		
+		return this;
+	}
+	
 	public CommandListener removeDeveloper(long id) {
+		return this.removeDevelopers(id);
+	}
+	
+	public CommandListener removeDeveloper(ISnowflake id) {
 		return this.removeDevelopers(id);
 	}
 	
@@ -412,10 +489,17 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * @return a boolean that will prove if the provided user id is the id of a developer
+	 * @return a boolean that will prove if the provided id is the id of a developer
 	 */
 	public boolean isDeveloper(long id) {
 		return this.developers.contains(id);
+	}
+	
+	/**
+	 * @return a boolean that will prove if the provided id is the id of a developer
+	 */
+	public boolean isDeveloper(ISnowflake id) {
+		return this.developers.contains(id.getIdLong());
 	}
 	
 	/**
@@ -446,7 +530,7 @@ public class CommandListener implements EventListener {
 			/* 
 			 * Should we also check if the length of the array is greater than 0 or
 			 * can we justify giving the user the freedom of not returning any prefixes at all? 
-			 * After all the mention prefix is hard-coded 
+			 * After all the mention prefix is hard-coded (UPDATE: they have now be disabled)
 			 */
 			if(prefixes != null /* && prefixes.length > 0 */) {
 				/* 
@@ -641,16 +725,14 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
-	public List<Predicate<MessageReceivedEvent>> getPreParseChecks() {
-		return Collections.unmodifiableList(this.preParseChecks);
+	public Set<Predicate<MessageReceivedEvent>> getPreParseChecks() {
+		return Collections.unmodifiableSet(this.preParseChecks);
 	}
 	
 	/**
 	 * Adds a pre command execution check which will determine whether or not the command should be executed, this could be useful if you for instance have disabled commands
-	 * </br></br>
-	 * This is checked before anything else in {@link CommandListener#execute(ICommand, CommandEvent, long, Object...)}, such as permission and cooldown checks
 	 */
-	public CommandListener addPreExecuteCheck(BiPredicate<ICommand, CommandEvent> predicate) {
+	public CommandListener addPreExecuteCheck(BiPredicate<CommandEvent, ICommand> predicate) {
 		Checks.notNull(predicate, "Predicate");
 		
 		this.preExecuteChecks.add(predicate);
@@ -658,14 +740,33 @@ public class CommandListener implements EventListener {
 		return this;
 	}
 	
-	public CommandListener removePreExecuteCheck(BiPredicate<ICommand, CommandEvent> predicate) {
+	public CommandListener removePreExecuteCheck(BiPredicate<CommandEvent, ICommand> predicate) {
 		this.preExecuteChecks.remove(predicate);
 		
 		return this;
 	}
 	
-	public List<BiPredicate<ICommand, CommandEvent>> getPreExecuteChecks() {
-		return Collections.unmodifiableList(this.preExecuteChecks);
+	/** 
+	 * Removes the default registered pre-execute checks, these include bot and author permission checks as well as nsfw
+	 */
+	public CommandListener removeDefaultPreExecuteChecks() {
+		return this.removePreExecuteCheck(this.defaultBotPermissionCheck)
+			.removePreExecuteCheck(this.defaultAuthorPermissionCheck)
+			.removePreExecuteCheck(this.defaultNsfwCheck);
+	}
+	
+	
+	/** 
+	 * Adds the default registered pre-execute checks, these include bot and author permission checks as well as nsfw
+	 */
+	public CommandListener addDefaultPreExecuteChecks() {
+		return this.addPreExecuteCheck(this.defaultBotPermissionCheck)
+			.addPreExecuteCheck(this.defaultAuthorPermissionCheck)
+			.addPreExecuteCheck(this.defaultNsfwCheck);
+	}
+	
+	public Set<BiPredicate<CommandEvent, ICommand>> getPreExecuteChecks() {
+		return Collections.unmodifiableSet(this.preExecuteChecks);
 	}
 	
 	public void onEvent(Event event) {
@@ -1085,7 +1186,7 @@ public class CommandListener implements EventListener {
 	 * </br>would be parsed to a map with all the values, like this
 	 * </br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
 	 */
-	/* This should probably be re-worked */
+	/* TODO: This should probably be re-worked */
 	protected Map<String, String> asMap(String command) {
 		Map<String, String> map = new HashMap<>();
 		
@@ -1137,65 +1238,19 @@ public class CommandListener implements EventListener {
 		return map;
 	}
 	
-	protected boolean canExecute(CommandEvent event, ICommand command) {
-		if(event.getChannelType().isGuild()) {
-			{
-				long neededPermissions = Permission.getRaw(command.getBotDiscordPermissions()) | Permission.MESSAGE_WRITE.getRawValue();
-				long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
-				
-				long permissions = (neededPermissions & ~currentPermissions);
-				
-				if(permissions != 0) {
-					if(this.missingPermissionFunction != null) {
-						this.missingPermissionFunction.accept(event, Permission.getPermissions(permissions));
-					}
-					
-					return false;
-				}
-			}
-			
-			if(command.getAuthorDiscordPermissions().length > 0) {
-				long neededPermissions = Permission.getRaw(command.getAuthorDiscordPermissions());
-				long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
-				
-				long permissions = (neededPermissions & ~currentPermissions);
-				
-				if(permissions != 0) {
-					if(this.missingAuthorPermissionFunction != null) {
-						this.missingAuthorPermissionFunction.accept(event, Permission.getPermissions(permissions));
-					}
-					
-					return false;
-				}
-			}
-			
-			if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
-				if(this.nsfwFunction != null) {
-					this.nsfwFunction.accept(event);
-				}
-				
-				return false;
-			}
-		}
-		
-		return true;
-	}
-	
 	protected void execute(ICommand command, CommandEvent event, long timeStarted, Object... arguments) {
-		for(BiPredicate<ICommand, CommandEvent> predicate : this.preExecuteChecks) {
+		ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
+		
+		for(BiPredicate<CommandEvent, ICommand> predicate : this.preExecuteChecks) {
 			try {
-				if(!predicate.test(command, event)) {
+				if(!predicate.test(event, actualCommand)) {
 					return;
 				}
 			}catch(Exception e) {}
 		}
 		
-		ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
-		if(!this.canExecute(event, actualCommand)) {
-			return;
-		}
-		
 		try {
+			/* TODO: Should this also be added to the pre-execute predicates? */
 			if(command.getCooldownDuration() > 0) {
 				ICooldown cooldown = this.cooldownManager.getCooldown(actualCommand, event.getEvent());
 				long timeRemaining = cooldown != null ? cooldown.getTimeRemainingMillis() : -1;
@@ -1263,7 +1318,7 @@ public class CommandListener implements EventListener {
 			}
 			
 			try {
-				/* This should probably be changed due to illegal access */
+				/* TODO: This should probably be changed due to illegal access */
 				Field field = Throwable.class.getDeclaredField("detailMessage");
 				field.setAccessible(true);
 				field.set(e, "Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + " but failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
