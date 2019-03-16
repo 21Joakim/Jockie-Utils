@@ -19,6 +19,7 @@ import com.jockie.bot.core.command.annotation.Cooldown;
 import com.jockie.bot.core.command.annotation.Developer;
 import com.jockie.bot.core.command.annotation.Hidden;
 import com.jockie.bot.core.command.annotation.Nsfw;
+import com.jockie.bot.core.command.annotation.Policy;
 import com.jockie.bot.core.option.Option;
 
 import net.dv8tion.jda.core.entities.Message;
@@ -99,6 +100,11 @@ public class MethodCommand extends CommandImpl {
 		command.setGuildTriggerable(annotation.guildTriggerable());
 		command.setPrivateTriggerable(annotation.privateTriggerable());
 		
+		command.setContentOverflowPolicy(annotation.contentOverflowPolicy());
+		command.setInvalidOptionPolicy(annotation.invalidOptionPolicy());
+		
+		command.setAllowedArgumentParsingTypes(annotation.allowedArgumentParsingTypes());
+		
 		return command;
 	}
 	
@@ -145,6 +151,13 @@ public class MethodCommand extends CommandImpl {
 			BotPermissions botPermissions = method.getAnnotation(BotPermissions.class);
 			
 			command.setAuthorDiscordPermissions(botPermissions.value());
+		}
+		
+		if(method.isAnnotationPresent(Policy.class)) {
+			Policy policy = method.getAnnotation(Policy.class);
+			
+			command.setContentOverflowPolicy(policy.contentOverflow());
+			command.setInvalidOptionPolicy(policy.invalidOption());
 		}
 		
 		return command;

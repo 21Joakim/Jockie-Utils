@@ -6,6 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.concurrent.TimeUnit;
 
+import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
+import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
+import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 
 import net.dv8tion.jda.core.Permission;
@@ -44,5 +47,10 @@ public @interface Command {
 	public String orderingKey() default "";
 	
 	public boolean nsfw() default false;
+	
+	public ContentOverflowPolicy contentOverflowPolicy() default ContentOverflowPolicy.FAIL;
+	public InvalidOptionPolicy invalidOptionPolicy() default InvalidOptionPolicy.INCLUDE;
+	
+	public ArgumentParsingType[] allowedArgumentParsingTypes() default { ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED };
 	
 }

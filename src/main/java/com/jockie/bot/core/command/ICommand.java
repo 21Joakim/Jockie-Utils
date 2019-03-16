@@ -122,7 +122,7 @@ public interface ICommand {
 	public Permission[] getBotDiscordPermissions();
 	
 	/**
-	 * @return the discord permissions the author is required to have to trigger this command, if the user does not have these permissions the command will not be visible to them.
+	 * @return the discord permissions the author is required to have to trigger this command
 	 */
 	public Permission[] getAuthorDiscordPermissions();
 	
@@ -280,6 +280,7 @@ public interface ICommand {
 	/* Not sure if the includeDummyCommands variable should exist or not, it is more or less an internal thing and is not really supposed to be used */
 	public default List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		List<ICommand> commands = new ArrayList<>();
+		commands.add(this);
 		
 		for(ICommand command : this.getSubCommands()) {
 			commands.addAll(command.getAllCommandsRecursive(includeDummyCommands));

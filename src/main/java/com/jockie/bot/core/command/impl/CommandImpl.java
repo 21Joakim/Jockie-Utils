@@ -369,7 +369,7 @@ public class CommandImpl implements ICommand {
 	protected IArgument<?>[] arguments = {};
 	protected IOption[] options = {};
 	
-	protected InvalidOptionPolicy optionPolicy = InvalidOptionPolicy.INCLUDE;
+	protected InvalidOptionPolicy invalidOptionPolicy = InvalidOptionPolicy.INCLUDE;
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
@@ -521,7 +521,7 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public InvalidOptionPolicy getInvalidOptionPolicy() {
-		return this.optionPolicy;
+		return this.invalidOptionPolicy;
 	}
 	
 	public ContentOverflowPolicy getContentOverflowPolicy() {
@@ -707,8 +707,8 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	public CommandImpl setOptionPolicy(InvalidOptionPolicy optionPolicy) {
-		this.optionPolicy = optionPolicy;
+	public CommandImpl setInvalidOptionPolicy(InvalidOptionPolicy optionPolicy) {
+		this.invalidOptionPolicy = optionPolicy;
 		
 		return this;
 	}
@@ -873,6 +873,7 @@ public class CommandImpl implements ICommand {
 	
 	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		List<ICommand> commands = new ArrayList<>();
+		commands.add(this);
 		
 		for(ICommand command : this.subCommands) {
 			commands.addAll(command.getAllCommandsRecursive(includeDummyCommands));
@@ -929,11 +930,11 @@ public class CommandImpl implements ICommand {
 			return false;
 		}
 		
-		if(!this.isGuildTriggerable() && event.getChannelType().isGuild()) {
+		if(!this.guildTriggerable && event.getChannelType().isGuild()) {
 			return false;
 		}
 		
-		if(!this.isPrivateTriggerable() && event.getChannelType().equals(ChannelType.PRIVATE)) {
+		if(!this.privateTriggerable && event.getChannelType().equals(ChannelType.PRIVATE)) {
 			return false;
 		}
 		

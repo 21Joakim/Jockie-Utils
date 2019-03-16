@@ -4,6 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import com.google.common.reflect.ClassPath.ClassInfo;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.Initialize;
+import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.impl.factory.MethodCommandFactory;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
@@ -92,6 +94,25 @@ public class CommandStore {
 		return null;
 	}
 	
+	private static ICommand getSubCommandRecursive(ICommand start, String[] path) {
+		Objects.requireNonNull(path.length, "path must not be null");
+		
+		if(path.length > 0 && start != null) {
+			String thePath = path[0];
+			for(ICommand subCommand : start.getSubCommands()) {
+				if(subCommand.getCommand().equalsIgnoreCase(thePath)) {
+					String[] newPath = new String[path.length - 1];
+					
+					System.arraycopy(path, 1, newPath, 0, path.length - 1);
+					
+					return getSubCommandRecursive(start, newPath);
+				}
+			}
+		}
+		
+		return start;
+	}
+	
 	public static List<ICommand> loadModule(Object module) {
 		Objects.requireNonNull(module);
 		
@@ -135,10 +156,35 @@ public class CommandStore {
 		}
 		
 		Map<String, MethodCommand> methodCommands = new HashMap<>();
+		Map<String, MethodCommand> methodCommandsNamed = new HashMap<>();
 		
 		for(Method method : methods) {
 			if(method.isAnnotationPresent(Command.class)) {
-				methodCommands.put(method.getName(), createFunction.apply(method, module));
+				MethodCommand command = createFunction.apply(method, module);
+				
+				if(method.isAnnotationPresent(SubCommand.class)) {
+					SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
+					String[] path = subCommandAnnotation.value();
+					
+					if(path.length > 0) {
+						ICommand parent = getSubCommandRecursive(methodCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
+						if(parent != null) {
+							/* TODO: Implement a proper way of handling this, commands should not have to extend CommandImpl */
+							if(parent instanceof CommandImpl) {
+								((CommandImpl) parent).addSubCommand(command);
+							}else{
+								System.err.println("Sub command (" + command.getCommand() + ") parent does not implement CommandImpl");
+							}
+						}else{
+							System.err.println("Sub command (" + command.getCommand() + ") does not have a valid command path");
+						}
+					}else{
+						System.err.println("Sub command (" + command.getCommand() + ") does not have a command path");
+					}
+				}
+				
+				methodCommands.put(method.getName(), command);
+				methodCommandsNamed.put(command.getCommand(), command);
 			}
 		}
 		
