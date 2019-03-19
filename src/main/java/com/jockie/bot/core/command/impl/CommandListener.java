@@ -1141,6 +1141,8 @@ public class CommandListener implements EventListener {
 						synchronized(orderingKey) {
 							this.execute(command, commandEvent, timeStarted, arguments);
 						}
+					}else{
+						this.execute(command, commandEvent, timeStarted, arguments);
 					}
 				});
 			}else{
