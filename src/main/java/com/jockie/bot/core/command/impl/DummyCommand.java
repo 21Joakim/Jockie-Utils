@@ -179,7 +179,6 @@ public class DummyCommand implements ICommand {
 	}
 	
 	public String getCommandTrigger() {
-		System.out.println(this.command.getCommandTrigger());
 		return this.command.getCommandTrigger();
 	}
 	
