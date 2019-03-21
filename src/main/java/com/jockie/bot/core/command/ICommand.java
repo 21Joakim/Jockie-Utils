@@ -34,7 +34,7 @@ public interface ICommand {
 	public boolean isPrivateTriggerable();
 	
 	/**
-	 * @return the argument arguments.
+	 * @return the command's arguments.
 	 */
 	public IArgument<?>[] getArguments();
 	
@@ -290,13 +290,15 @@ public interface ICommand {
 	}
 	
 	/**
-	 * @return information about the arguments
+	 * @param command the command to get the argument info for
+	 * 
+	 * @return the information about all the arguments of the provided command
 	 */
-	public default String getArgumentInfo() {
+	public static String getArgumentInfo(ICommand command) {
 		StringBuilder builder = new StringBuilder();
 		
-		for(int i = 0; i < this.getArguments().length; i++) {
-			IArgument<?> argument = this.getArguments()[i];
+		for(int i = 0; i < command.getArguments().length; i++) {
+			IArgument<?> argument = command.getArguments()[i];
 			
 			if(argument.getName() != null) {
 				builder.append("<").append(argument.getName()).append(">");
@@ -314,7 +316,7 @@ public interface ICommand {
 				builder.append("*");			
 			}
 			
-			if(i < this.getArguments().length - 1) {
+			if(i < command.getArguments().length - 1) {
 				builder.append(" ");
 			}
 		}
@@ -323,48 +325,94 @@ public interface ICommand {
 	}
 	
 	/**
-	 * @return full usage information about the command, prefix, command and {@link #getArgumentInfo()}
+	 * @return the information about all the arguments of this command
+	 * 
+	 * @see {@link ICommand#getArgumentInfo()}
 	 */
-	public default String getUsage(String prefix) {
+	public default String getArgumentInfo() {
+		return getArgumentInfo(this);
+	}
+	
+	/**
+	 * 
+	 * @param command the command to get the usage for
+	 * @param prefix the prefix displayed along with the usage
+	 * 
+	 * @return full usage information for the provided command, this includes the prefix, command and {@link #getArgumentInfo()}
+	 */
+	public static String getUsage(ICommand command, String prefix) {
 		StringBuilder builder = new StringBuilder();
 		
 		builder.append(prefix)
-			.append(this.getCommandTrigger())
+			.append(command.getCommandTrigger())
 			.append(" ")
-			.append(this.getArgumentInfo());
+			.append(command.getArgumentInfo());
 		
 		return builder.toString();
 	}
 	
 	/**
-	 * @return full usage information about the command but without a prefix
+	 * @param command the command to get the usage for
 	 * 
-	 * @see ICommand#getUsage(String)
+	 * @return full usage information for the provided command, this includes the command and {@link #getArgumentInfo()}
+	 * 
+	 * @see {@link ICommand#getUsage(ICommand, String)}
+	 */
+	public static String getUsage(ICommand command) {
+		return getUsage(command, "");
+	}
+	
+	/**
+	 * @return full usage information for this command, this includes the prefix, command and {@link #getArgumentInfo()}
+	 * 
+	 * @see {@link ICommand#getUsage(ICommand, String)}
+	 */
+	public default String getUsage(String prefix) {
+		return getUsage(this, prefix);
+	}
+	
+	/**
+	 * @return full usage information for this command, this includes the command and {@link #getArgumentInfo()}
+	 * 
+	 * @see {@link ICommand#getUsage(ICommand, String)}
 	 */
 	public default String getUsage() {
-		return this.getUsage("");
+		return getUsage(this);
+	}
+	
+	/**
+	 * @param command the command to get the trigger for
+	 * 
+	 * @return the actual trigger for the provided command which is created by recursively getting the parents of this command
+	 */
+	public static String getCommandTrigger(ICommand command) {
+		String trigger = command.getCommand();
+		
+		ICommand parent = command;
+		while((parent = parent.getParent()) != null) {
+			trigger = (parent.getCommand() + " " + trigger).trim();
+		}
+		
+		return trigger;
 	}
 	
 	/**
 	 * @return the actual trigger for this command which is created by recursively getting the parents of this command
 	 */
 	public default String getCommandTrigger() {
-		String command = this.getCommand();
-		
-		ICommand parent = this;
-		while((parent = parent.getParent()) != null) {
-			command = (parent.getCommand() + " " + command).trim();
-		}
-		
-		return command;
+		return getCommandTrigger(this);
 	}
 	
 	/**
-	 * @return the top parent which was got by recursively getting the parent of the commands
+	 * This uses {@link #getTopParent()} recursively to get the top parent
+	 * 
+	 * @param command the command to get the top parent for
+	 * 
+	 * @return the top parent of the provided command or the command itself if it has no parent
 	 */
-	public default ICommand getTopParent() {
-		if(this.hasParent()) {
-			ICommand parent = this.getParent();
+	public static ICommand getTopParent(ICommand command) {
+		if(command.hasParent()) {
+			ICommand parent = command.getParent();
 			while(parent.hasParent()) {
 				parent = parent.getParent();
 			}
@@ -372,6 +420,15 @@ public interface ICommand {
 			return parent;
 		}
 		
-		return this;
+		return command;
+	}
+	
+	/**
+	 * @return the top parent of this command or itself if it has no parent
+	 * 
+	 * @see {@link ICommand#getTopParent(ICommand)}
+	 */
+	public default ICommand getTopParent() {
+		return getTopParent(this);
 	}
 }

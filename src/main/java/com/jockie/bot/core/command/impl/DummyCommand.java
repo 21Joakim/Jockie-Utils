@@ -1,64 +1,76 @@
 package com.jockie.bot.core.command.impl;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.ICommand;
-import com.jockie.bot.core.cooldown.ICooldown.Scope;
+import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
-/* This was basically the easiest way I could figure out how to make optional arguments */
+/**
+ * The DummyCommand is a Command which replicates any ICommand but with different arguments, 
+ * this is used for creating optional arguments. 
+ * </br>
+ * </br>
+ * <b>It is not recommended to use the DummyCommand for anything as it is most likely going to be 
+ * replaced with a more elegant solution in the future.</b>
+ */
 public class DummyCommand implements ICommand {
 	
 	private ICommand command;
 	
-	private Map<Integer, IArgument<?>> indexes = new HashMap<>();
+	private Map<Integer, IArgument<?>> optionalArguments = new HashMap<>();
 	
 	private IArgument<?>[] arguments;
 	
+	/**
+	 * @param command the command which this DummyCommand should replicate
+	 * @param arguments the arguments which this DummyCommand should have, 
+	 * these are different from the command's arguments.
+	 */
 	public DummyCommand(ICommand command, IArgument<?>... arguments) {
 		this.command = command;
 		
-		this.arguments = Arrays.asList(command.getArguments()).stream().filter(new Predicate<IArgument<?>>() {
-			public boolean test(IArgument<?> argument) {
-				if(!argument.hasDefault()) {
-					return true;
-				}
-				
-				for(int i = 0; i < command.getArguments().length; i++) {
-					if(command.getArguments()[i].equals(argument)) {
-						for(int j = 0; j < arguments.length; j++) {
-							if(arguments[j].equals(argument)) {
-								DummyCommand.this.indexes.put(i, argument);
-								
-								return false;
-							}
-						}
+		IArgument<?>[] commandArguments = command.getArguments();
+		
+		List<IArgument<?>> requiredArguments = new ArrayList<>(commandArguments.length);
+		
+		ARGUMENTS:
+		for(int i = 0; i < commandArguments.length; i++) {
+			IArgument<?> argument = commandArguments[i];
+			if(!argument.hasDefault()) {
+				requiredArguments.add(argument);
+			}else{
+				for(int j = 0; j < arguments.length; j++) {
+					if(arguments[j].equals(argument)) {
+						this.optionalArguments.put(i, argument);
+						
+						continue ARGUMENTS;
 					}
 				}
 				
-				return true;
+				requiredArguments.add(argument);
 			}
-		}).toArray(IArgument[]::new);
+		}
+		
+		this.arguments = requiredArguments.toArray(new IArgument[0]);
 	}
 	
 	public void execute(CommandEvent event, Object... arguments) throws Throwable {
 		Object[] args = new Object[this.command.getArguments().length];
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {
-			if(this.indexes.get(i) != null) {
-				args[i] = this.indexes.get(i).getDefault(event);
+			if(this.optionalArguments.get(i) != null) {
+				args[i] = this.optionalArguments.get(i).getDefault(event);
 			}else{
 				args[i] = arguments[offset++];
 			}
@@ -79,7 +91,7 @@ public class DummyCommand implements ICommand {
 		return this.command.getCooldownDuration();
 	}
 	
-	public Scope getCooldownScope() {
+	public ICooldown.Scope getCooldownScope() {
 		return this.command.getCooldownScope();
 	}
 	
@@ -143,6 +155,9 @@ public class DummyCommand implements ICommand {
 		return this.command.getCommand();
 	}
 	
+	/**
+	 * @return the actual command; the command this DummyCommand is replicating
+	 */
 	public ICommand getParent() {
 		return this.command;
 	}
@@ -152,7 +167,7 @@ public class DummyCommand implements ICommand {
 	}
 	
 	public List<ICommand> getSubCommands() {
-		return new ArrayList<>();
+		return Collections.emptyList();
 	}
 	
 	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
@@ -164,14 +179,8 @@ public class DummyCommand implements ICommand {
 	}
 	
 	public String getCommandTrigger() {
-		String command = this.getCommand();
-		
-		ICommand parent = this.getParent();
-		while((parent = parent.getParent()) != null) {
-			command = (parent.getCommand() + " " + command).trim();
-		}
-		
-		return command;
+		System.out.println(this.command.getCommandTrigger());
+		return this.command.getCommandTrigger();
 	}
 	
 	public IOption[] getOptions() {

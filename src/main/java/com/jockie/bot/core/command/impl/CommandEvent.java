@@ -149,6 +149,15 @@ public class CommandEvent {
 		return this.command;
 	}
 	
+	/** @return the actual command; if this command is a DummyCommand the command which it replicates is the command which will be returned */
+	public ICommand getActualCommand() {
+		if(this.command instanceof DummyCommand) {
+			return this.command.getParent();
+		}
+		
+		return this.command;
+	}
+	
 	/** @return the processed arguments */
 	public Object[] getArguments() {
 		return this.arguments;

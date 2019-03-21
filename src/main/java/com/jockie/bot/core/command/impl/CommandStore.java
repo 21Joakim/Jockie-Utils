@@ -94,6 +94,31 @@ public class CommandStore {
 		return null;
 	}
 	
+	
+	private static List<Method> getCommandMethods(Method[] methods) {
+		List<Method> commandMethods = new ArrayList<>();
+		
+		for(Method method : methods) {
+			if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
+				commandMethods.add(method);
+			}
+		}
+		
+		return commandMethods;
+	}
+	
+	private static List<Method> getSubCommandMethods(Method[] methods) {
+		List<Method> subCommandMethods = new ArrayList<>();
+		
+		for(Method method : methods) {
+			if(method.isAnnotationPresent(Command.class) && method.isAnnotationPresent(SubCommand.class)) {
+				subCommandMethods.add(method);
+			}
+		}
+		
+		return subCommandMethods;
+	}
+	
 	private static ICommand getSubCommandRecursive(ICommand start, String[] path) {
 		Objects.requireNonNull(path.length, "path must not be null");
 		
@@ -158,36 +183,37 @@ public class CommandStore {
 		Map<String, MethodCommand> methodCommands = new HashMap<>();
 		Map<String, MethodCommand> methodCommandsNamed = new HashMap<>();
 		
-		for(Method method : methods) {
-			if(method.isAnnotationPresent(Command.class)) {
-				MethodCommand command = createFunction.apply(method, module);
-				
-				if(method.isAnnotationPresent(SubCommand.class)) {
-					SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
-					String[] path = subCommandAnnotation.value();
-					
-					if(path.length > 0) {
-						ICommand parent = getSubCommandRecursive(methodCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
-						if(parent != null) {
-							/* TODO: Implement a proper way of handling this, commands should not have to extend CommandImpl */
-							if(parent instanceof CommandImpl) {
-								((CommandImpl) parent).addSubCommand(command);
-							}else{
-								System.err.println("Sub command (" + command.getCommand() + ") parent does not implement CommandImpl");
-							}
-						}else{
-							System.err.println("Sub command (" + command.getCommand() + ") does not have a valid command path");
-						}
+		for(Method method : getCommandMethods(methods)) {
+			MethodCommand command = createFunction.apply(method, module);
+			
+			methodCommands.put(method.getName(), command);
+			methodCommandsNamed.put(command.getCommand(), command);
+		}
+		
+		for(Method method : getSubCommandMethods(methods)) {
+			MethodCommand command = createFunction.apply(method, module);
+			
+			SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
+			
+			String[] path = subCommandAnnotation.value();
+			if(path.length > 0) {
+				ICommand parent = getSubCommandRecursive(methodCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
+				if(parent != null) {
+					/* TODO: Implement a proper way of handling this, commands should not have to extend CommandImpl */
+					if(parent instanceof CommandImpl) {
+						((CommandImpl) parent).addSubCommand(command);
 					}else{
-						System.err.println("Sub command (" + command.getCommand() + ") does not have a command path");
+						System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement CommandImpl");
 					}
+				}else{
+					System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
 				}
-				
-				methodCommands.put(method.getName(), command);
-				methodCommandsNamed.put(command.getCommand(), command);
+			}else{
+				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
 			}
 		}
 		
+		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
 		for(Method method : methods) {
 			if(method.isAnnotationPresent(Initialize.class)) {
 				Initialize initialize = method.getAnnotation(Initialize.class);
@@ -228,6 +254,7 @@ public class CommandStore {
 		
 		commands.addAll(methodCommands.values());
 		
+		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
 		if(onCommandLoadMethod != null) {
 			for(ICommand command : commands) {
 				try {

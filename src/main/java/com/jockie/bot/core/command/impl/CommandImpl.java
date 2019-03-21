@@ -922,23 +922,7 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
-		if(event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
-			return false;
-		}
-		
-		if(!this.botTriggerable && event.getAuthor().isBot()) {
-			return false;
-		}
-		
-		if(!this.guildTriggerable && event.getChannelType().isGuild()) {
-			return false;
-		}
-		
-		if(!this.privateTriggerable && event.getChannelType().equals(ChannelType.PRIVATE)) {
-			return false;
-		}
-		
-		if(this.developerCommand && !commandListener.isDeveloper(event.getAuthor().getIdLong())) {
+		if(!ICommand.super.verify(event, commandListener)) {
 			return false;
 		}
 		
