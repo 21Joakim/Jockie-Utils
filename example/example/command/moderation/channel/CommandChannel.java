@@ -2,8 +2,8 @@ package example.command.moderation.channel;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.Command;
-import com.jockie.bot.core.command.annotation.AuthorPermissions;
-import com.jockie.bot.core.command.annotation.BotPermissions;
+import com.jockie.bot.core.command.Command.AuthorPermissions;
+import com.jockie.bot.core.command.Command.BotPermissions;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 

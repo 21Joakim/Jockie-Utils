@@ -8,7 +8,7 @@ import java.util.List;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.Command;
-import com.jockie.bot.core.command.annotation.Cooldown;
+import com.jockie.bot.core.command.Command.Cooldown;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
@@ -54,7 +54,7 @@ public class CommandCreate extends CommandImpl {
 		});
 	}
 	
-	@Cooldown(cooldown=30, cooldownScope=Scope.GUILD)
+	@Cooldown(value=30, cooldownScope=Scope.GUILD)
 	@Command(botPermissions=Permission.MANAGE_EMOTES, authorPermissions=Permission.MANAGE_EMOTES)
 	public void emote(CommandEvent event, String name, @Argument(value="emoteUrl", nullDefault=true) URL emoteUrl) {
 		if(emoteUrl == null) {

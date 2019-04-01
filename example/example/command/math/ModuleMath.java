@@ -4,6 +4,7 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.Initialize;
+import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.module.Module;
@@ -13,7 +14,7 @@ import example.Categories;
 @Module
 public class ModuleMath {
 	
-	//@Initialize({"multiply", "remainder", "add", "addAll"})
+	//@Initialize({"multiply", "remainder", "add", "addAll"})	
 	@Initialize(all=true)
 	public void init(CommandImpl command) {
 		command.setCategory(Categories.MATH);
@@ -22,6 +23,17 @@ public class ModuleMath {
 	@Command(description="Multiply two numbers")
 	public void multiply(CommandEvent event, @Argument("first") double first, @Argument("second") double second) {
 		event.reply(String.valueOf(first * second)).queue();
+	}
+	
+	@SubCommand("multiply")
+	@Command(value="all", description="Mutliply multiple numbers")
+	public void multiplyAll(CommandEvent event, @Argument("numbers") @Endless(minArguments=2, maxArguments=10) Double[] numbers) {
+		double sum = numbers[0];
+		for(int i = 1; i < numbers.length; i++) {
+			sum *= numbers[i];
+		}
+		
+		event.reply(String.valueOf(sum)).queue();
 	}
 	
 	@Command(description="Get the remainder of a divison")

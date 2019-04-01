@@ -35,6 +35,14 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a role by id or mention
+	 * 
+	 * @param guild the guild to search for the role in
+	 * @param value the mention or id of the role
+	 * 
+	 * @return the found role, may be null
+	 */
 	public static Role getRole(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
 		
@@ -47,6 +55,14 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a member by id or mention
+	 * 
+	 * @param guild the guild to search for the member in
+	 * @param value the mention or id of the member
+	 * 
+	 * @return the found member, may be null
+	 */
 	public static Member getMember(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
@@ -59,6 +75,14 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a text channel by id or mention
+	 * 
+	 * @param guild the guild to search for the text channel in
+	 * @param value the mention or id of the text channel
+	 * 
+	 * @return the found text channel, may be null
+	 */
 	public static TextChannel getTextChannel(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
 		
@@ -71,6 +95,14 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get an emote by id or mention
+	 * 
+	 * @param guild the guild to search for the emote in
+	 * @param value the mention or id of the emote
+	 * 
+	 * @return the found emote, may be null
+	 */
 	public static Emote getEmote(Guild guild, String value) {
 		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
@@ -88,6 +120,14 @@ public class ArgumentUtility {
 		return emote;
 	}
 	
+	/**
+	 * Get an user by id or mention
+	 * 
+	 * @param jda the JDA instance to search for the user in
+	 * @param value the mention or id of the user
+	 * 
+	 * @return the found user, may be null
+	 */
 	public static User getUser(JDA jda, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
@@ -100,6 +140,15 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Retrieve an user by id or mention
+	 * 
+	 * @param jda the JDA instance to make the request from
+	 * @param value the mention or id of the user
+	 * 
+	 * @return RestAction - Type: User</br>
+	 * On request, gets the User with id matching provided id from Discord.
+	 */
 	public static RestAction<User> retrieveUser(JDA jda, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
@@ -112,7 +161,16 @@ public class ArgumentUtility {
 		return new EmptyRestAction<User>(jda, null);
 	}
 	
-	public static Member getMemberByIdOrName(Guild guild, String value, boolean ignoreCase) {
+	/**
+	 * Get a member by id, mention or tag
+	 * 
+	 * @param guild the guild to search for the member in
+	 * @param value the mention, id or tag of the member
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found member, may be null
+	 */
+	public static Member getMemberByIdOrTag(Guild guild, String value, boolean ignoreCase) {
 		String processed = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
 		if(processed != null) {
@@ -143,6 +201,15 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a role by id, mention or name
+	 * 
+	 * @param guild the guild to search for the role in
+	 * @param value the mention, id or name of the role
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found role, may be null
+	 */
 	public static Role getRoleByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		String processed = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
 		
@@ -160,6 +227,15 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get an emote by id, mention or name
+	 * 
+	 * @param guild the guild to search for the emote in
+	 * @param value the mention, id or name of the emote
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found emote, may be null
+	 */
 	public static Emote getEmoteByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
@@ -182,6 +258,15 @@ public class ArgumentUtility {
 		return emote;
 	}
 	
+	/**
+	 * Get a text channel by id, mention or name
+	 * 
+	 * @param guild the guild to search for the text channel in
+	 * @param value the mention, id or name of the text channel
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found text channel, may be null
+	 */
 	public static TextChannel getTextChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		String processed = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
 		
@@ -199,6 +284,15 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a voice channel by id or name
+	 * 
+	 * @param guild the guild to search for the voice channel in
+	 * @param value the id or name of the voice channel
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found voice channel, may be null
+	 */
 	public static VoiceChannel getVoiceChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
 			return guild.getVoiceChannelById(value);
@@ -212,6 +306,15 @@ public class ArgumentUtility {
 		return null;
 	}
 	
+	/**
+	 * Get a category by id or name
+	 * 
+	 * @param guild the guild to search for the category in
+	 * @param value the id or name of the category
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found category, may be null
+	 */
 	public static Category getCategoryByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
 			return guild.getCategoryById(value);

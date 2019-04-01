@@ -2,6 +2,7 @@ package com.jockie.bot.core.module.impl;
 
 import java.lang.reflect.Method;
 
+import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.impl.MethodCommand;
 import com.jockie.bot.core.module.IModule;
 
@@ -33,7 +34,7 @@ public class ModuleImpl implements IModule {
 	 * 
 	 * @param command the command which was loaded
 	 */
-	public void onCommandLoad(MethodCommand command) {}
+	public void onCommandLoad(ICommand command) {}
 	
 	/**
 	 * This is called when the module (all the commands) has loaded

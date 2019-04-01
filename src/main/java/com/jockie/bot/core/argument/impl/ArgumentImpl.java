@@ -3,6 +3,7 @@ package com.jockie.bot.core.argument.impl;
 import java.util.function.Function;
 
 import com.jockie.bot.core.argument.IArgument;
+import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.command.impl.CommandEvent;
 
 public abstract class ArgumentImpl<Type> implements IArgument<Type> {
@@ -13,12 +14,15 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	
 	private final String name;
 	
+	private final IArgumentParser<Type> parser;
+	
 	public <BuilderType extends IArgument.Builder<Type, ?, ?>> ArgumentImpl(BuilderType builder) {
 		this.endless = builder.isEndless();
 		this.empty = builder.isAcceptEmpty();
 		this.quote = builder.isAcceptQuote();
 		this.name = builder.getName();
 		this.defaultValueFunction = builder.getDefaultValueFunction();
+		this.parser = builder.getParser();
 	}
 	
 	public boolean hasDefault() {
@@ -47,5 +51,9 @@ public abstract class ArgumentImpl<Type> implements IArgument<Type> {
 	
 	public String getName() {
 		return this.name;
+	}
+	
+	public IArgumentParser<Type> getParser() {
+		return this.parser;
 	}
 }

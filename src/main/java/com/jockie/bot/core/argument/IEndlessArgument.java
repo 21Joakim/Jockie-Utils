@@ -2,8 +2,15 @@ package com.jockie.bot.core.argument;
 
 public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 	
+	/**
+	 * @return the minimum amount of provided arguments allowed for this argument
+	 */
 	public int getMinArguments();
 	
+	/**
+	 * @return the maximum amount of provided arguments allowed for this argument, 
+	 * if this is less or equal to 0 no maximum limit will be set
+	 */
 	public int getMaxArguments();
 	
 	public abstract class Builder<RT, A extends IEndlessArgument<RT>, BT extends Builder<RT, A, BT>> extends IArgument.Builder<RT[], A, BT> {

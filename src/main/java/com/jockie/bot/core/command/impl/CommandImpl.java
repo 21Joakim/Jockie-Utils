@@ -1,13 +1,14 @@
 package com.jockie.bot.core.command.impl;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,13 +28,14 @@ import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.impl.factory.MethodCommandFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.Option;
 import com.jockie.bot.core.option.impl.OptionImpl;
-import com.jockie.bot.core.utility.LoaderUtility;
+import com.jockie.bot.core.utility.CommandUtility;
 import com.jockie.bot.core.utility.TriFunction;
 
 import net.dv8tion.jda.client.entities.impl.GroupImpl;
@@ -47,7 +49,6 @@ import net.dv8tion.jda.core.entities.impl.MemberImpl;
 import net.dv8tion.jda.core.entities.impl.PrivateChannelImpl;
 import net.dv8tion.jda.core.entities.impl.TextChannelImpl;
 import net.dv8tion.jda.core.entities.impl.UserImpl;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class CommandImpl implements ICommand {
@@ -71,9 +72,7 @@ public class CommandImpl implements ICommand {
 	public static Object getContextVariable(CommandEvent event, Parameter parameter) {
 		final Class<?> type = parameter.getType();
 		
-		if(type.isAssignableFrom(MessageReceivedEvent.class)) {
-			return event;
-		}else if(type.isAssignableFrom(CommandEvent.class)) {
+		if(type.isAssignableFrom(CommandEvent.class)) {
 			return event;
 		}else if(parameter.isAnnotationPresent(Context.class)) {
 			Class<?> command = event.getCommand().getClass();
@@ -111,7 +110,7 @@ public class CommandImpl implements ICommand {
 				}
 			}else if(event.getChannelType().equals(ChannelType.GROUP)) {
 				if(type.isAssignableFrom(GroupImpl.class)) {
-					return event.getEvent().getGroup();
+					return event.getGroup();
 				}
 			}
 			
@@ -145,7 +144,7 @@ public class CommandImpl implements ICommand {
 	public static IArgument<?>[] generateArguments(Method command) {
 		int contextCount = 0;
 		for(Parameter parameter : command.getParameters()) {
-			if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class) || parameter.getType().isAssignableFrom(CommandEvent.class)) {
+			if(parameter.getType().isAssignableFrom(CommandEvent.class)) {
 				contextCount++;
 			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
 				contextCount++;
@@ -159,7 +158,7 @@ public class CommandImpl implements ICommand {
 			Parameter parameter = command.getParameters()[paramCount];
 			Class<?> type = parameter.getType();
 			
-			if(type.isAssignableFrom(MessageReceivedEvent.class) || type.isAssignableFrom(CommandEvent.class)) {
+			if(type.isAssignableFrom(CommandEvent.class)) {
 				continue;
 			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
 				continue;
@@ -323,21 +322,22 @@ public class CommandImpl implements ICommand {
 		List<ICommand> dummyCommands = new ArrayList<>();
 		
 		if(!(command instanceof DummyCommand)) {
-			List<IArgument<?>> arguments = new ArrayList<>();
-			if(command.getArguments().length > 0) {
-				for(int i = 0; i < command.getArguments().length; i++) {
-					IArgument<?> argument = command.getArguments()[i];
+			List<IArgument<?>> arguments = command.getArguments();
+			List<IArgument<?>> dummyArguments = new ArrayList<>();
+			if(arguments.size() > 0) {
+				for(int i = 0; i < arguments.size(); i++) {
+					IArgument<?> argument = arguments.get(i);
 					if(argument.hasDefault()) {
-						arguments.add(argument);
+						dummyArguments.add(argument);
 					}
 				}
 				
-				if(arguments.size() > 0) {
+				if(dummyArguments.size() > 0) {
 					List<IArgument<?>> args = new ArrayList<>();
-			    	for(int i = 1, max = 1 << arguments.size(); i < max; ++i) {
-			    	    for(int j = 0, k = 1; j < arguments.size(); ++j, k <<= 1) {
+			    	for(int i = 1, max = 1 << dummyArguments.size(); i < max; ++i) {
+			    	    for(int j = 0, k = 1; j < dummyArguments.size(); ++j, k <<= 1) {
 			    	        if((k & i) != 0) {
-			    	        	args.add(arguments.get(j));
+			    	        	args.add(dummyArguments.get(j));
 			    	        }
 			    	    }
 			    	    
@@ -358,25 +358,25 @@ public class CommandImpl implements ICommand {
 	
 	protected String argumentInfo;
 	
-	protected String[] examples = {};
+	protected List<String> examples = Collections.emptyList();
 	
-	protected String[] aliases = {};
+	protected List<String> aliases = Collections.emptyList();
 	
-	public static final BiFunction<CommandImpl, MessageReceivedEvent, String[]> DEFAULT_ALIASES_FUNCTION = (command, event) -> command.getAliases();
+	public static final BiFunction<CommandImpl, Message, List<String>> DEFAULT_ALIASES_FUNCTION = (command, event) -> command.getAliases();
 	
-	protected BiFunction<CommandImpl, MessageReceivedEvent, String[]> aliasesFunction = DEFAULT_ALIASES_FUNCTION;
+	protected BiFunction<CommandImpl, Message, List<String>> aliasesFunction = DEFAULT_ALIASES_FUNCTION;
 	
-	protected IArgument<?>[] arguments = {};
-	protected IOption[] options = {};
+	protected List<IArgument<?>> arguments = Collections.emptyList();
+	protected List<IOption> options = Collections.emptyList();
 	
 	protected InvalidOptionPolicy invalidOptionPolicy = InvalidOptionPolicy.INCLUDE;
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
-	protected ArgumentParsingType[] allowedArgumentParsingTypes = { ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED };
+	protected List<ArgumentParsingType> allowedArgumentParsingTypes = List.of(ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED);
 	
-	protected Permission[] botDiscordPermissions = {};
-	protected Permission[] authorDiscordPermissions = {};
+	protected List<Permission> botDiscordPermissions = Collections.emptyList();
+	protected List<Permission> authorDiscordPermissions = Collections.emptyList();
 	
 	protected boolean guildTriggerable = true;
 	protected boolean privateTriggerable;
@@ -406,7 +406,7 @@ public class CommandImpl implements ICommand {
 	/* Not sure about this one, might implement it in a different way. It currently only exist for edge cases hence why it isn't well implemented */
 	protected Map<String, Object> customProperties = new HashMap<>();
 	
-	protected List<TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean>> customVerifications = new ArrayList<>();
+	protected List<TriFunction<Message, CommandListener, CommandImpl, Boolean>> customVerifications = new ArrayList<>();
 	
 	protected List<ICommand> dummyCommands;
 	
@@ -420,11 +420,12 @@ public class CommandImpl implements ICommand {
 		this.command = command;
 		
 		if(generateDefault) {
+			/* TODO: This statement is bit odd, might want to reconsider the constructor for this */
 			if(arguments.length == 0 && this.commandMethods.size() == 1) {
 				Method commandMethod = this.commandMethods.get(0);
 				
-				this.arguments = CommandImpl.generateArguments(commandMethod);
-				this.options = CommandImpl.generateOptions(commandMethod);
+				this.arguments = List.of(CommandImpl.generateArguments(commandMethod));
+				this.options = List.of(CommandImpl.generateOptions(commandMethod));
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
@@ -435,44 +436,70 @@ public class CommandImpl implements ICommand {
 						System.err.println("Default generated commands should not have any arguments defined in the constructor");
 					}
 				}else{
-					this.arguments = arguments;
+					this.arguments = List.of(arguments);
+				}
+			}
+			
+			Map<String, ICommand> subCommands = new HashMap<>();
+			
+			for(Method method : this.getClass().getDeclaredMethods()) {
+				if(!method.getName().equals("onCommand")) {
+					if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
+						ICommand subCommand = MethodCommandFactory.getDefaultFactory().create(CommandUtility.getCommandName(method), method, this);
+						subCommands.put(subCommand.getCommand(), subCommand);
+					}
+				}
+			}
+			
+			for(Class<ICommand> commandClass : CommandUtility.getClassesImplementing(this.getClass().getDeclaredClasses(), ICommand.class)) {
+				try {
+					ICommand subCommand;
+					if(Modifier.isStatic(commandClass.getModifiers())) {
+						Constructor<ICommand> constructor = commandClass.getDeclaredConstructor();
+						
+						subCommand = constructor.newInstance();
+					}else{
+						Constructor<ICommand> constructor = commandClass.getDeclaredConstructor(this.getClass());
+						
+						subCommand = constructor.newInstance(this);
+					}
+					
+					subCommands.put(subCommand.getCommand(), subCommand);
+				}catch(Exception e) {
+					e.printStackTrace();
 				}
 			}
 			
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
-					if(method.isAnnotationPresent(Command.class)) {
-						this.addSubCommand(MethodCommandFactory.getDefaultFactory().create(method.getName().replace("_", " "), method, this));
+					if(method.isAnnotationPresent(Command.class) && method.isAnnotationPresent(SubCommand.class)) {
+						ICommand subCommand = MethodCommandFactory.getDefaultFactory().create(CommandUtility.getCommandName(method), method, this);
+						
+						SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
+						
+						String[] path = subCommandAnnotation.value();
+						if(path.length > 0) {
+							ICommand parent = CommandUtility.getSubCommandRecursive(subCommands.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
+							if(parent != null) {
+								/* TODO: Implement a proper way of handling this, commands should not have to extend CommandImpl */
+								if(parent instanceof CommandImpl) {
+									((CommandImpl) parent).addSubCommand(subCommand);
+								}else{
+									System.err.println("[" + this.getClass().getSimpleName() + "] Sub command (" + subCommand.getCommand() + ") parent does not implement CommandImpl");
+								}
+							}else{
+								System.err.println("[" + this.getClass().getSimpleName() + "] Sub command (" + subCommand.getCommand() + ") does not have a valid command path");
+							}
+						}else{
+							System.err.println("[" + this.getClass().getSimpleName() + "] Sub command (" + subCommand.getCommand() + ") does not have a command path");
+						}
 					}
 				}
 			}
 			
-			for(Class<?> clazz : this.getClass().getClasses()) {
-				if(LoaderUtility.isDeepImplementation(clazz, ICommand.class)) {
-					try {
-						try {
-							Constructor<?> constructor = clazz.getDeclaredConstructor();
-							
-							this.addSubCommand((ICommand) constructor.newInstance());
-							
-							continue;
-						}catch(NoSuchMethodException | SecurityException e) {}
-						
-						try {
-							Constructor<?> constructor = clazz.getDeclaredConstructor(this.getClass());
-							
-							this.addSubCommand((ICommand) constructor.newInstance(this));
-							
-							continue;
-						}catch(NoSuchMethodException | SecurityException e) {}
-						
-					}catch(InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
-						e.printStackTrace();
-					}
-				}
-			}
+			this.subCommands.addAll(subCommands.values());
 		}else{
-			this.arguments = arguments;
+			this.arguments = List.of(arguments);
 		}
 		
 		this.defaultGenerated = generateDefault;
@@ -504,20 +531,20 @@ public class CommandImpl implements ICommand {
 		return this.argumentInfo;
 	}
 	
-	public String[] getExamples() {
-		return this.examples;
+	public List<String> getExamples() {
+		return Collections.unmodifiableList(this.examples);
 	}
 	
-	public String[] getAliases() {
-		return this.aliases;
+	public List<String> getAliases() {
+		return Collections.unmodifiableList(this.aliases);
 	}
 	
-	public IArgument<?>[] getArguments() {
-		return this.arguments;
+	public List<IArgument<?>> getArguments() {
+		return Collections.unmodifiableList(this.arguments);
 	}
 	
-	public IOption[] getOptions() {
-		return this.options;
+	public List<IOption> getOptions() {
+		return Collections.unmodifiableList(this.options);
 	}
 	
 	public InvalidOptionPolicy getInvalidOptionPolicy() {
@@ -528,16 +555,16 @@ public class CommandImpl implements ICommand {
 		return this.overflowPolicy;
 	}
 	
-	public ArgumentParsingType[] getAllowedArgumentParsingTypes() {
+	public List<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.allowedArgumentParsingTypes;
 	}
 	
-	public Permission[] getBotDiscordPermissions() {
-		return this.botDiscordPermissions;
+	public List<Permission> getBotDiscordPermissions() {
+		return Collections.unmodifiableList(this.botDiscordPermissions);
 	}
 	
-	public Permission[] getAuthorDiscordPermissions() {
-		return this.authorDiscordPermissions;
+	public List<Permission> getAuthorDiscordPermissions() {
+		return Collections.unmodifiableList(this.authorDiscordPermissions);
 	}
 	
 	public boolean isGuildTriggerable() {
@@ -623,7 +650,7 @@ public class CommandImpl implements ICommand {
 		return this.customProperties.get(key);
 	}
 	
-	public BiFunction<CommandImpl, MessageReceivedEvent, String[]> getAliasesFunction() {
+	public BiFunction<CommandImpl, Message, List<String>> getAliasesFunction() {
 		return this.aliasesFunction;
 	}
 	
@@ -646,13 +673,13 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public CommandImpl setBotDiscordPermissions(Permission... permissions) {
-		this.botDiscordPermissions = permissions;
+		this.botDiscordPermissions = List.of(permissions);
 		
 		return this;
 	}
 	
 	public CommandImpl setAuthorDiscordPermissions(Permission... permissions) {
-		this.authorDiscordPermissions = permissions;
+		this.authorDiscordPermissions = List.of(permissions);
 		
 		return this;
 	}
@@ -676,7 +703,7 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public CommandImpl setExamples(String... examples) {
-		this.examples = examples;
+		this.examples = List.of(examples);
 		
 		return this;
 	}
@@ -689,20 +716,20 @@ public class CommandImpl implements ICommand {
 		 */
 		Arrays.sort(aliases, (a, b) -> Integer.compare(b.length(), a.length()));
 		
-		this.aliases = aliases;
+		this.aliases = List.of(aliases);
 		
 		return this;
 	}
 	
 	public CommandImpl setArguments(IArgument<?>... arguments) {
-		this.arguments = arguments;
+		this.arguments = List.of(arguments);
 		this.dummyCommands = CommandImpl.generateDummyCommands(this);
 		
 		return this;
 	}
 	
 	public CommandImpl setOptions(IOption... options) {
-		this.options = options;
+		this.options = List.of(options);
 		
 		return this;
 	}
@@ -720,7 +747,7 @@ public class CommandImpl implements ICommand {
 	}
 	
 	public CommandImpl setAllowedArgumentParsingTypes(ArgumentParsingType... argumentParsingTypes) {
-		this.allowedArgumentParsingTypes = argumentParsingTypes;
+		this.allowedArgumentParsingTypes = List.of(argumentParsingTypes);
 		
 		return this;
 	}
@@ -832,26 +859,26 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	/** Custom verification which will be used in {@link #verify(MessageReceivedEvent, CommandListener)} when checking for commands */
-	public CommandImpl addVerification(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> verification) {
+	/** Custom verification which will be used in {@link #verify(Message, CommandListener)} when checking for commands */
+	public CommandImpl addVerification(TriFunction<Message, CommandListener, CommandImpl, Boolean> verification) {
 		this.customVerifications.add(verification);
 		
 		return this;
 	}
 	
-	public CommandImpl addVerification(BiFunction<MessageReceivedEvent, CommandImpl, Boolean> verification) {
+	public CommandImpl addVerification(BiFunction<Message, CommandImpl, Boolean> verification) {
 		this.customVerifications.add((event, listener, impl) -> verification.apply(event, impl));
 		
 		return this;
 	}
 	
-	public CommandImpl addVerification(Function<MessageReceivedEvent, Boolean> verification) {
+	public CommandImpl addVerification(Function<Message, Boolean> verification) {
 		this.customVerifications.add((event, listener, impl) -> verification.apply(event));
 		
 		return this;
 	}
 	
-	public CommandImpl setAliases(BiFunction<CommandImpl, MessageReceivedEvent, String[]> function) {
+	public CommandImpl setAliases(BiFunction<CommandImpl, Message, List<String>> function) {
 		if(function != null) {
 			this.aliasesFunction = function;
 		}else{
@@ -861,7 +888,7 @@ public class CommandImpl implements ICommand {
 		return this;
 	}
 	
-	public CommandImpl setAliases(Function<MessageReceivedEvent, String[]> function) {
+	public CommandImpl setAliases(Function<Message, List<String>> function) {
 		if(function != null) {
 			this.aliasesFunction = (command, event) -> function.apply(event);
 		}else{
@@ -886,21 +913,21 @@ public class CommandImpl implements ICommand {
 		return commands;
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
+	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
 		List<Pair<String, ICommand>> commands = new ArrayList<>();
 		
 		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
 		
-		String[] aliases = this.aliasesFunction.apply(this, event);
+		List<String> aliases = this.aliasesFunction.apply(this, message);
 		for(String alias : aliases) {
 			commands.add(Pair.of((prefix + " " + alias).trim(), this));
 		}
 		
 		for(ICommand command : this.getSubCommands()) {
-			commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + this.getCommand()).trim()));
+			commands.addAll(command.getAllCommandsRecursiveWithTriggers(message, (prefix + " " + this.getCommand()).trim()));
 			
 			for(String alias : aliases) {
-				commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + alias).trim()));
+				commands.addAll(command.getAllCommandsRecursiveWithTriggers(message, (prefix + " " + alias).trim()));
 			}
 		}
 		
@@ -921,13 +948,13 @@ public class CommandImpl implements ICommand {
 		}
 	}
 	
-	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
-		if(!ICommand.super.verify(event, commandListener)) {
+	public boolean verify(Message message, CommandListener commandListener) {
+		if(!ICommand.super.verify(message, commandListener)) {
 			return false;
 		}
 		
-		for(TriFunction<MessageReceivedEvent, CommandListener, CommandImpl, Boolean> function : this.customVerifications) {
-			if(!function.apply(event, commandListener, this)) {
+		for(TriFunction<Message, CommandListener, CommandImpl, Boolean> function : this.customVerifications) {
+			if(!function.apply(message, commandListener, this)) {
 				return false;
 			}
 		}

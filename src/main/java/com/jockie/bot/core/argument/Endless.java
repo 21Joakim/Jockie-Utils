@@ -9,9 +9,19 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 public @interface Endless {
 	
+	/**
+	 * @see {@link IEndlessArgument#getMinArguments()}
+	 */
 	public int minArguments() default 1;
+	
+	/**
+	 * @see {@link IEndlessArgument#getMaxArguments()}
+	 */
 	public int maxArguments() default 0;
 	
+	/**
+	 * @see {@link IArgument#isEndless()}
+	 */
 	public boolean endless() default true;
 	
 }

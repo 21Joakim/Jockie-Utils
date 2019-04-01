@@ -11,9 +11,11 @@ import com.jockie.bot.core.command.exception.CancelException;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
+import net.dv8tion.jda.client.entities.Group;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.core.entities.GuildVoiceState;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageChannel;
@@ -21,13 +23,11 @@ import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.PrivateChannel;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.entities.VoiceState;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.requests.restaction.MessageAction;
 
 public class CommandEvent {
 	
-	protected MessageReceivedEvent event;
+	protected Message message;
 	protected CommandListener commandListener;
 	
 	protected ICommand command;
@@ -43,11 +43,25 @@ public class CommandEvent {
 	
 	protected String contentOverflow;
 	
-	public CommandEvent(MessageReceivedEvent event, CommandListener listener, ICommand command, 
+	protected long timeStarted;
+	
+	/**
+	 * @param message the context for this; the message which was sent to trigger this command
+	 * @param listener the command listener which the command is registered to
+	 * @param command the command which was parsed
+	 * @param arguments the parsed arguments
+	 * @param prefix the prefix which was used to trigger this
+	 * @param commandTrigger the String which was used to trigger this command, could be an alias
+	 * @param optionsPresent a list of the raw options provided in this command
+	 * @param parsingType the type of parsing which was used to parse this command
+	 * @param contentOverflow any additional content 
+	 * @param timeStarted the time as {@link System#nanoTime()} when this started parsing
+	 */
+	public CommandEvent(Message message, CommandListener listener, ICommand command, 
 			Object[] arguments, String prefix, String commandTrigger, List<String> optionsPresent,
-			ArgumentParsingType parsingType, String contentOverflow) {
+			ArgumentParsingType parsingType, String contentOverflow, long timeStarted) {
 		
-		this.event = event;
+		this.message = message;
 		this.commandListener = listener;
 		
 		this.command = command;
@@ -62,16 +76,18 @@ public class CommandEvent {
 		this.parsingType = parsingType;
 		
 		this.contentOverflow = contentOverflow;
+		
+		this.timeStarted = timeStarted;
 	}
 	
-	/** @return the message event which triggered the command */
-	public MessageReceivedEvent getEvent() {
-		return this.event;
+	/** @return the message which triggered the command */
+	public Message getMessage() {
+		return this.message;
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getJDA()} */
+	/** Equivalent to {@link Message#getJDA()} */
 	public JDA getJDA() {
-		return this.event.getJDA();
+		return this.message.getJDA();
 	}
 	
 	/** Equivalent to {@link JDA#getSelfUser()} */
@@ -89,51 +105,51 @@ public class CommandEvent {
 		return guild != null ? guild.getSelfMember() : null;
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getAuthor()} */
+	/** Equivalent to {@link Message#getAuthor()} */
 	public User getAuthor() {
-		return this.event.getAuthor();
+		return this.message.getAuthor();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getMember()} */
+	/** Equivalent to {@link Message#getMember()} */
 	public Member getMember() {
-		return this.event.getMember();
+		return this.message.getMember();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getChannel()} */
+	/** Equivalent to {@link Message#getChannel()} */
 	public MessageChannel getChannel() {
-		return this.event.getChannel();
+		return this.message.getChannel();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getTextChannel()} */
+	/** Equivalent to {@link Message#getTextChannel()} */
 	public TextChannel getTextChannel() {
-		return this.event.getTextChannel();
+		return this.message.getTextChannel();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getPrivateChannel()} */
+	/** Equivalent to {@link Message#getPrivateChannel()} */
 	public PrivateChannel getPrivateChannel() {
-		return this.event.getPrivateChannel();
+		return this.message.getPrivateChannel();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getChannelType()} */
+	/** Equivalent to {@link Message#getGroup()} */
+	public Group getGroup() {
+		return this.message.getGroup();
+	}
+	
+	/** Equivalent to {@link Message#getChannelType()} */
 	public ChannelType getChannelType() {
-		return this.event.getChannelType();
+		return this.message.getChannelType();
 	}
 	
-	/** Equivalent to {@link MessageReceivedEvent#getGuild()} */
+	/** Equivalent to {@link Message#getGuild()} */
 	public Guild getGuild() {
-		return this.event.getGuild();
-	}
-	
-	/** Equivalent to {@link MessageReceivedEvent#getMessage()} */
-	public Message getMessage() {
-		return this.event.getMessage();
+		return this.message.getGuild();
 	}
 	
 	/** Equivalent to {@link Member#getVoiceState()} called on the Member that executed this 
 	 *
 	 * @return possibly-null if the event is not from a guild
 	 */
-	public VoiceState getVoiceState() {
+	public GuildVoiceState getVoiceState() {
 		Member member = this.getMember();
 		
 		return member != null ? member.getVoiceState() : null;
@@ -177,10 +193,10 @@ public class CommandEvent {
 	
 	/** @return true if the person that executed this command is a developer ({@link CommandListener#isDeveloper(long)}) */
 	public boolean isDeveloper() {
-		return this.commandListener.isDeveloper(this.event.getAuthor());
+		return this.commandListener.isDeveloper(this.message.getAuthor());
 	}
 	
-	/** @return the string which triggered the command, this could the command or an alias */
+	/** @return the string which triggered the command, this could be the command or an alias */
 	public String getCommandTrigger() {
 		return this.commandTrigger;
 	}
@@ -205,6 +221,16 @@ public class CommandEvent {
 		return this.contentOverflow;
 	}
 	
+	/** @return the time as {@link System#nanoTime()} when this started parsing */
+	public long getTimeStarted() {
+		return this.timeStarted;
+	}
+	
+	/** @return the time in nanoseconds since this started parsing */
+	public long getTimeSinceStarted() {
+		return System.nanoTime() - this.timeStarted;
+	}
+	
 	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
 	public MessageAction reply(CharSequence text) {
 		return this.getChannel().sendMessage(text);
@@ -227,14 +253,14 @@ public class CommandEvent {
 	
 	/** Apply a cooldown to this command */
 	public ICooldown applyCooldown() {
-		return this.commandListener.getCoooldownManager().createCooldownAndGet(this.command, this.event);
+		return this.commandListener.getCoooldownManager().applyCooldownAndGet(this.command, this.message);
 	}
 	
 	/** Apply a cooldown to this command */
 	public ICooldown applyCooldown(long duration, TimeUnit unit) {
 		ICooldownManager manager = this.commandListener.getCoooldownManager();
 		ICooldown cooldown = manager.createEmptyCooldown(this.command.getCooldownScope(), duration, unit);
-		cooldown.applyContext(this.event);
+		cooldown.applyContext(this.message);
 		
 		this.commandListener.getCoooldownManager().applyCooldown(this.command, cooldown);
 		
@@ -243,6 +269,6 @@ public class CommandEvent {
 	
 	/** Remove the cooldown from this command */
 	public ICooldown removeCooldown() {
-		return this.commandListener.getCoooldownManager().removeCooldown(this.command, this.event);
+		return this.commandListener.getCoooldownManager().removeCooldown(this.command, this.message);
 	}
 }

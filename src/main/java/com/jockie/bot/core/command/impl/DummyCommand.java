@@ -13,7 +13,7 @@ import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 /**
@@ -30,7 +30,7 @@ public class DummyCommand implements ICommand {
 	
 	private Map<Integer, IArgument<?>> optionalArguments = new HashMap<>();
 	
-	private IArgument<?>[] arguments;
+	private List<IArgument<?>> arguments;
 	
 	/**
 	 * @param command the command which this DummyCommand should replicate
@@ -40,13 +40,12 @@ public class DummyCommand implements ICommand {
 	public DummyCommand(ICommand command, IArgument<?>... arguments) {
 		this.command = command;
 		
-		IArgument<?>[] commandArguments = command.getArguments();
-		
-		List<IArgument<?>> requiredArguments = new ArrayList<>(commandArguments.length);
+		List<IArgument<?>> commandArguments = command.getArguments();
+		List<IArgument<?>> requiredArguments = new ArrayList<>(commandArguments.size());
 		
 		ARGUMENTS:
-		for(int i = 0; i < commandArguments.length; i++) {
-			IArgument<?> argument = commandArguments[i];
+		for(int i = 0; i < commandArguments.size(); i++) {
+			IArgument<?> argument = commandArguments.get(i);
 			if(!argument.hasDefault()) {
 				requiredArguments.add(argument);
 			}else{
@@ -62,11 +61,11 @@ public class DummyCommand implements ICommand {
 			}
 		}
 		
-		this.arguments = requiredArguments.toArray(new IArgument[0]);
+		this.arguments = requiredArguments;
 	}
 	
 	public void execute(CommandEvent event, Object... arguments) throws Throwable {
-		Object[] args = new Object[this.command.getArguments().length];
+		Object[] args = new Object[this.command.getArguments().size()];
 		
 		for(int i = 0, offset = 0; i < args.length; i++) {
 			if(this.optionalArguments.get(i) != null) {
@@ -76,14 +75,14 @@ public class DummyCommand implements ICommand {
 			}
 		}
 		
-		this.command.execute(event, args);
+		this.command.execute(event, event.arguments = args);
 	}
 	
-	public boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
-		return this.command.verify(event, commandListener);
+	public boolean verify(Message message, CommandListener commandListener) {
+		return this.command.verify(message, commandListener);
 	}
 	
-	public String[] getAliases() {
+	public List<String> getAliases() {
 		return this.command.getAliases();
 	}
 	
@@ -139,15 +138,15 @@ public class DummyCommand implements ICommand {
 		return this.command.getArgumentInfo();
 	}
 	
-	public String[] getExamples() {
+	public List<String> getExamples() {
 		return this.command.getExamples();
 	}
 	
-	public Permission[] getAuthorDiscordPermissions() {
+	public List<Permission> getAuthorDiscordPermissions() {
 		return this.command.getAuthorDiscordPermissions();
 	}
 	
-	public Permission[] getBotDiscordPermissions() {
+	public List<Permission> getBotDiscordPermissions() {
 		return this.command.getBotDiscordPermissions();
 	}
 	
@@ -162,15 +161,15 @@ public class DummyCommand implements ICommand {
 		return this.command;
 	}
 	
-	public IArgument<?>[] getArguments() {
-		return this.arguments;
+	public List<IArgument<?>> getArguments() {
+		return Collections.unmodifiableList(this.arguments);
 	}
 	
 	public List<ICommand> getSubCommands() {
 		return Collections.emptyList();
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
+	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
 		return Collections.emptyList();
 	}
 	
@@ -182,7 +181,7 @@ public class DummyCommand implements ICommand {
 		return this.command.getCommandTrigger();
 	}
 	
-	public IOption[] getOptions() {
+	public List<IOption> getOptions() {
 		return this.command.getOptions();
 	}
 	
@@ -194,7 +193,7 @@ public class DummyCommand implements ICommand {
 		return this.command.getContentOverflowPolicy();
 	}
 	
-	public ArgumentParsingType[] getAllowedArgumentParsingTypes() {
+	public List<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.command.getAllowedArgumentParsingTypes();
 	}
 	

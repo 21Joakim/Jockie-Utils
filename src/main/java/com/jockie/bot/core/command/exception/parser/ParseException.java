@@ -1,5 +1,8 @@
 package com.jockie.bot.core.command.exception.parser;
 
+/**
+ * This Exception indicates that something went wrong in the parsing of a command
+ */
 public class ParseException extends Exception {
 	
 	private static final long serialVersionUID = 1L;

@@ -13,30 +13,30 @@ import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.ChannelType;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public interface ICommand {
 	
 	/**
-	 * @return the command which the Listener should look for.
+	 * @return the command which the command listener should look for
 	 */
 	public String getCommand();
 	
 	/**
-	 * @return a boolean that will prove if this command should be able to be triggered by guild messages.
+	 * @return a boolean that will prove if this command should be able to be triggered by guild messages
 	 */
 	public boolean isGuildTriggerable();
 	
 	/**
-	 * @return a boolean that will prove if this command should be able to be triggered by private messages.
+	 * @return a boolean that will prove if this command should be able to be triggered by private messages
 	 */
 	public boolean isPrivateTriggerable();
 	
 	/**
 	 * @return the command's arguments.
 	 */
-	public IArgument<?>[] getArguments();
+	public List<IArgument<?>> getArguments();
 	
 	/**
 	 * @return a boolean that will prove if this command is hidden and should therefore not be shown in help commands
@@ -56,17 +56,17 @@ public interface ICommand {
 	/**
 	 * @return a set of examples which can be used in a help command 
 	 */
-	public String[] getExamples();
+	public List<String> getExamples();
 	
 	/**
 	 * @return all the possible aliases for this command
 	 */
-	public String[] getAliases();
+	public List<String> getAliases();
 	
 	/**
 	 * @return all options for this command
 	 */
-	public IOption[] getOptions();
+	public List<IOption> getOptions();
 	
 	/**
 	 * @return a {@link InvalidOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
@@ -103,7 +103,7 @@ public interface ICommand {
 	/**
 	 * @return an array of {@link ArgumentParsingType}s which is used to determine how the arguments are allowed to be defined
 	 */
-	public ArgumentParsingType[] getAllowedArgumentParsingTypes();
+	public List<ArgumentParsingType> getAllowedArgumentParsingTypes();
 	
 	public enum ArgumentParsingType {
 		/** Positional arguments are arguments which are not specified by key=value but rather the order/index they are in, for instance
@@ -119,12 +119,12 @@ public interface ICommand {
 	/**
 	 * @return the discord permissions required for this command to function correctly.
 	 */
-	public Permission[] getBotDiscordPermissions();
+	public List<Permission> getBotDiscordPermissions();
 	
 	/**
 	 * @return the discord permissions the author is required to have to trigger this command
 	 */
-	public Permission[] getAuthorDiscordPermissions();
+	public List<Permission> getAuthorDiscordPermissions();
 	
 	/**
 	 * @return a boolean that will prove if this command is a <strong>developer</strong> command, if it is a developer command it can only be triggered by developers/authorised users
@@ -188,7 +188,7 @@ public interface ICommand {
 	public ICategory getCategory();
 	
 	/**
-	 * @return a boolean to prove whether this command is passive or not, a passive command will not have any executable method and might for instance only have sub-commands.
+	 * @return a boolean to prove whether this command is passive or not, a passive command will not have any executable method and might for instance only have sub-commands
 	 */
 	public boolean isPassive();
 	
@@ -209,24 +209,24 @@ public interface ICommand {
 	 */
 	
 	/* Should this be renamed to something else, such as isAccessible? Since it checks whether the user has access to the command or not, maybe canAccess? */
-	public default boolean verify(MessageReceivedEvent event, CommandListener commandListener) {
-		if(event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
+	public default boolean verify(Message message, CommandListener commandListener) {
+		if(message.getAuthor().getIdLong() == message.getJDA().getSelfUser().getIdLong()) {
 			return false;
 		}
 		
-		if(!this.isBotTriggerable() && event.getAuthor().isBot()) {
+		if(!this.isBotTriggerable() && message.getAuthor().isBot()) {
 			return false;
 		}
 		
-		if(!this.isGuildTriggerable() && event.getChannelType().isGuild()) {
+		if(!this.isGuildTriggerable() && message.getChannelType().isGuild()) {
 			return false;
 		}
 		
-		if(!this.isPrivateTriggerable() && event.getChannelType().equals(ChannelType.PRIVATE)) {
+		if(!this.isPrivateTriggerable() && message.getChannelType().equals(ChannelType.PRIVATE)) {
 			return false;
 		}
 		
-		if(this.isDeveloperCommand() && !commandListener.isDeveloper(event.getAuthor().getIdLong())) {
+		if(this.isDeveloperCommand() && !commandListener.isDeveloper(message.getAuthor().getIdLong())) {
 			return false;
 		}
 		
@@ -234,36 +234,36 @@ public interface ICommand {
 	}
 	
 	/**
-	 * This is what should be executed when this command is considered to be valid.
+	 * This is what should be executed when this command is considered to be valid
 	 * 
-	 * @param event the event which triggered the command.
-	 * @param arguments the arguments which triggered the command.
+	 * @param event the event which triggered the command
+	 * @param arguments the arguments which triggered the command
 	 */
 	public void execute(CommandEvent event, Object... arguments) throws Throwable;
 	
 	/**
-	 * @param event the context
+	 * @param message the context
 	 * @param prefix the start of the trigger, used for recursively getting sub-commands
 	 * 
 	 * @return all commands which are related to this command, sub-commands and dummy commands as well as all the aliases, with the appropriate triggers
 	 */
 	
 	/* Including a default implementation in-case people wants to make their own ICommand implementation */
-	public default List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(MessageReceivedEvent event, String prefix) {
+	public default List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
 		List<Pair<String, ICommand>> commands = new ArrayList<>();
 		
 		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
 		
-		String[] aliases = this.getAliases();
+		List<String> aliases = this.getAliases();
 		for(String alias : aliases) {
 			commands.add(Pair.of((prefix + " " + alias).trim(), this));
 		}
 		
 		for(ICommand command : this.getSubCommands()) {
-			commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + this.getCommand()).trim()));
+			commands.addAll(command.getAllCommandsRecursiveWithTriggers(message, (prefix + " " + this.getCommand()).trim()));
 			
 			for(String alias : aliases) {
-				commands.addAll(command.getAllCommandsRecursiveWithTriggers(event, (prefix + " " + alias).trim()));
+				commands.addAll(command.getAllCommandsRecursiveWithTriggers(message, (prefix + " " + alias).trim()));
 			}
 		}
 		
@@ -276,7 +276,7 @@ public interface ICommand {
 	 * @return all commands which are related to this command, sub-commands and optional dummy commands
 	 */
 	
-	/* Including a default implementation in-case people wants to make their own ICommand implementation */
+	/* Including a default implementation in case people wants to make their own ICommand implementation */
 	/* Not sure if the includeDummyCommands variable should exist or not, it is more or less an internal thing and is not really supposed to be used */
 	public default List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		List<ICommand> commands = new ArrayList<>();
@@ -297,8 +297,9 @@ public interface ICommand {
 	public static String getArgumentInfo(ICommand command) {
 		StringBuilder builder = new StringBuilder();
 		
-		for(int i = 0; i < command.getArguments().length; i++) {
-			IArgument<?> argument = command.getArguments()[i];
+		List<IArgument<?>> arguments = command.getArguments();
+		for(int i = 0; i < arguments.size(); i++) {
+			IArgument<?> argument = arguments.get(i);
 			
 			if(argument.getName() != null) {
 				builder.append("<").append(argument.getName()).append(">");
@@ -309,14 +310,17 @@ public interface ICommand {
 			if(argument instanceof IEndlessArgument) {
 				IEndlessArgument<?> endlessArgument = (IEndlessArgument<?>) argument;
 				
-				builder.append("[").append(endlessArgument.getMinArguments()).append("-").append((endlessArgument.getMaxArguments() != 0) ? endlessArgument.getMaxArguments() + "]" : "...]");
+				builder.append("[")
+					.append(endlessArgument.getMinArguments())
+					.append("-")
+					.append((endlessArgument.getMaxArguments() != 0) ? endlessArgument.getMaxArguments() + "]" : "...]");
 			}
 			
 			if(!argument.hasDefault()) {
 				builder.append("*");			
 			}
 			
-			if(i < command.getArguments().length - 1) {
+			if(i < arguments.size() - 1) {
 				builder.append(" ");
 			}
 		}

@@ -10,9 +10,9 @@ import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.entities.Message;
 
-public class CooldownManager implements ICooldownManager {
+public class CooldownManagerImpl implements ICooldownManager {
 	
 	private Map<ICommand, Map<String, ICooldown>> cooldownStore = new HashMap<>();
 	
@@ -24,16 +24,16 @@ public class CooldownManager implements ICooldownManager {
 		return this.cooldownStore.get(command).get(key);
 	}
 	
-	public ICooldown getCooldown(ICommand command, MessageReceivedEvent event) {
+	public ICooldown getCooldown(ICommand command, Message message) {
 		Map<String, ICooldown> cooldownStore = this.getCooldownStore(command);
 		if(cooldownStore != null) {
-			return cooldownStore.get(command.getCooldownScope().getContextKey(event));
+			return cooldownStore.get(command.getCooldownScope().getContextKey(message));
 		}
 		
 		return null;
 	}
 	
-	public void applyCooldown(ICommand command, ICooldown cooldown) {
+	public ICooldown applyCooldown(ICommand command, ICooldown cooldown) {
 		Objects.requireNonNull(cooldown);
 		
 		if(cooldown.getContextKey() == null) {
@@ -45,31 +45,32 @@ public class CooldownManager implements ICooldownManager {
 		}
 		
 		Map<String, ICooldown> cooldownStore = this.cooldownStore.computeIfAbsent(command, key -> new HashMap<>());
-		cooldownStore.put(cooldown.getContextKey(), cooldown);
+		
+		return cooldownStore.put(cooldown.getContextKey(), cooldown);
 	}
 	
-	public boolean createCooldown(ICommand command, MessageReceivedEvent event) {
+	public ICooldown applyCooldown(ICommand command, Message message) {
 		Map<String, ICooldown> cooldownStore = this.cooldownStore.computeIfAbsent(command, key -> new HashMap<>());
 		
-		CooldownImpl cooldown = new CooldownImpl(event, command.getCooldownScope(), command.getCooldownDuration(), TimeUnit.MILLISECONDS);
+		CooldownImpl cooldown = new CooldownImpl(message, command.getCooldownScope(), command.getCooldownDuration(), TimeUnit.MILLISECONDS);
 		ICooldown previousCooldown = cooldownStore.put(cooldown.getContextKey(), cooldown);
 		
-		return previousCooldown != null && !previousCooldown.hasExpired() ? true : false;
+		return previousCooldown != null && !previousCooldown.hasExpired() ? previousCooldown : null;
 	}
 	
-	public ICooldown createCooldownAndGet(ICommand command, MessageReceivedEvent event) {
+	public ICooldown applyCooldownAndGet(ICommand command, Message message) {
 		Map<String, ICooldown> cooldownStore = this.cooldownStore.computeIfAbsent(command, key -> new HashMap<>());
 		
-		CooldownImpl cooldown = new CooldownImpl(event, command.getCooldownScope(), command.getCooldownDuration(), TimeUnit.MILLISECONDS);
+		CooldownImpl cooldown = new CooldownImpl(message, command.getCooldownScope(), command.getCooldownDuration(), TimeUnit.MILLISECONDS);
 		cooldownStore.put(cooldown.getContextKey(), cooldown);
 		
 		return cooldown;
 	}
 	
-	public ICooldown removeCooldown(ICommand command, MessageReceivedEvent event) {
+	public ICooldown removeCooldown(ICommand command, Message message) {
 		Map<String, ICooldown> cooldownStore = this.getCooldownStore(command);
 		if(cooldownStore != null) {
-			return cooldownStore.remove(command.getCooldownScope().getContextKey(event));
+			return cooldownStore.remove(command.getCooldownScope().getContextKey(message));
 		}
 		
 		return null;

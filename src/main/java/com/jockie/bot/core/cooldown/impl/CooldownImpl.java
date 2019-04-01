@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.cooldown.ICooldown;
 
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.core.entities.Message;
 
 public class CooldownImpl implements ICooldown {
 	
@@ -20,12 +20,12 @@ public class CooldownImpl implements ICooldown {
 	private long duration;
 	private TimeUnit durationUnit;
 	
-	public CooldownImpl(MessageReceivedEvent event, Scope scope, long duration, TimeUnit unit) {
+	public CooldownImpl(Message message, Scope scope, long duration, TimeUnit unit) {
 		this.scope = scope;
 		this.duration = unit.toMillis(duration);
 		this.durationUnit = TimeUnit.MILLISECONDS;
 		
-		this.key = this.scope.getContextKey(event);
+		this.key = this.scope.getContextKey(message);
 		
 		this.timeStarted = Clock.systemUTC().instant();
 	}
@@ -36,8 +36,8 @@ public class CooldownImpl implements ICooldown {
 		this.durationUnit = TimeUnit.MILLISECONDS;
 	}
 	
-	public void applyContext(MessageReceivedEvent event) {
-		this.key = this.scope.getContextKey(event);
+	public void applyContext(Message message) {
+		this.key = this.scope.getContextKey(message);
 	}
 	
 	public Scope getScope() {

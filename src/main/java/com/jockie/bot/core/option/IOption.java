@@ -4,8 +4,15 @@ import com.jockie.bot.core.command.impl.CommandListener;
 
 public interface IOption {
 	
+	/**
+	 * @return the name of this option, used to determine whether the option is used or not
+	 */
 	public String getName();
 	
+	
+	/**
+	 * @return the description of this option, could for instance explain the behaviour of the option
+	 */
 	public String getDescription();
 	
 	/**
@@ -13,6 +20,9 @@ public interface IOption {
 	 */
 	public String[] getAliases();
 	
+	/**
+	 * @return whether or not this option should be hidden
+	 */
 	public boolean isHidden();
 	
 	/**

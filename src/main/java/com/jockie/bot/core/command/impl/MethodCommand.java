@@ -12,14 +12,14 @@ import java.util.Optional;
 
 import com.jockie.bot.core.Context;
 import com.jockie.bot.core.command.Command;
-import com.jockie.bot.core.command.annotation.Async;
-import com.jockie.bot.core.command.annotation.AuthorPermissions;
-import com.jockie.bot.core.command.annotation.BotPermissions;
-import com.jockie.bot.core.command.annotation.Cooldown;
-import com.jockie.bot.core.command.annotation.Developer;
-import com.jockie.bot.core.command.annotation.Hidden;
-import com.jockie.bot.core.command.annotation.Nsfw;
-import com.jockie.bot.core.command.annotation.Policy;
+import com.jockie.bot.core.command.Command.Async;
+import com.jockie.bot.core.command.Command.AuthorPermissions;
+import com.jockie.bot.core.command.Command.BotPermissions;
+import com.jockie.bot.core.command.Command.Cooldown;
+import com.jockie.bot.core.command.Command.Developer;
+import com.jockie.bot.core.command.Command.Hidden;
+import com.jockie.bot.core.command.Command.Nsfw;
+import com.jockie.bot.core.command.Command.Policy;
 import com.jockie.bot.core.option.Option;
 
 import net.dv8tion.jda.core.entities.Message;
@@ -112,7 +112,7 @@ public class MethodCommand extends CommandImpl {
 		if(method.isAnnotationPresent(Cooldown.class)) {
 			Cooldown cooldown = method.getAnnotation(Cooldown.class);
 			
-			command.setCooldownDuration(cooldown.cooldown(), cooldown.cooldownUnit());
+			command.setCooldownDuration(cooldown.value(), cooldown.cooldownUnit());
 			command.setCooldownScope(cooldown.cooldownScope());
 		}
 		
@@ -150,7 +150,7 @@ public class MethodCommand extends CommandImpl {
 		if(method.isAnnotationPresent(BotPermissions.class)) {
 			BotPermissions botPermissions = method.getAnnotation(BotPermissions.class);
 			
-			command.setAuthorDiscordPermissions(botPermissions.value());
+			command.setBotDiscordPermissions(botPermissions.value());
 		}
 		
 		if(method.isAnnotationPresent(Policy.class)) {
@@ -179,9 +179,7 @@ public class MethodCommand extends CommandImpl {
 			Parameter parameter = command.getParameters()[i];
 			Class<?> type = parameter.getType();
 			
-			if(type.equals(MessageReceivedEvent.class)) {
-				arguments[i] = event.getEvent();
-			}else if(type.equals(CommandEvent.class)) {
+			if(type.equals(CommandEvent.class)) {
 				arguments[i] = event;
 			}else{
 				Object context = CommandImpl.getContextVariable(event, parameter);

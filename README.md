@@ -3,7 +3,6 @@ All suggestion and contributions are welcome!\
 **NOTE:** This project does lack examples of all the available features.
 
 #### Content
-----
 
 * [Libraries Used](#libraries-used)
 * [Installation](#installation)
@@ -114,7 +113,7 @@ All commands need to extend ICommand and the standard implementation of that is 
 #### Allowed parameters
 ----
 
-Any objects are allowed to be present as the parameters however if the object's class is not registered in the **ArgumentFactory** it will not generate any default arguments for it and throw an exception therefore you have to specifiy them yourself. There is one exception to this with two objects which can not be arguments, **MessageReceivedEvent** and **CommandEvent**. Any amount of MessageReceivedEvent and CommandEvent used in your parameters won't matter they will always refer to the context and nothing else. Both MessageReceivedEvent and CommandEvent are optional so none of them have to be specified in the parameters but most of the time you would want at least one of them.
+Any objects are allowed to be present as the parameters however if the object's class is not registered in the **ArgumentFactory** it will not generate any default arguments for it and throw an exception therefore you have to specifiy them yourself. There is one exception to this with **CommandEvent** which can not be used as an argument. Any amount of CommandEvent used in your parameters won't matter they will always refer to the context and nothing else. The CommandEvent is also optional, this means it does not have to be a parameter for the command to work, however most of the time you probably do want it.
 
 * The **ArgumentFactory** has a few already registered classes
   * All primitive data types
