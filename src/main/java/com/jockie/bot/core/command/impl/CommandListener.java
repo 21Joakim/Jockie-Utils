@@ -36,7 +36,6 @@ import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.ISnowflake;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.events.Event;
@@ -181,14 +180,13 @@ public class CommandListener implements EventListener {
 			.append(missingPermissions)
 			.append("```");
 		
-		MessageChannel channel;
 		if(!event.getGuild().getSelfMember().hasPermission(event.getTextChannel(), Permission.MESSAGE_WRITE)) {
-			channel = event.getAuthor().openPrivateChannel().complete();
+			event.getAuthor().openPrivateChannel().queue(channel -> {
+				channel.sendMessage(message).queue();
+			});
 		}else{
-			channel = event.getChannel();
+			event.getChannel().sendMessage(message).queue();
 		}
-		
-		channel.sendMessage(message).queue();
 	};
 	
 	public static final BiConsumer<CommandEvent, Permission> DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION = (event, permission) -> {
@@ -448,6 +446,21 @@ public class CommandListener implements EventListener {
 			.filter(command -> !(!includeHidden && command.isHidden()))
 			.filter(command -> command.verify(message, this))
 			.collect(Collectors.toList());
+	}
+	
+	/**
+	 * @param commandClass the class of the command instance to get
+	 * 
+	 * @return the registered command instance of the provided class
+	 */
+	@SuppressWarnings("unchecked")
+	public <T extends ICommand> T getCommand(Class<T> commandClass) {
+		return (T) this.getCommandStores().stream()
+			.map(CommandStore::getCommands)
+			.flatMap(Set::stream)
+			.filter(command -> command.getClass().equals(commandClass))
+			.findFirst()
+			.orElse(null);
 	}
 	
 	/**

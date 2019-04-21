@@ -36,6 +36,7 @@ public class CommandParserImpl implements ICommandParser {
 		List<IArgument<?>> arguments = command.getArguments();
 		
 		Object[] parsedArguments = new Object[arguments.size()];
+		String[] parsedArgumentsAsString = new String[parsedArguments.length];
 		
 		boolean developer = listener.isDeveloper(message.getAuthor());
 		
@@ -110,8 +111,11 @@ public class CommandParserImpl implements ICommandParser {
 								String value = map.get(argument.getName());
 								
 								ParsedArgument<?> parsedArgument = argument.parse(message, value);
-								if(parsedArgument.isValid()) {
-									parsedArguments[argumentCount++] = parsedArgument.getObject();
+								if(parsedArgument.isValid() && (parsedArgument.getContentLeft() == null || parsedArgument.getContentLeft().isEmpty())) {
+									parsedArguments[argumentCount] = parsedArgument.getObject();
+									parsedArgumentsAsString[argumentCount] = value;
+									
+									argumentCount += 1;
 								}else{
 									/* The content does not make for a valid argument */
 									throw new ArgumentParseException(argument, value);
@@ -196,7 +200,10 @@ public class CommandParserImpl implements ICommandParser {
 					}
 					
 					if(parsedArgument.isValid()) {
-						parsedArguments[argumentCount++] = parsedArgument.getObject();
+						parsedArguments[argumentCount] = parsedArgument.getObject();
+						parsedArgumentsAsString[argumentCount] = content;
+						
+						argumentCount += 1;
 					}else{
 						/* The content does not make for a valid argument */
 						throw new ArgumentParseException(argument, content);
@@ -228,7 +235,7 @@ public class CommandParserImpl implements ICommandParser {
 			return null;
 		}
 		
-		return new CommandEvent(message, listener, command, parsedArguments, prefix, trigger, options, parsingType, messageContent, timeStarted);
+		return new CommandEvent(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
 	}
 	
 	protected String updateWrapped(String wrapped, char wrapping) {

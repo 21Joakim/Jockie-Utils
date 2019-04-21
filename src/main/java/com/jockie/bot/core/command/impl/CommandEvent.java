@@ -1,9 +1,12 @@
 package com.jockie.bot.core.command.impl;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
@@ -11,8 +14,11 @@ import com.jockie.bot.core.command.exception.CancelException;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
+import net.dv8tion.jda.bot.JDABot;
+import net.dv8tion.jda.bot.sharding.ShardManager;
 import net.dv8tion.jda.client.entities.Group;
 import net.dv8tion.jda.core.JDA;
+import net.dv8tion.jda.core.JDA.ShardInfo;
 import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.GuildVoiceState;
@@ -33,6 +39,7 @@ public class CommandEvent {
 	protected ICommand command;
 	
 	protected Object[] arguments;
+	protected String[] rawArguments;
 	
 	protected String prefix;
 	protected String commandTrigger;
@@ -50,6 +57,7 @@ public class CommandEvent {
 	 * @param listener the command listener which the command is registered to
 	 * @param command the command which was parsed
 	 * @param arguments the parsed arguments
+	 * @param rawArguments 
 	 * @param prefix the prefix which was used to trigger this
 	 * @param commandTrigger the String which was used to trigger this command, could be an alias
 	 * @param optionsPresent a list of the raw options provided in this command
@@ -58,8 +66,8 @@ public class CommandEvent {
 	 * @param timeStarted the time as {@link System#nanoTime()} when this started parsing
 	 */
 	public CommandEvent(Message message, CommandListener listener, ICommand command, 
-			Object[] arguments, String prefix, String commandTrigger, List<String> optionsPresent,
-			ArgumentParsingType parsingType, String contentOverflow, long timeStarted) {
+			Object[] arguments, String[] rawArguments, String prefix, String commandTrigger, 
+			List<String> optionsPresent, ArgumentParsingType parsingType, String contentOverflow, long timeStarted) {
 		
 		this.message = message;
 		this.commandListener = listener;
@@ -67,6 +75,7 @@ public class CommandEvent {
 		this.command = command;
 		
 		this.arguments = arguments;
+		this.rawArguments = rawArguments;
 		
 		this.prefix = prefix;
 		this.commandTrigger = commandTrigger;
@@ -88,6 +97,20 @@ public class CommandEvent {
 	/** Equivalent to {@link Message#getJDA()} */
 	public JDA getJDA() {
 		return this.message.getJDA();
+	}
+	
+	/**
+	 * Equivalent to {@link JDABot#getShardManager()}
+	 */
+	public ShardManager getShardManager() {
+		return this.message.getJDA().asBot().getShardManager();
+	}
+	
+	/**
+	 * Equivalent to {@link JDA#getShardInfo()}
+	 */
+	public ShardInfo getShardInfo() {
+		return this.message.getJDA().getShardInfo();
 	}
 	
 	/** Equivalent to {@link JDA#getSelfUser()} */
@@ -179,6 +202,11 @@ public class CommandEvent {
 		return this.arguments;
 	}
 	
+	/** @return the arguments before they were processed, this contains the exact values that were given to the argument parsers ({@link IArgumentParser}) */
+	public String[] getRawArguments() {
+		return this.rawArguments;
+	}
+	
 	/** @return the prefix which was used to trigger this command */
 	public String getPrefix() {
 		return this.prefix;
@@ -244,6 +272,46 @@ public class CommandEvent {
 	/** Equivalent to {@link MessageChannel#sendMessage(Message)}, using the event's channel */
 	public MessageAction reply(Message message) {
 		return this.getChannel().sendMessage(message);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(File)}, using the event's channel */
+	public MessageAction replyFile(File file) {
+		return this.getChannel().sendFile(file);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(byte[], String)}, using the event's channel */
+	public MessageAction replyFile(byte[] data, String fileName) {
+		return this.getChannel().sendFile(data, fileName);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(File, Message)}, using the event's channel */
+	public MessageAction replyFile(File file, Message message) {
+		return this.getChannel().sendFile(file, message);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(File, String)}, using the event's channel */
+	public MessageAction replyFile(File file, String fileName) {
+		return this.getChannel().sendFile(file, fileName);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String)}, using the event's channel */
+	public MessageAction replyFile(InputStream data, String fileName) {
+		return this.getChannel().sendFile(data, fileName);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(byte[], String, message)}, using the event's channel */
+	public MessageAction replyFile(byte[] data, String fileName, Message message) {
+		return this.getChannel().sendFile(data, fileName, message);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(File, String, Message)}, using the event's channel */
+	public MessageAction replyFile(File file, String fileName, Message message) {
+		return this.getChannel().sendFile(file, fileName, message);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String, Message)}, using the event's channel */
+	public MessageAction replyFile(InputStream data, String fileName, Message message) {
+		return this.getChannel().sendFile(data, fileName, message);
 	}
 	
 	/** throws a new CancelException to cancel the execution of the current command */

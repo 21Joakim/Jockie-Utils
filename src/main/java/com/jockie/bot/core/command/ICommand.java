@@ -248,7 +248,14 @@ public interface ICommand {
 	 * @return all commands which are related to this command, sub-commands and dummy commands as well as all the aliases, with the appropriate triggers
 	 */
 	
-	/* Including a default implementation in-case people wants to make their own ICommand implementation */
+	/* This system should really be reconsidered. For instance, the message parameter used for context is not exactly required 
+	 * and is only used for custom alias functions. As much as I do want to have the ability to have an alias function 
+	 * that feature does not justify poor design.
+	 * 
+	 * I also want to make this whole thing better, this is mostly an internal method to get both the aliases and 
+	 * commands for everything from the command itself to deeply embedded sub-commands. I am sure there is a better more 
+	 * user-friendly way of having this or doing away with it completely, after all it is 99% an internal method.
+	 */
 	public default List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
 		List<Pair<String, ICommand>> commands = new ArrayList<>();
 		
@@ -287,6 +294,15 @@ public interface ICommand {
 		}
 		
 		return commands;
+	}
+	
+	/** 
+	 * @return all commands which are related to this command, this includes sub-commands
+	 * 
+	 * @see {{@link #getAllCommandsRecursive(boolean)}
+	 */
+	public default List<ICommand> getAllCommandsRecursive() {
+		return this.getAllCommandsRecursive(false);
 	}
 	
 	/**

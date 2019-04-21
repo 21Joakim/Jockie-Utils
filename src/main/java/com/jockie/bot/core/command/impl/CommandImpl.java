@@ -118,7 +118,7 @@ public class CommandImpl implements ICommand {
 				return CommandImpl.getContextFunction(type).apply(event, parameter);
 			}
 			
-			throw new IllegalArgumentException("There is no context avaliable for that class");
+			throw new IllegalArgumentException("There is no context available for that class");
 		}else if(parameter.isAnnotationPresent(Option.class)) {
 			Option optionAnnotation = parameter.getAnnotation(Option.class);
 			
@@ -426,6 +426,12 @@ public class CommandImpl implements ICommand {
 				
 				this.arguments = List.of(CommandImpl.generateArguments(commandMethod));
 				this.options = List.of(CommandImpl.generateOptions(commandMethod));
+				
+				if(commandMethod.isAnnotationPresent(Command.class)) {
+					MethodCommand.applyCommandAnnotation(this, commandMethod.getAnnotation(Command.class));
+				}
+				
+				MethodCommand.applyAnnotations(this, commandMethod);
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
