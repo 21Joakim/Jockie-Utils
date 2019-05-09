@@ -6,7 +6,9 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,11 +22,10 @@ import com.jockie.bot.core.command.Command.Developer;
 import com.jockie.bot.core.command.Command.Hidden;
 import com.jockie.bot.core.command.Command.Nsfw;
 import com.jockie.bot.core.command.Command.Policy;
+import com.jockie.bot.core.command.manager.IContextManager;
+import com.jockie.bot.core.command.manager.IReturnManager;
+import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.option.Option;
-
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageEmbed;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 public class MethodCommand extends CommandImpl {
 	
@@ -164,49 +165,83 @@ public class MethodCommand extends CommandImpl {
 	}
 	
 	public static void executeMethodCommand(Object invoker, Method command, CommandEvent event, Object... args) throws Throwable {
-		int contextCount = 0;
-		for(Parameter parameter : command.getParameters()) {
-			if(parameter.getType().isAssignableFrom(MessageReceivedEvent.class) || parameter.getType().isAssignableFrom(CommandEvent.class)) {
-				contextCount++;
+		IContextManager contextManager = ContextManagerFactory.getDefault();
+		
+		Parameter[] parameters = command.getParameters();
+		Type[] genericTypes = command.getGenericParameterTypes();
+		
+		List<Integer> contextIndexes = new ArrayList<>();
+		for(int i = 0; i < parameters.length; i++) {
+			Parameter parameter = parameters[i];
+			
+			if(contextManager.isEnforcedContext(parameter.getParameterizedType())) {
+				contextIndexes.add(i);
 			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
-				contextCount++;
+				contextIndexes.add(i);
 			}
 		}
 		
-		Object[] arguments = new Object[args.length + contextCount];
+		Object[] arguments = new Object[args.length + contextIndexes.size()];
 		
 		for(int i = 0, i2 = 0; i < arguments.length; i++) {
-			Parameter parameter = command.getParameters()[i];
+			Parameter parameter = parameters[i];
 			Class<?> type = parameter.getType();
 			
-			if(type.equals(CommandEvent.class)) {
-				arguments[i] = event;
-			}else{
-				Object context = CommandImpl.getContextVariable(event, parameter);
-				if(context != null) {
-					arguments[i] = context;
-				}else{
-					Object argument = args[i2++];
+			if(contextIndexes.contains(i)) {
+				if(parameter.isAnnotationPresent(Option.class)) {
+					Option optionAnnotation = parameter.getAnnotation(Option.class);
 					
-					if(type.isAssignableFrom(Optional.class)) {
-						Type parameterType = command.getGenericParameterTypes()[i];
-						
-						try {
-							ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+					boolean contains = false;
+					for(String option : event.getOptionsPresent()) {
+						if(option.equalsIgnoreCase(optionAnnotation.value())) {
+							contains = true;
 							
-							Type[] typeArguments = parameterizedType.getActualTypeArguments();
-							if(typeArguments.length > 0) {
-								arguments[i] = Optional.ofNullable(argument);
+							break;
+						}
+						
+						for(String alias : optionAnnotation.aliases()) {
+							if(option.equalsIgnoreCase(alias)) {
+								contains = true;
+								
+								break;
 							}
-						}catch(Exception e) {
-							e.printStackTrace();
 						}
 					}
 					
-					if(arguments[i] == null) {
-						arguments[i] = argument;
+					arguments[i] = contains;
+					
+					continue;
+				}else{
+					Object context = contextManager.getContext(event, parameter);
+					if(context != null) {
+						arguments[i] = context;
+						
+						continue;
+					}else{
+						throw new IllegalStateException("There is no context available for " + parameter.getType());
 					}
 				}
+			}
+			
+			Object argument = args[i2++];
+			
+			if(type.isAssignableFrom(Optional.class)) {
+				Type parameterType = genericTypes[i];
+				
+				try {
+					ParameterizedType parameterizedType = (ParameterizedType) parameterType;
+					
+					Type[] typeArguments = parameterizedType.getActualTypeArguments();
+					if(typeArguments.length > 0) {
+						arguments[i] = Optional.ofNullable(argument);
+					}
+				}catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			if(arguments[i] == null) {
+				arguments[i] = argument;
 			}
 		}
 		
@@ -215,16 +250,12 @@ public class MethodCommand extends CommandImpl {
 				command.setAccessible(true);
 			}
 			
-			Object obj = command.invoke(invoker, arguments);
-			if(obj != null) {
-				if(obj instanceof Message) {
-					event.getChannel().sendMessage((Message) obj).queue();
-				}else if(obj instanceof MessageEmbed) {
-					event.getChannel().sendMessage((MessageEmbed) obj).queue();
-				}else if(obj instanceof CharSequence) {
-					event.getChannel().sendMessage((CharSequence) obj).queue();
-				}else{
-					System.err.println(obj.getClass() + " is an unsupported return type for a command method");
+			Object object = command.invoke(invoker, arguments);
+			if(object != null) {
+				IReturnManager returnManager = event.getCommandListener().getReturnManager();
+				
+				if(!returnManager.perform(event, object)) {
+					System.err.println(object.getClass() + " is an unsupported return type for a command method");
 				}
 			}
 		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -249,20 +280,14 @@ public class MethodCommand extends CommandImpl {
 				
 				information.append("    Argument values: " + Arrays.deepToString(arguments));
 				
-				/* No need to throw an Exception for this, the stack trace doesn't add any additional information. I guess we should add some sort of event for this though, maybe they don't want it in the console */
+				/* No need to throw an Exception for this, the stack trace doesn't add any additional information. 
+				 * I guess we should add some sort of event for this though, maybe they don't want it in the console 
+				 */
 				System.err.println(information);
 			}else{
 				if(e instanceof InvocationTargetException) {
-					if(e instanceof Exception) {
-						try {
-							throw e.getCause();
-						}catch(ClassCastException e2) {
-							try {
-								throw e.getCause();
-							}catch(Throwable e1) {
-								e1.printStackTrace();
-							}
-						}
+					if(e.getCause() != null) {
+						throw e.getCause();
 					}
 				}
 				

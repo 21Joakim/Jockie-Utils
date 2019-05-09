@@ -12,7 +12,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -29,7 +28,9 @@ import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.SubCommand;
-import com.jockie.bot.core.command.impl.factory.MethodCommandFactory;
+import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
+import com.jockie.bot.core.command.manager.IContextManager;
+import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.option.IOption;
@@ -38,135 +39,45 @@ import com.jockie.bot.core.option.impl.OptionImpl;
 import com.jockie.bot.core.utility.CommandUtility;
 import com.jockie.bot.core.utility.TriFunction;
 
-import net.dv8tion.jda.client.entities.impl.GroupImpl;
 import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.ChannelType;
 import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageChannel;
-import net.dv8tion.jda.core.entities.impl.GuildImpl;
-import net.dv8tion.jda.core.entities.impl.JDAImpl;
-import net.dv8tion.jda.core.entities.impl.MemberImpl;
-import net.dv8tion.jda.core.entities.impl.PrivateChannelImpl;
-import net.dv8tion.jda.core.entities.impl.TextChannelImpl;
-import net.dv8tion.jda.core.entities.impl.UserImpl;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class CommandImpl implements ICommand {
 	
-	@SuppressWarnings("rawtypes")
-	private static Map<Class, BiFunction> contexts = new HashMap<>();
-	
-	public static <T> void registerContext(Class<T> type, BiFunction<CommandEvent, Parameter, T> function) {
-		CommandImpl.contexts.put(Objects.requireNonNull(type), Objects.requireNonNull(function));
-	}
-	
-	public static void unregisterContext(Class<?> type) {
-		CommandImpl.contexts.remove(type);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public static <T> BiFunction<CommandEvent, Parameter, T> getContextFunction(Class<T> type) {
-		return CommandImpl.contexts.get(type);
-	}
-	
-	public static Object getContextVariable(CommandEvent event, Parameter parameter) {
-		final Class<?> type = parameter.getType();
-		
-		if(type.isAssignableFrom(CommandEvent.class)) {
-			return event;
-		}else if(parameter.isAnnotationPresent(Context.class)) {
-			Class<?> command = event.getCommand().getClass();
-			if(type.isAssignableFrom(command)) {
-				return event.getCommand();
-			}
-			
-			if(type.isAssignableFrom(CommandListener.class)) {
-				return event.getCommandListener();
-			}
-			
-			if(type.isAssignableFrom(JDAImpl.class)) {
-				return event.getJDA();
-			}else if(type.isAssignableFrom(UserImpl.class)) {
-				return event.getAuthor();
-			}else if(type.isAssignableFrom(ChannelType.class)) {
-				return event.getChannelType();
-			}else if(type.isAssignableFrom(MessageChannel.class)) {
-				return event.getChannel();
-			}else if(type.isAssignableFrom(Message.class)) {
-				return event.getMessage();
-			}
-			
-			if(event.getChannelType().isGuild()) {
-				if(type.isAssignableFrom(GuildImpl.class)) {
-					return event.getGuild();
-				}else if(type.isAssignableFrom(TextChannelImpl.class)) {
-					return event.getTextChannel();
-				}else if(type.isAssignableFrom(MemberImpl.class)) {
-					return event.getMember();
-				}
-			}else if(event.getChannelType().equals(ChannelType.PRIVATE)) {
-				if(type.isAssignableFrom(PrivateChannelImpl.class)) {
-					return event.getPrivateChannel();
-				}
-			}else if(event.getChannelType().equals(ChannelType.GROUP)) {
-				if(type.isAssignableFrom(GroupImpl.class)) {
-					return event.getGroup();
-				}
-			}
-			
-			if(CommandImpl.contexts.containsKey(type)) {
-				return CommandImpl.getContextFunction(type).apply(event, parameter);
-			}
-			
-			throw new IllegalArgumentException("There is no context available for that class");
-		}else if(parameter.isAnnotationPresent(Option.class)) {
-			Option optionAnnotation = parameter.getAnnotation(Option.class);
-			
-			return event.getOptionsPresent().stream().filter(option -> {
-				if(option.equalsIgnoreCase(optionAnnotation.value())) {
-					return true;
-				}
-				
-				for(String alias : optionAnnotation.aliases()) {
-					if(option.equalsIgnoreCase(alias)) {
-						return true;
-					}
-				}
-				
-				return false;
-			}).count() > 0;
-		}
-		
-		return null;
-	}
-	
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public static IArgument<?>[] generateArguments(Method command) {
-		int contextCount = 0;
-		for(Parameter parameter : command.getParameters()) {
-			if(parameter.getType().isAssignableFrom(CommandEvent.class)) {
-				contextCount++;
+		IContextManager manager = ContextManagerFactory.getDefault();
+		
+		Parameter[] parameters = command.getParameters();
+		Type[] genericTypes = command.getGenericParameterTypes();
+		
+		List<Integer> contextIndexes = new ArrayList<>();
+		for(int i = 0; i < parameters.length; i++) {
+			Parameter parameter = parameters[i];
+			
+			if(manager.isEnforcedContext(parameter.getParameterizedType())) {
+				contextIndexes.add(i);
 			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
-				contextCount++;
+				contextIndexes.add(i);
 			}
 		}
 		
 		Arguments argumentsInfo = command.getAnnotation(Arguments.class);
 		
-		IArgument<?>[] arguments = new IArgument<?>[command.getParameterCount() - contextCount];
-		for(int paramCount = 0, argCount = 0, methodArgCount = 0; paramCount < command.getParameterCount(); paramCount++) {
-			Parameter parameter = command.getParameters()[paramCount];
-			Class<?> type = parameter.getType();
-			
-			if(type.isAssignableFrom(CommandEvent.class)) {
-				continue;
-			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
+		IArgument<?>[] arguments = new IArgument<?>[parameters.length - contextIndexes.size()];
+		for(int paramCount = 0, argCount = 0, methodArgCount = 0; paramCount < parameters.length; paramCount++) {
+			/* Ignore if it is a context variable */
+			if(contextIndexes.contains(paramCount)) {
 				continue;
 			}
 			
+			Parameter parameter = parameters[paramCount];
+			Class<?> type = parameter.getType();
+			
 			boolean isOptional = false;
 			if(type.isAssignableFrom(Optional.class)) {
-				Type parameterType = command.getGenericParameterTypes()[paramCount];
+				Type parameterType = genericTypes[paramCount];
 				
 				try {
 					ParameterizedType parameterizedType = (ParameterizedType) parameterType;
@@ -181,10 +92,8 @@ public class CommandImpl implements ICommand {
 			
 			IArgument.Builder<?, ?, ?> builder = ArgumentFactory.of(type);
 			if(builder != null) {
-				Argument info = null;
-				if(parameter.isAnnotationPresent(Argument.class)) {
-					info = parameter.getAnnotation(Argument.class);
-				}else if(argumentsInfo != null) {
+				Argument info = parameter.getAnnotation(Argument.class);
+				if(info == null && argumentsInfo != null) {
 					if(argumentsInfo.value().length >= methodArgCount + 1) {
 						info = argumentsInfo.value()[methodArgCount++];
 					}
@@ -435,7 +344,7 @@ public class CommandImpl implements ICommand {
 			}else{
 				if(this.commandMethods.size() > 1) {
 					for(int i = 0; i < this.commandMethods.size(); i++) {
-						this.addSubCommand(MethodCommandFactory.getDefaultFactory().create(this.commandMethods.get(i), this));
+						this.addSubCommand(MethodCommandFactory.getDefault().create(this.commandMethods.get(i), this));
 					}
 					
 					if(arguments.length > 0) {
@@ -451,7 +360,7 @@ public class CommandImpl implements ICommand {
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
 					if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
-						ICommand subCommand = MethodCommandFactory.getDefaultFactory().create(CommandUtility.getCommandName(method), method, this);
+						ICommand subCommand = MethodCommandFactory.getDefault().create(CommandUtility.getCommandName(method), method, this);
 						subCommands.put(subCommand.getCommand(), subCommand);
 					}
 				}
@@ -479,7 +388,7 @@ public class CommandImpl implements ICommand {
 			for(Method method : this.getClass().getDeclaredMethods()) {
 				if(!method.getName().equals("onCommand")) {
 					if(method.isAnnotationPresent(Command.class) && method.isAnnotationPresent(SubCommand.class)) {
-						ICommand subCommand = MethodCommandFactory.getDefaultFactory().create(CommandUtility.getCommandName(method), method, this);
+						ICommand subCommand = MethodCommandFactory.getDefault().create(CommandUtility.getCommandName(method), method, this);
 						
 						SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
 						
@@ -503,7 +412,9 @@ public class CommandImpl implements ICommand {
 				}
 			}
 			
-			this.subCommands.addAll(subCommands.values());
+			for(ICommand subCommand : subCommands.values()) {
+				this.addSubCommand(subCommand);
+			}
 		}else{
 			this.arguments = List.of(arguments);
 		}

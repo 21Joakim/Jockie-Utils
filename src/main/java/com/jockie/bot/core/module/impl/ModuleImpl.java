@@ -22,7 +22,7 @@ public class ModuleImpl implements IModule {
 	 * @param name the suggested name for this command, by default this is <b>{@code method.getName().replace("_", " ")}</b>
 	 * 
 	 * @return the loaded command or null if the default loader 
-	 * 		({@link com.jockie.bot.core.command.impl.factory.MethodCommandFactory#getDefaultFactory() MethodCommandFactory#getDefaultFactory()}) 
+	 * 		({@link com.jockie.bot.core.command.factory.impl.MethodCommandFactory#getDefault() MethodCommandFactory#getDefaultFactory()}) 
 	 * 		should be used
 	 */
 	public MethodCommand createCommand(Method method, String name) {

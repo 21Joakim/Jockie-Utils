@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
@@ -100,10 +101,10 @@ public class CommandParserImpl implements ICommandParser {
 			List<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
 			
 			if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
-				/* Handle command as key-value */
-				Map<String, String> map = this.asMap(messageContent);
-				
 				if(messageContent.length() > 0) {
+					/* Handle command as key-value */
+					Map<String, String> map = this.asMap(messageContent);
+					
 					if(map != null) {
 						for(int i = 0; i < arguments.size(); i++) {
 							IArgument<?> argument = arguments.get(i);
@@ -120,15 +121,20 @@ public class CommandParserImpl implements ICommandParser {
 									/* The content does not make for a valid argument */
 									throw new ArgumentParseException(argument, value);
 								}
+								
+								map.remove(argument.getName());
 							}else{
 								/* Missing argument */
 								throw new MissingRequiredArgumentException(argument);
 							}
 						}
 						
-						parsingType = ArgumentParsingType.NAMED;
-						
-						break ARGUMENT_PARSING;
+						/* If it does not contain any invalid keys */
+						if(map.size() == 0) {
+							parsingType = ArgumentParsingType.NAMED;
+							
+							break ARGUMENT_PARSING;
+						}
 					}
 				}
 			}
@@ -138,7 +144,9 @@ public class CommandParserImpl implements ICommandParser {
 					if(messageContent.length() > 0) {
 						if(messageContent.startsWith(" ")) {
 							messageContent = messageContent.substring(1);
-						}else{ /* When does it get here? */
+						}else{
+							/* When does it get here? */
+							
 							/* The argument for some reason does not start with a space */
 							throw new ArgumentParseException(null, messageContent);
 						}
@@ -272,7 +280,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * </br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
 	 */
 	protected Map<String, String> asMap(String command) {
-		Map<String, String> map = new HashMap<>();
+		Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		
 		String message = command;
 		while(message.length() > 0) {
@@ -302,6 +310,10 @@ public class CommandParserImpl implements ICommandParser {
 			String quotedKey = this.parseWrapped(key, '"');
 			if(quotedKey != null) {
 				key = this.updateWrapped(quotedKey, '"');
+			}else{
+				if(key.contains(" ")) {
+					return null;
+				}
 			}
 			
 			map.put(key, value);

@@ -24,6 +24,8 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.exception.CancelException;
 import com.jockie.bot.core.command.exception.parser.ParseException;
+import com.jockie.bot.core.command.manager.IReturnManager;
+import com.jockie.bot.core.command.manager.impl.ReturnManagerImpl;
 import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.command.parser.impl.CommandParserImpl;
 import com.jockie.bot.core.cooldown.ICooldown;
@@ -344,6 +346,8 @@ public class CommandListener implements EventListener {
 	protected ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
 	protected ICooldownManager cooldownManager = new CooldownManagerImpl();
+	
+	protected IReturnManager returnManager = new ReturnManagerImpl();
 	
 	protected ICommandParser commandParser = new CommandParserImpl();
 	
@@ -926,6 +930,30 @@ public class CommandListener implements EventListener {
 	 */
 	public ICooldownManager getCoooldownManager() {
 		return this.cooldownManager;
+	}
+	
+	/**
+	 * Set the return manager which will be used to handle what the commands
+	 * return
+	 * 
+	 * @param returnManager the return manager
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	public CommandListener setReturnManager(IReturnManager returnManager) {
+		Checks.notNull(returnManager, "IReturnManager");
+		
+		this.returnManager = returnManager;
+		
+		return this;
+	}
+	
+	/**
+	 * @return the {@link IReturnManager} which will be used to handle what
+	 * the command returns
+	 */
+	public IReturnManager getReturnManager() {
+		return this.returnManager;
 	}
 	
 	/**

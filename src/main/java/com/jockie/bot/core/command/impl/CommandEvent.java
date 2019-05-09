@@ -57,7 +57,7 @@ public class CommandEvent {
 	 * @param listener the command listener which the command is registered to
 	 * @param command the command which was parsed
 	 * @param arguments the parsed arguments
-	 * @param rawArguments 
+	 * @param rawArguments the raw arguments before they were processed
 	 * @param prefix the prefix which was used to trigger this
 	 * @param commandTrigger the String which was used to trigger this command, could be an alias
 	 * @param optionsPresent a list of the raw options provided in this command

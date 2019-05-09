@@ -20,13 +20,16 @@ public class CommandUtility {
 	private CommandUtility() {}
 	
 	/**
-	 * @return true if class implements interface checked recursively till the super class is either null or Object
+	 * @return true if clazz either implements or extends otherClazz checked recursively till the super class is null
 	 */
-	/* TODO: I might be able to just use Class#isInstance for this */
-	public static boolean isDeepImplementation(Class<?> clazz, Class<?> interfaze) {
-		while(clazz != null && !clazz.equals(Object.class)) {
-			for(Class<?> interfaze2 : clazz.getInterfaces()) {
-				if(interfaze2.equals(interfaze)) {
+	public static boolean isAssignableFrom(Class<?> clazz, Class<?> otherClazz) {
+		while(clazz != null) {
+			if(clazz.equals(otherClazz)) {
+				return true;
+			}
+			
+			for(Class<?> interfaze : clazz.getInterfaces()) {
+				if(interfaze.equals(otherClazz)) {
 					return true;
 				}
 			}
@@ -51,7 +54,7 @@ public class CommandUtility {
 		
 		List<Class<T>> foundClasses = new ArrayList<>();
 		for(Class<?> clazz : classes) {
-			if(CommandUtility.isDeepImplementation(clazz, interfaze)) {
+			if(CommandUtility.isAssignableFrom(clazz, interfaze)) {
 				foundClasses.add((Class<T>) clazz);
 			}
 		}

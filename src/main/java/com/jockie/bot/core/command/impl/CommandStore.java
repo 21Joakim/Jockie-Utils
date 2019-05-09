@@ -22,7 +22,7 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.exception.load.CommandLoadException;
-import com.jockie.bot.core.command.impl.factory.MethodCommandFactory;
+import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
 import com.jockie.bot.core.utility.CommandUtility;
@@ -56,7 +56,7 @@ public class CommandStore {
 	}
 	
 	private static final BiFunction<Method, Object, ? extends MethodCommand> DEFAULT_CREATE_FUNCTION = (method, module) -> {
-		return MethodCommandFactory.getDefaultFactory().create(CommandUtility.getCommandName(method), method, module);
+		return MethodCommandFactory.getDefault().create(CommandUtility.getCommandName(method), method, module);
 	};
 	
 	/**
@@ -285,13 +285,13 @@ public class CommandStore {
 			for(ClassInfo info : classes) {
 				Class<?> loadedClass = classLoader.loadClass(info.toString());
 				
-				if(CommandUtility.isDeepImplementation(loadedClass, ICommand.class)) {
+				if(CommandUtility.isAssignableFrom(loadedClass, ICommand.class)) {
 					try {
 						commands.add((ICommand) loadedClass.getConstructor().newInstance());
 					}catch(Exception e1) {
 						new CommandLoadException(loadedClass, e1).printStackTrace();
 					}
-				}else if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isDeepImplementation(loadedClass, IModule.class)) {
+				}else if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isAssignableFrom(loadedClass, IModule.class)) {
 					try {
 						commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
 					}catch(Exception e1) {
@@ -330,7 +330,7 @@ public class CommandStore {
 			}
 			
 			Class<?> objectClass = object.getClass();
-			if(objectClass.isAnnotationPresent(Module.class) || CommandUtility.isDeepImplementation(objectClass, IModule.class)) {
+			if(objectClass.isAnnotationPresent(Module.class) || CommandUtility.isAssignableFrom(objectClass, IModule.class)) {
 				this.commands.addAll(CommandStore.loadModule(object));
 				
 				continue;
