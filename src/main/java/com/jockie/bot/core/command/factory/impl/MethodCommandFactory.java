@@ -1,5 +1,6 @@
-package com.jockie.bot.core.command.factory.impl;import com.jockie.bot.core.command.factory.IMethodCommandFactory;
+package com.jockie.bot.core.command.factory.impl;
 
+import com.jockie.bot.core.command.factory.IMethodCommandFactory;
 
 /*
  * TODO: Figure out a way to move this to the CommandListener.
