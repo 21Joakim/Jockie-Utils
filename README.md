@@ -33,6 +33,7 @@ All suggestion and contributions are welcome!\
 ### Gradle
 ```
 repositories {
+	jcenter()
 	maven { url 'https://jitpack.io' }
 }
 
