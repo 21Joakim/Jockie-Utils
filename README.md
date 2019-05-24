@@ -381,14 +381,18 @@ Here is an example of what a custom command class could look like, this class al
 ```Java
 public class ExtendedCommand extends CommandImpl {
 	
-	private boolean donator = false;
+	public boolean donator = false;
 	
 	public ExtendedCommand(String name) {
 		super(name, true);
+		
+		this.doAnnotations();
 	}
 	
 	public ExtendedCommand(String name, Method method, Object invoker) {
 		super(name, method, invoker);
+		
+		this.doAnnotations();
 	}
 	
 	public boolean isDonator() {
@@ -401,11 +405,9 @@ public class ExtendedCommand extends CommandImpl {
 		return this;
 	}
 	
-	protected void applyAnnotations() {
-		super.applyAnnotations();
-		
+	private void doAnnotations() {
 		if(this.method.isAnnotationPresent(Donator.class)) {
-			this.setDonator(this.method.getAnnotation(Donator.class).value());
+			this.donator = this.method.getAnnotation(Donator.class).value();
 		}
 	}
 }
