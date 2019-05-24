@@ -381,7 +381,7 @@ Here is an example of what a custom command class could look like, this class al
 ```Java
 public class ExtendedCommand extends CommandImpl {
 	
-	public boolean donator = false;
+	private boolean donator = false;
 	
 	public ExtendedCommand(String name) {
 		super(name, true);
