@@ -447,15 +447,15 @@ You can implement custom behaviour in two ways, one through the class itself via
 **Through the class itself**, this will make the command get filtered out before it is even checked which means the user will not get any help or response from triggering this command.
 ```Java
 public boolean verify(Message message, CommandListener commandListener) {
-    if(super.verify(message, commandListener)) {
-        return true;
-    }
-    
-    if(this.donator && Donators.isDonator(message.getAuthor().getIdLong())) {
-        return false;
-    }
-    
-    return true;
+	if(super.verify(message, commandListener)) {
+		return true;
+	}
+	
+	if(this.donator && Donators.isDonator(message.getAuthor().getIdLong())) {
+		return false;
+	}
+	
+	return true;
 }
 ```
 
@@ -465,8 +465,8 @@ CommandListener listener = new CommandListener();
 listener.addPreExecuteCheck((event, command) -> {
 	if(command instanceof ExtendedCommand) {
 		if(((ExtendedCommand) command).isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
-		    event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
-		
+			event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
+			
 			return false;
 		}
 	}
