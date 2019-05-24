@@ -17,13 +17,13 @@ public class MethodCommandFactory {
 	
 	public static void setDefault(IMethodCommandFactory<?> factory) {
 		if(factory != null) {
-			defaultCommandFactory = factory;
+			MethodCommandFactory.defaultCommandFactory = factory;
 		}else{
-			defaultCommandFactory = DEFAULT;
+			MethodCommandFactory.defaultCommandFactory = DEFAULT;
 		}
 	}
 	
 	public static IMethodCommandFactory<?> getDefault() {
-		return defaultCommandFactory;
+		return MethodCommandFactory.defaultCommandFactory;
 	}
 }

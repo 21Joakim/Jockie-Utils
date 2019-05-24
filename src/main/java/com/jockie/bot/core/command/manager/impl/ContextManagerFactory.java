@@ -32,13 +32,13 @@ public class ContextManagerFactory {
 	
 	public static void setDefault(IContextManager manager) {
 		if(manager != null) {
-			defaultContextManager = manager;
+			ContextManagerFactory.defaultContextManager = manager;
 		}else{
-			defaultContextManager = DEFAULT;
+			ContextManagerFactory.defaultContextManager = DEFAULT;
 		}
 	}
 	
 	public static IContextManager getDefault() {
-		return defaultContextManager;
+		return ContextManagerFactory.defaultContextManager;
 	}
 }

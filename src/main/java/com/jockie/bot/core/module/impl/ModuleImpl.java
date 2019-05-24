@@ -3,7 +3,7 @@ package com.jockie.bot.core.module.impl;
 import java.lang.reflect.Method;
 
 import com.jockie.bot.core.command.ICommand;
-import com.jockie.bot.core.command.impl.MethodCommand;
+import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.module.IModule;
 
 /**
@@ -25,7 +25,7 @@ public class ModuleImpl implements IModule {
 	 * 		({@link com.jockie.bot.core.command.factory.impl.MethodCommandFactory#getDefault() MethodCommandFactory#getDefaultFactory()}) 
 	 * 		should be used
 	 */
-	public MethodCommand createCommand(Method method, String name) {
+	public IMethodCommand createCommand(Method method, String name) {
 		return null;
 	}
 	

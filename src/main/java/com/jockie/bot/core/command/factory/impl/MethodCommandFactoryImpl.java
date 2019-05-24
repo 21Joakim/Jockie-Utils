@@ -3,15 +3,11 @@ package com.jockie.bot.core.command.factory.impl;
 import java.lang.reflect.Method;
 
 import com.jockie.bot.core.command.factory.IMethodCommandFactory;
-import com.jockie.bot.core.command.impl.MethodCommand;
+import com.jockie.bot.core.command.impl.CommandImpl;
 
-public class MethodCommandFactoryImpl implements IMethodCommandFactory<MethodCommand> {
+public class MethodCommandFactoryImpl implements IMethodCommandFactory<CommandImpl> {
 	
-	public MethodCommand create(String name, Method method, Object invoker) {
-		return MethodCommand.createFrom(name, method, invoker);
-	}
-	
-	public MethodCommand create(Method method, Object invoker) {
-		return MethodCommand.createFrom(method, invoker);
+	public CommandImpl create(Method method, String name, Object invoker) {
+		return new CommandImpl(IMethodCommandFactory.getName(name, method), method, invoker);
 	}
 }

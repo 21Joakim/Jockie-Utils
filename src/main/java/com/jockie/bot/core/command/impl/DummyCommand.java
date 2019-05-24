@@ -197,6 +197,10 @@ public class DummyCommand implements ICommand {
 		return this.command.getAllowedArgumentParsingTypes();
 	}
 	
+	public ArgumentTrimType getArgumentTrimType() {
+		return this.command.getArgumentTrimType();
+	}
+	
 	public ICategory getCategory() {
 		return this.command.getCategory();
 	}

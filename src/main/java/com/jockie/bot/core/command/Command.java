@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
+import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -133,6 +134,11 @@ public @interface Command {
 	 * @see {@link ICommand#getAllowedArgumentParsingTypes()}
 	 */
 	public ArgumentParsingType[] allowedArgumentParsingTypes() default { ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED };
+	
+	/**
+	 * @see {@link ICommand#getArgumentTrimType()}
+	 */
+	public ArgumentTrimType argumentTrimType() default ArgumentTrimType.LENIENT;
 	
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)

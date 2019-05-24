@@ -1,6 +1,7 @@
 package com.jockie.bot.core.command.parser.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
+import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.exception.parser.ArgumentParseException;
@@ -26,8 +28,100 @@ import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public class CommandParserImpl implements ICommandParser {
+	
+	protected List<Pair<Character, Character>> allowedQuoteCharacters = new ArrayList<>();
+	
+	public CommandParserImpl() {
+		this.addAllowedQuoteCharacters();
+	}
+	
+	/**
+	 * Adds a bunch of different quote characters, these were gotten from the 
+	 * source code of <a href="https://github.com/Rapptz/discord.py/blob/fc5a2936dd9456f1489dc1125c12448a2af23e15/discord/ext/commands/view.py#L30-L48">discord.py<a/> 
+	 * as they already had a list of quotes
+	 */
+	protected void addAllowedQuoteCharacters() {
+		this.addAllowedQuoteCharacter('"', '"');
+		this.addAllowedQuoteCharacter('‘', '’');
+		this.addAllowedQuoteCharacter('‚', '‛');
+		this.addAllowedQuoteCharacter('“', '”');
+		this.addAllowedQuoteCharacter('„', '‟');
+		this.addAllowedQuoteCharacter('「', '」');
+		this.addAllowedQuoteCharacter('『', '』');
+		this.addAllowedQuoteCharacter('〝', '〞');
+		this.addAllowedQuoteCharacter('﹁', '﹂');
+		this.addAllowedQuoteCharacter('﹃', '﹄');
+		this.addAllowedQuoteCharacter('＂', '＂');
+		this.addAllowedQuoteCharacter('｢', '｣');
+		this.addAllowedQuoteCharacter('«', '»');
+		this.addAllowedQuoteCharacter('‹', '›');
+		this.addAllowedQuoteCharacter('《', '》');
+		this.addAllowedQuoteCharacter('〈', '〉');
+	}
+	
+	/**
+	 * Set the characters which should be allowed to be used as quotes.
+	 * 
+	 * @param characters the characters which are allowed to be used as quotes
+	 * 
+	 * @return the {@link CommandParserImpl} instance, useful for chaining
+	 */
+	public CommandParserImpl setAllowedQuoteCharacters(List<Pair<Character, Character>> characters) {
+		this.allowedQuoteCharacters = characters;
+		
+		return this;
+	}
+	
+	/**
+	 * @param character the quote character to allow
+	 * 
+	 * @return the {@link CommandParserImpl} instance, useful for chaining
+	 */
+	public CommandParserImpl addAllowedQuoteCharacter(char character) {
+		return this.addAllowedQuoteCharacter(character, character);
+	}
+	
+	/**
+	 * @param start the character used to start the quote
+	 * @param end the character used to end the quote
+	 * 
+	 * @return the {@link CommandParserImpl} instance, useful for chaining
+	 */
+	public CommandParserImpl addAllowedQuoteCharacter(char start, char end) {
+		return this.addAllowedQuoteCharacter(Pair.of(start, end));
+	}
+	
+	/**
+	 * @param character the quote character to allow
+	 * 
+	 * @return the {@link CommandParserImpl} instance, useful for chaining
+	 */
+	public CommandParserImpl addAllowedQuoteCharacter(Pair<Character, Character> character) {
+		this.allowedQuoteCharacters.add(character);
+		
+		return this;
+	}
+	
+	/**
+	 * @param characters the quote characters to allow
+	 * 
+	 * @return the {@link CommandParserImpl} instance, useful for chaining
+	 */
+	public CommandParserImpl addAllowedQuoteCharacters(List<Pair<Character, Character>> characters) {
+		this.allowedQuoteCharacters.addAll(characters);
+		
+		return this;
+	}
+	
+	/**
+	 * @return the characters which are allowed to be used as quotes
+	 */
+	public List<Pair<Character, Character>> getAllowedQuoteCharacters() {
+		return Collections.unmodifiableList(this.allowedQuoteCharacters);
+	}
 	
 	public CommandEvent parse(CommandListener listener, ICommand command, String trigger, Message message, String prefix, String contentToParse, long timeStarted) throws ParseException {
 		String messageContent = contentToParse;
@@ -141,18 +235,25 @@ public class CommandParserImpl implements ICommandParser {
 			
 			if(argumentParsingTypes.contains(ArgumentParsingType.POSITIONAL)) {
 				for(int i = 0; i < parsedArguments.length; i++) {
+					IArgument<?> argument = arguments.get(i);
+					
 					if(messageContent.length() > 0) {
 						if(messageContent.startsWith(" ")) {
-							messageContent = messageContent.substring(1);
+							if(!command.getArgumentTrimType().equals(ArgumentTrimType.NONE)) {
+								messageContent = this.stripLeading(messageContent);
+							}else{
+								messageContent = messageContent.substring(1);
+							}
 						}else{
-							/* When does it get here? */
+							/* 
+							 * It gets here if an argument is parsed with quotes and there is a 
+							 * value directly after the quotes without any spacing, like !add "15"5
+							 */
 							
 							/* The argument for some reason does not start with a space */
-							throw new ArgumentParseException(null, messageContent);
+							throw new ArgumentParseException(argument, messageContent);
 						}
 					}
-					
-					IArgument<?> argument = arguments.get(i);
 					
 					ParsedArgument<?> parsedArgument;
 					String content = null;
@@ -181,13 +282,24 @@ public class CommandParserImpl implements ICommandParser {
 									messageContent = messageContent.substring(content.length());
 									
 									content = this.updateWrapped(content, '[', ']');
+									
+									if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
+										content = strip(content);
+									}
 								}
 							}else if(argument.acceptQuote()) {
-								content = this.parseWrapped(messageContent, '"');
-								if(content != null) {
-									messageContent = messageContent.substring(content.length());
-									
-									content = this.updateWrapped(content, '"');
+								for(Pair<Character, Character> quotes : this.allowedQuoteCharacters) {
+									content = this.parseWrapped(messageContent, quotes.getLeft(), quotes.getRight());
+									if(content != null) {
+										messageContent = messageContent.substring(content.length());
+										content = this.updateWrapped(content, quotes.getLeft(), quotes.getRight());
+										
+										if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
+											content = strip(content);
+										}
+										
+										break;
+									}
 								}
 							}
 							
@@ -244,6 +356,30 @@ public class CommandParserImpl implements ICommandParser {
 		}
 		
 		return new CommandEvent(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
+	}
+	
+	protected String stripLeading(String content) {
+		int index = -1;
+		while(content.charAt(++index) == ' ');
+		
+		return content.substring(index);
+	}
+	
+	protected String strinTrailing(String content) {
+		int index = content.length();
+		while(content.charAt(--index) == ' ');
+		
+		return content.substring(0, index + 1);
+	}
+	
+	protected String strip(String content) {
+		int start = -1;
+		while(content.charAt(++start) == ' ');
+		
+		int end = content.length();
+		while(content.charAt(--end) == ' ');
+		
+		return content.substring(start, end + 1);
 	}
 	
 	protected String updateWrapped(String wrapped, char wrapping) {

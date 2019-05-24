@@ -8,6 +8,7 @@ All suggestion and contributions are welcome!\
 * [Installation](#installation)
 	* [Gradle](#gradle)
 	* [Maven](#maven)
+* [Bots using Jockie Utils](#bots-using-jockie-utils)
 * [How to use](#how-to-use)
 	* [CommandListener](#commandlistener)
 	* [CommandStore](#commandstore)
@@ -22,6 +23,10 @@ All suggestion and contributions are welcome!\
 		* [Command annotations](#command-annotations)
 	* [Modules](#module)
 		* [Events](#events)
+* [Command extensions](#command-extensions)
+    * [Custom command classes](#custom-command-classes)
+    * [Using custom command classes](#using-custom-command-classes)
+    * [Implementing custom behaviour](#implementing-custom-behaviour)
 
 ## Libraries used
 [JDA (The Discord wrapper which the library is built upon)](https://github.com/DV8FromTheWorld/JDA)\
@@ -31,7 +36,7 @@ All suggestion and contributions are welcome!\
 [![](https://jitpack.io/v/21Joakim/Jockie-Utils.svg)](https://jitpack.io/#21Joakim/Jockie-Utils)
 
 ### Gradle
-```
+```Gradle
 repositories {
 	jcenter()
 	maven { url 'https://jitpack.io' }
@@ -43,7 +48,7 @@ dependencies {
 ```
 
 ### Maven
-```
+```XML
 <repositories>
 	<repository>
 		<id>jitpack.io</id>
@@ -57,6 +62,9 @@ dependencies {
 	<version>VERSION</version>
 </dependency>
 ```
+
+## Bots using Jockie Utils
+[Sx4](https://github.com/sx4-discord-bot/Sx4) - A multipurpose bot with a lot of different commands and even an economy system
 
 ## How to use
 
@@ -109,7 +117,7 @@ CommandStore store = CommandStore.of(packagePath);
 
 ## Command structure
 
-All commands need to extend ICommand and the standard implementation of that is CommandImpl. CommandImpl allows arguments to be specified as the parameters of a function named onCommand.
+All commands need to extend ICommand and the standard implementation of that is CommandImpl. CommandImpl allows arguments to be specified as the parameters of a function named onCommand or on_command.
 
 #### Allowed parameters
 ----
@@ -210,7 +218,7 @@ public class CommandDecide extends CommandImpl {
 		super.setDescription("Give me two sentences and I will choose one of them");
 	}
 	
-	public void onCommand(CommandEvent event, @Argument("statement") String firstStatement, @Argument("statement2") String secondStatement) {
+	public void onCommand(CommandEvent event, @Argument("statement") String firstStatement, @Argument("secondStatement") String secondStatement) {
 		event.reply("**" + (this.random.nextBoolean() ? statement : statement2) + "**" + " seems more reasonable to me!").queue();
 	}
 }
@@ -360,4 +368,109 @@ public class ModuleFun {
 		command.setDescription("The best command for rolling a dice!");
 	}
 }
+```
+
+## Command extensions
+
+The command base can be extended to fit your needs, this can be done for both method commands and class based commands.
+
+### Custom command classes
+----
+
+Here is an example of what a custom command class could look like, this class allows for a new **donator** property to be set, it also adds a **@Donator** annotation which can be applied to the command.
+```Java
+public class ExtendedCommand extends CommandImpl {
+	
+	private boolean donator = false;
+	
+	public ExtendedCommand(String name) {
+		super(name, true);
+	}
+	
+	public ExtendedCommand(String name, Method method, Object invoker) {
+		super(name, method, invoker);
+	}
+	
+	public boolean isDonator() {
+		return this.donator;
+	}
+	
+	public ExtendedCommand setDonator(boolean donator) {
+		this.donator = donator;
+		
+		return this;
+	}
+	
+	protected void applyAnnotations() {
+		super.applyAnnotations();
+		
+		if(this.method.isAnnotationPresent(Donator.class)) {
+			this.setDonator(this.method.getAnnotation(Donator.class).value());
+		}
+	}
+}
+```
+
+### Using custom command classes
+----
+After you have made your custom command class you want to use it, to use it for class based commands you simply extend the **ExtendedCommand** class instead of **CommandImpl**, for instance
+```Java
+public class DonatorCommand extends ExtendedCommand {
+    
+    public DonatorCommand() {
+        super("donator command");
+        
+        super.setDonator(true);
+    }
+}
+```
+
+To register it for method based commands you need to first create a **IMethodCommandFactory** which is used to create the **MethodCommand** instances, like this
+```Java
+public class ExtendedCommandFactory implements IMethodCommandFactory<ExtendedCommand> {
+	
+	public ExtendedCommand create(Method method, String name, Object invoker) {
+		return new ExtendedCommand(IMethodCommandFactory.getName(name, method), method, invoker);
+	}
+}
+```
+after creating the method command factory you need to register it, like this
+```Java
+MethodCommandFactory.setDefault(new ExtendedCommandFactory());
+```
+
+### Implementing custom behaviour
+----
+
+You can implement custom behaviour in two ways, one through the class itself via the verify method and the other through a pre-execute check.
+
+**Through the class itself**, this will make the command get filtered out before it is even checked which means the user will not get any help or response from triggering this command.
+```Java
+public boolean verify(Message message, CommandListener commandListener) {
+    if(super.verify(message, commandListener)) {
+        return true;
+    }
+    
+    if(this.donator && Donators.isDonator(message.getAuthor().getIdLong())) {
+        return false;
+    }
+    
+    return true;
+}
+```
+
+**Through a pre-execute check**, this means that you can add a custom message to it if you so desire.
+```Java
+CommandListener listener = new CommandListener();
+listener.addPreExecuteCheck((event, command) -> {
+	if(command instanceof ExtendedCommand) {
+		if(((ExtendedCommand) command).isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
+		    event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
+		
+			return false;
+		}
+	}
+	
+	return true;
+});
 ```

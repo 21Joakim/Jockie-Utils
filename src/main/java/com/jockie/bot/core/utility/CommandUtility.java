@@ -7,8 +7,8 @@ import java.util.Objects;
 
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.command.SubCommand;
-import com.jockie.bot.core.command.impl.MethodCommand;
 
 import net.dv8tion.jda.core.utils.Checks;
 
@@ -69,7 +69,7 @@ public class CommandUtility {
 	public static Method getCommandCreateMethod(Method[] methods) {
 		for(Method method : methods) {
 			if(method.getName().equals("createCommand")) {
-				if(!method.getReturnType().isAssignableFrom(MethodCommand.class)) {
+				if(!CommandUtility.isAssignableFrom(method.getReturnType(), IMethodCommand.class)) {
 					continue;
 				}
 				

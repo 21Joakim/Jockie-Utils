@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.jockie.bot.core.command.ICommand;
+import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.exception.load.CommandLoadException;
@@ -55,8 +56,8 @@ public class CommandStore {
 		return new CommandStore().loadFrom(packagePath, subPackages);
 	}
 	
-	private static final BiFunction<Method, Object, ? extends MethodCommand> DEFAULT_CREATE_FUNCTION = (method, module) -> {
-		return MethodCommandFactory.getDefault().create(CommandUtility.getCommandName(method), method, module);
+	private static final BiFunction<Method, Object, ? extends IMethodCommand> DEFAULT_CREATE_FUNCTION = (method, module) -> {
+		return MethodCommandFactory.getDefault().create(method, CommandUtility.getCommandName(method), module);
 	};
 	
 	/**
@@ -89,20 +90,20 @@ public class CommandStore {
 		Method onCommandLoadMethod = CommandUtility.getOnCommandLoadMethod(methods);
 		Method onModuleLoad = CommandUtility.getOnModuleLoad(methods);
 		
-		BiFunction<Method, Object, ? extends MethodCommand> createFunction;
+		BiFunction<Method, Object, ? extends IMethodCommand> createFunction;
 		if(createCommand != null) {
 			createFunction = (method, container) -> {
-				MethodCommand result = null;
+				IMethodCommand result = null;
 				
 				try {
 					Class<?>[] types = createCommand.getParameterTypes();
 					if(types.length == 1) {
 						if(types[0].isAssignableFrom(Method.class)) {
-							result = (MethodCommand) createCommand.invoke(container, method);
+							result = (IMethodCommand) createCommand.invoke(container, method);
 						}
 					}else if(types.length == 2) {
 						if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-							result = (MethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
+							result = (IMethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
 						}
 					}
 				}catch(Exception e) {
@@ -123,7 +124,7 @@ public class CommandStore {
 		Map<String, ICommand> moduleCommandsNamed = new HashMap<>();
 		
 		for(Method method : CommandUtility.getCommandMethods(methods)) {
-			MethodCommand command = createFunction.apply(method, module);
+			IMethodCommand command = createFunction.apply(method, module);
 			
 			moduleCommands.put(method.getName(), command);
 			moduleCommandsNamed.put(command.getCommand(), command);
@@ -150,11 +151,10 @@ public class CommandStore {
 		}
 		
 		for(Method method : CommandUtility.getSubCommandMethods(methods)) {
-			MethodCommand command = createFunction.apply(method, module);
+			IMethodCommand command = createFunction.apply(method, module);
+			SubCommand subCommand = method.getAnnotation(SubCommand.class);
 			
-			SubCommand subCommandAnnotation = method.getAnnotation(SubCommand.class);
-			
-			String[] path = subCommandAnnotation.value();
+			String[] path = subCommand.value();
 			if(path.length > 0) {
 				ICommand parent = CommandUtility.getSubCommandRecursive(moduleCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
 				if(parent != null) {
@@ -260,7 +260,6 @@ public class CommandStore {
 		return this.loadFrom(packagePath, true);
 	}
 	
-	
 	/**
 	 * Load all commands from the provided package
 	 * 
@@ -270,11 +269,22 @@ public class CommandStore {
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
 	public CommandStore loadFrom(String packagePath, boolean subPackages) {
+		return this.loadFrom(ClassLoader.getSystemClassLoader(), packagePath, subPackages);
+	}
+	
+	/**
+	 * Load all commands from the provided package
+	 * 
+	 * @param classLoader the ClassLoader to load the classes with
+	 * @param packagePath the java package path to load the commands from
+	 * @param subPackages whether or not to include sub-packages when loading the commands
+	 * 
+	 * @return the {@link CommandStore} instance, useful for chaining
+	 */
+	public CommandStore loadFrom(ClassLoader classLoader, String packagePath, boolean subPackages) {
 		List<ICommand> commands = new ArrayList<>();
 		
 		try {
-			ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-			
 			ImmutableSet<ClassInfo> classes;
 			if(subPackages) {
 				classes = ClassPath.from(classLoader).getTopLevelClassesRecursive(packagePath);

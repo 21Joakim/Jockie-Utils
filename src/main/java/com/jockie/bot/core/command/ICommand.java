@@ -117,6 +117,27 @@ public interface ICommand {
 	}
 	
 	/**
+	 * @return the argument trim type, this is used to determine how spaces in arguments are handled
+	 */
+	public ArgumentTrimType getArgumentTrimType();
+	
+	public enum ArgumentTrimType {
+		/** Does nothing */
+		NONE,
+		/**
+		 * Removes any leading and trailing spaces as long as they are not explicitly
+		 * entered through a quote
+		 */
+		LENIENT,
+		/** 
+		 * Removes any leading and trailing spaces no matter what, 
+		 * even if the argument was quoted like the following <b>" hello "</b> 
+		 * it would still end up without any spaces
+		 */
+		STRICT;
+	}
+	
+	/**
 	 * @return the discord permissions required for this command to function correctly.
 	 */
 	public List<Permission> getBotDiscordPermissions();
