@@ -23,17 +23,28 @@ public interface IArgumentParser<Type> {
 	public ParsedArgument<Type> parse(Message message, IArgument<Type> argument, String content);
 	
 	/**
+	 * <b>NOTE:</b>
+	 * By using this property in a parser you have to yourself return any left over content in the {@link ParsedArgument}.
+	 * </br></br>
+	 * This can, for instance, be useful for creating JSON arguments, an example of this exists in 
+	 * {@link ArgumentFactory} for {@link JSONObject} and {@link JSONArray}
+	 * 
 	 * @return whether or not this parser should manage all the content itself, 
 	 * this means that all the content which is left to parse for the command parser 
 	 * will be given to this parser.
-	 * </br></br>
-	 * <b>NOTE:</b>
-	 * This parser then has to return any left over content in the {@link ParsedArgument}.
-	 * </br></br>
-	 * This can be useful for creating JSON arguments for instance, an example of this exists in 
-	 * {@link ArgumentFactory} for {@link JSONObject} and {@link JSONArray}
 	 */
-	public default boolean handleAll() {
+	public default boolean isHandleAll() {
 		return false;
+	}
+	
+	/**
+	 * This is used to determine in what order commands with similar arguments should be parsed
+	 * to get the most accurate result.
+	 * 
+	 * @return the importance of this parser, parsers with lower priority may be handled before
+	 * ones with higher order.
+	 */
+	public default int getPriority() {
+		return 0;
 	}
 }

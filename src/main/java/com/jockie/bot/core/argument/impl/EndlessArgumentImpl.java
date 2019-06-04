@@ -4,7 +4,7 @@ import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.parser.IArgumentParser;
 
-public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements IEndlessArgument<Type> {
+public class EndlessArgumentImpl<Type> extends AbstractArgument<Type[]> implements IEndlessArgument<Type> {
 	
 	private final IArgument<Type> argument;
 	

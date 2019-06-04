@@ -166,7 +166,6 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		this.setArgumentTrimType(annotation.argumentTrimType());
 	}
 	
-	
 	protected void applyAnnotations() {
 		if(this.method.isAnnotationPresent(Command.class)) {
 			this.applyCommandAnnotation(this.method.getAnnotation(Command.class));
@@ -223,7 +222,6 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 			this.setInvalidOptionPolicy(policy.invalidOption());
 		}
 	}
-	
 	
 	public static void executeMethodCommand(Object invoker, Method command, CommandEvent event, Object... args) throws Throwable {
 		IContextManager contextManager = ContextManagerFactory.getDefault();
@@ -341,22 +339,33 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				
 				information.append("    Argument values: " + Arrays.deepToString(arguments));
 				
-				/* No need to throw an Exception for this, the stack trace doesn't add any additional information. 
-				 * I guess we should add some sort of event for this though, maybe they don't want it in the console 
-				 */
-				System.err.println(information);
-			}else{
-				if(e instanceof InvocationTargetException) {
-					if(e.getCause() != null) {
-						throw e.getCause();
+				throw new IllegalStateException(information.toString());
+			}else if(e instanceof InvocationTargetException) {
+				Throwable cause = e.getCause();
+				if(cause != null) {
+					if(event.getCommandListener().isFilterStackTrace()) {
+						List<StackTraceElement> elements = Arrays.asList(cause.getStackTrace());
+						
+						int index = -1;
+						for(int i = 0; i < elements.size(); i++) {
+							StackTraceElement element = elements.get(i);
+							if(element.getClassName().equals(command.getDeclaringClass().getName()) && element.getMethodName().equals(command.getName())) {
+								index = i;
+							}
+						}
+						
+						if(index != -1) {
+							cause.setStackTrace(elements.subList(0, index + 1).toArray(new StackTraceElement[0]));
+						}
 					}
+					
+					throw cause;
 				}
-				
+			}else{
 				throw e;
 			}
 		}
 	}
-	
 	
 	public static List<DummyCommand> generateDummyCommands(ICommand command) {
 		List<DummyCommand> dummyCommands = new ArrayList<>();

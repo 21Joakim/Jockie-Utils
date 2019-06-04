@@ -30,7 +30,7 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 		
 		int argumentCount = 0;
 		
-		Type[] parsedArguments = (Type[]) Array.newInstance(self.getArgumentType(), (self.getMaxArguments() > 0) ? self.getMaxArguments() : (int) value.codePoints().filter(c2 -> c2 == ' ').count() + 1);
+		Type[] parsedArguments = (Type[]) Array.newInstance(self.getArgumentType(), self.getMaxArguments() > 0 ? self.getMaxArguments() : (int) value.codePoints().filter(c2 -> c2 == ' ').count() + 1);
 		
 		for(int i = 0; i < parsedArguments.length; i++) {
 			if(value.trim().length() == 0) {
@@ -49,7 +49,7 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 			
 			String content = null;
 			ParsedArgument<Type> parsedArgument;
-			if(self.getArgument().getParser().handleAll()) {
+			if(self.getArgument().getParser().isHandleAll()) {
 				parsedArgument = self.getArgument().parse(message, content = value);
 				
 				if(parsedArgument.getContentLeft() != null) {

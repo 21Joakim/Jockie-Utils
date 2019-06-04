@@ -9,7 +9,6 @@ public interface IOption {
 	 */
 	public String getName();
 	
-	
 	/**
 	 * @return the description of this option, could for instance explain the behaviour of the option
 	 */

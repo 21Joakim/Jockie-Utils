@@ -30,7 +30,7 @@ public class Main {
 		final Pattern HEX_PATTERN = Pattern.compile("(#|)(([0-9]|(?i)[A-F]){6})");
 		
 		/* Register the class Color so that it can be used as an argument */
-		ArgumentFactory.registerArgument(Color.class, (event, argument, value) -> {
+		ArgumentFactory.registerParser(Color.class, (event, argument, value) -> {
 			Matcher matcher = HEX_PATTERN.matcher(value);
 			if(matcher.matches()) {
 				String content = matcher.group(2);
@@ -42,7 +42,7 @@ public class Main {
 		});
 		
 		/* Register the class URL so that it can be used as an argument */
-		ArgumentFactory.registerArgument(URL.class, (event, argument, value) -> {
+		ArgumentFactory.registerParser(URL.class, (event, argument, value) -> {
 			try {
 				/* Preferably you would add an extra check to not allow for local files (server files) to be used, such as file:///C:/Users/Joakim/Desktop/my%20nudes.png */
 				return new ParsedArgument<>(true, new URL(value));

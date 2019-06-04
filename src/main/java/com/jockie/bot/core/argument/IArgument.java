@@ -107,7 +107,7 @@ public interface IArgument<Type> {
 		}
 		
 		public BT setDefaultValue(RT defaultValue) {
-			return this.setDefaultValue((commandEvent) -> {
+			return this.setDefaultValue((event) -> {
 				return defaultValue;
 			});
 		}

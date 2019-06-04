@@ -69,7 +69,7 @@ public class ComponentFactoryImpl implements IComponentFactory {
 				}catch(Exception e) {}
 			}
 			
-			IArgument.Builder<?, ?, ?> builder = ArgumentFactory.of(type);
+			IArgument.Builder<?, ?, ?> builder = ArgumentFactory.builder(type);
 			if(builder != null) {
 				Argument info = parameter.getAnnotation(Argument.class);
 				if(info == null && argumentsInfo != null) {
@@ -110,7 +110,7 @@ public class ComponentFactoryImpl implements IComponentFactory {
 				arguments[argCount++] = builder.build();
 			}else{
 				if(type.isArray()) {
-					builder = ArgumentFactory.of(type.getComponentType());
+					builder = ArgumentFactory.builder(type.getComponentType());
 					if(builder != null) {
 						Argument info = null;
 						if(parameter.isAnnotationPresent(Argument.class)) {
@@ -187,7 +187,12 @@ public class ComponentFactoryImpl implements IComponentFactory {
 			
 			for(int i = 0, i2 = 0; i < commandMethod.getParameterCount(); i++) {
 				Parameter parameter = commandMethod.getParameters()[i];
+				
 				if(parameter.isAnnotationPresent(Option.class)) {
+					if(!parameter.getType().equals(boolean.class) && !parameter.getType().equals(Boolean.class)) {
+						throw new IllegalArgumentException("Option at parameter " + (i + 1) + " is not a boolean, options with values are currently not supported");
+					}
+					
 					Option option = parameter.getAnnotation(Option.class);
 					
 					options[i2++] = new OptionImpl.Builder()

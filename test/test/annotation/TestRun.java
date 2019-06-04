@@ -12,6 +12,6 @@ public @interface TestRun {
 	
 	public String result() default "";
 	
-	public boolean pass();
+	public boolean success();
 	
 }

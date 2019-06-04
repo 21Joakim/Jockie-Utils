@@ -1,6 +1,5 @@
 package com.jockie.bot.core.command.impl;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,6 +22,7 @@ import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.exception.CancelException;
+import com.jockie.bot.core.command.exception.CommandExecutionException;
 import com.jockie.bot.core.command.exception.parser.ParseException;
 import com.jockie.bot.core.command.manager.IReturnManager;
 import com.jockie.bot.core.command.manager.impl.ReturnManagerImpl;
@@ -54,6 +54,7 @@ public class CommandListener implements EventListener {
 		public int compare(Pair<String, ICommand> pair, Pair<String, ICommand> pair2) {
 			ICommand command = pair.getRight(), command2 = pair2.getRight();
 			
+			/* Check the trigger length, the longer the more specific so it goes first */
 			if(pair.getLeft().length() > pair2.getLeft().length()) {
 				return -1;
 			}else if(pair.getLeft().length() < pair2.getLeft().length()) {
@@ -69,6 +70,7 @@ public class CommandListener implements EventListener {
 				boolean endless = false, endless2 = false;
 				boolean endlessArguments = false, endlessArguments2 = false;
 				
+				/* Update argument count and check for endless arguments */
 				if(lastArgument.isEndless()) {
 					if(lastArgument instanceof IEndlessArgument) {
 						int max = ((IEndlessArgument<?>) lastArgument).getMaxArguments();
@@ -83,6 +85,7 @@ public class CommandListener implements EventListener {
 					endless = true;
 				}
 				
+				/* Update argument count and check for endless arguments */
 				if(lastArgument2.isEndless()) {
 					if(lastArgument2 instanceof IEndlessArgument) {
 						int max = ((IEndlessArgument<?>) lastArgument2).getMaxArguments();
@@ -97,28 +100,73 @@ public class CommandListener implements EventListener {
 					endless2 = true;
 				}
 				
+				/* Check if the last argument contains an endless amount of arguments */
 				if(!endlessArguments && endlessArguments2) {
 					return -1;
 				}else if(endlessArguments && !endlessArguments2) {
 					return 1;
 				}
 				
+				/**
+				 * Check how many arguments the command has, the more arguments the more specific it is
+				 * and should therefore be closer.
+				 */
 				if(argumentCount > argumentCount2) {
 					return -1;
 				}else if(argumentCount < argumentCount2) {
 					return 1;
 				}
 				
+				/* 
+				 * Check if the last argument is endless, if it is it will simply accept all the remaining content 
+				 * which means it is less specific and should therefore be further back.
+				 */
 				if(!endless && endless2) {
 					return -1;
 				}else if(endless && !endless2) {
 					return 1;
 				}
+				
+				/* 
+				 * Check the order of the argument parsers. This was mostly introduced to combat an issue where
+				 * due to the fact that Class#getDeclaredMethods doesn't return the methods in the order they were
+				 * specified in, let alone any order at all, the order of the commands would sometimes be different
+				 * and could cause weird behaviour.
+				 * 
+				 * One example of a weird behaviour is if you have a command, "prune", which takes one argument, amount (Integer),
+				 * and then you have an alternate command implementation which takes a keyword argument of the type String.
+				 * Now if the first method loads first everything works correctly as the argument can be checked if it is an integer 
+				 * and then move to the String variant.
+				 * If the second version is instead loaded first it will always take it as a keyword as the String parser just accepts any content given to it
+				 * and this causes the first version to become effectively inaccessible. 
+				 */
+				if(argumentCount == argumentCount2) {
+					for(int i = 0; i < argumentCount; i++) {
+						int parsePriority = arguments.get(i).getParser().getPriority();
+						int parsePriority2 = arguments2.get(i).getParser().getPriority();
+						
+						if(parsePriority != parsePriority2) {
+							if(parsePriority > parsePriority2) {
+								return 1;
+							}else if(parsePriority < parsePriority2) {
+								return -1;
+							}
+						}
+					}
+				}
 			}else if(argumentCount == 0 && argumentCount2 > 0) {
 				return 1;
 			}else if(argumentCount > 0 && argumentCount2 == 0) {
 				return -1;
-			}else if(command.isCaseSensitive() && !command2.isCaseSensitive()) {
+			}
+			
+			/* 
+			 * Check for case sensitivity, if it is case sensitive it is more specific and therefore goes first.
+			 * 
+			 * This could be useful if you, for instance, had a command called "ban" and then a case sensitive command called "Ban" 
+			 * to fake ban people.
+			 */
+			if(command.isCaseSensitive() && !command2.isCaseSensitive()) {
 				return -1;
 			}else if(!command.isCaseSensitive() && command2.isCaseSensitive()) {
 				return 1;
@@ -159,12 +207,6 @@ public class CommandListener implements EventListener {
 			return 0;
 		}
 	};
-	
-	protected List<String> defaultPrefixes = List.of("!");
-	
-	protected Function<Message, List<String>> prefixFunction;
-	
-	protected boolean allowMentionPrefix = true;
 	
 	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_PERMISSION_FUNCTION = (event, permissions) -> {
 		StringBuilder missingPermissions = new StringBuilder();
@@ -353,6 +395,14 @@ public class CommandListener implements EventListener {
 	
 	protected Set<Predicate<Message>> preParseChecks = new LinkedHashSet<>();
 	protected Set<BiPredicate<CommandEvent, ICommand>> preExecuteChecks = new LinkedHashSet<>();
+	
+	protected List<String> defaultPrefixes = List.of("!");
+	
+	protected Function<Message, List<String>> prefixFunction;
+	
+	protected boolean allowMentionPrefix = true;
+	
+	protected boolean filterStackTrace = true;
 	
 	public CommandListener() {
 		this.addDefaultPreExecuteChecks();
@@ -552,6 +602,24 @@ public class CommandListener implements EventListener {
 	 */
 	public boolean isAllowMentionPrefix() {
 		return this.allowMentionPrefix;
+	}
+	
+	/**
+	 * @param filter a boolean that will determine whether or not command exceptions should be filtered to only show the command's stack trace
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	public CommandListener setFilterStackTrace(boolean filter) {
+		this.filterStackTrace = filter;
+		
+		return this;
+	}
+	
+	/**
+	 * @return whether or not command exceptions should be filtered to only show the command's stack trace
+	 */
+	public boolean isFilterStackTrace() {
+		return this.filterStackTrace;
 	}
 	
 	/**
@@ -1106,7 +1174,7 @@ public class CommandListener implements EventListener {
 		String contentRaw = message.getContentRaw();
 		String prefix = null;
 		
-		/* Needs to work for both non-nicked mention and nicked mention */
+		/* Needs to work for both non-nicked mentions and nicked mentions */
 		long botId = message.getJDA().getSelfUser().getIdLong();
 		if(this.allowMentionPrefix && (contentRaw.startsWith("<@" + botId + "> ") || contentRaw.startsWith("<@!" + botId + "> "))) {
 			prefix = contentRaw.substring(0, contentRaw.indexOf(" ") + 1);
@@ -1140,7 +1208,9 @@ public class CommandListener implements EventListener {
 				if(!predicate.test(message)) {
 					return null;
 				}
-			}catch(Exception e) {}
+			}catch(Exception e) {
+				throw new IllegalStateException("Failed on pre-parse check", e);
+			}
 		}
 		
 		String contentRaw = message.getContentRaw();
@@ -1277,17 +1347,24 @@ public class CommandListener implements EventListener {
 		ICommand actualCommand = (command instanceof DummyCommand) ? command.getParent() : command;
 		
 		for(BiPredicate<CommandEvent, ICommand> predicate : this.preExecuteChecks) {
-			/* 
-			 * TODO: Should this just pass by if an exception was caused? Could be a security risk.
-			 * 
-			 * This currently follows the standard for CommandEventListener's events. 
-			 */
 			try {
 				if(!predicate.test(event, actualCommand)) {
 					return;
 				}
 			}catch(Exception e) {
-				e.printStackTrace();
+				for(CommandEventListener listener : this.commandEventListeners) {
+					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
+					try {
+						listener.onCommandExecutionException(command, event, e);
+					}catch(Exception e1) {
+						e1.printStackTrace();
+					}
+				}
+				
+				new CommandExecutionException(event, e).printStackTrace();
+				
+				/* Better to return if a pre-execute check fails than to continue to the command */
+				return;
 			}
 		}
 		
@@ -1359,16 +1436,7 @@ public class CommandListener implements EventListener {
 				}
 			}
 			
-			try {
-				/* TODO: This should probably be changed due to illegal access */
-				Field field = Throwable.class.getDeclaredField("detailMessage");
-				field.setAccessible(true);
-				field.set(e, "Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + " but failed" + ((e.getMessage() != null) ? " with the message \"" + e.getMessage() + "\""  : ""));
-			}catch(Exception e1) {
-				e1.printStackTrace();
-			}
-			
-			e.printStackTrace();
+			new CommandExecutionException(event, e).printStackTrace();
 			
 			return;
 		}
