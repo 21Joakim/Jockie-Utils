@@ -219,7 +219,7 @@ public class CommandDecide extends CommandImpl {
 	}
 	
 	public void onCommand(CommandEvent event, @Argument("statement") String firstStatement, @Argument("secondStatement") String secondStatement) {
-		event.reply("**" + (this.random.nextBoolean() ? statement : statement2) + "**" + " seems more reasonable to me!").queue();
+		event.reply("**" + (this.random.nextBoolean() ? firstStatement : secondStatement) + "**" + " seems more reasonable to me!").queue();
 	}
 }
 ```
