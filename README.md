@@ -35,6 +35,8 @@ All suggestion and contributions are welcome!\
 ## Download
 [![](https://jitpack.io/v/21Joakim/Jockie-Utils.svg)](https://jitpack.io/#21Joakim/Jockie-Utils)
 
+Use `jda-v4-SNAPSHOT` as the version if you are using JDA v4. The JDA v3 version will continue to be updated until the crucial bugs are fixed and then JDA v4 will be moved to master and get versioned updates.
+
 ### Gradle
 ```Gradle
 repositories {
