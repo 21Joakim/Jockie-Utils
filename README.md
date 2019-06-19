@@ -30,7 +30,8 @@ All suggestion and contributions are welcome!\
 
 ## Libraries used
 [JDA (The Discord wrapper which the library is built upon)](https://github.com/DV8FromTheWorld/JDA)\
-[guava (Used for simplified adding of commands, adding commands by package)](https://github.com/google/guava)
+[guava (Used for simplified adding of commands, adding commands by package)](https://github.com/google/guava)\
+[org.json (Used for JSON arguments)](https://github.com/stleary/JSON-java)
 
 ## Download
 [![](https://jitpack.io/v/21Joakim/Jockie-Utils.svg)](https://jitpack.io/#21Joakim/Jockie-Utils)
