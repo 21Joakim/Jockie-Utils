@@ -19,8 +19,8 @@ public interface IMethodCommandFactory<T extends IMethodCommand> {
 	 */
 	public static String getName(String defaultName, Method method) {
 		Command command = method.getAnnotation(Command.class);
-		if(command != null) {
-			return command.value().length() == 0 ? (defaultName != null ? defaultName : "") : command.value();
+		if(command != null && !command.value().isEmpty()) {
+			return command.value();
 		}
 		
 		return defaultName != null ? defaultName : "";

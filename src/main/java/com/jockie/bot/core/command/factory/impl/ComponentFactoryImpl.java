@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.jockie.bot.core.Context;
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.argument.Arguments;
 import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.impl.ArgumentFactory;
 import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
+import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.factory.IComponentFactory;
 import com.jockie.bot.core.command.manager.IContextManager;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;

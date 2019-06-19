@@ -24,7 +24,6 @@ public @interface Argument {
 	/**
 	 * @see {@link IArgument#acceptQuote()}
 	 */
-	/* TODO: I see no reason not to allow quoted by default */
 	public boolean acceptQuote() default true;
 	
 	/**

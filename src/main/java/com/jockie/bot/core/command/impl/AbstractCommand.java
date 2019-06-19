@@ -24,8 +24,6 @@ public abstract class AbstractCommand implements ICommand {
 	
 	protected String argumentInfo;
 	
-	protected List<String> examples = Collections.emptyList();
-	
 	protected List<String> aliases = Collections.emptyList();
 	
 	protected List<IArgument<?>> arguments = Collections.emptyList();
@@ -72,6 +70,8 @@ public abstract class AbstractCommand implements ICommand {
 		this.command = command;
 	}
 	
+	public AbstractCommand() {}
+	
 	public String getCommand() {
 		return this.command;
 	}
@@ -90,10 +90,6 @@ public abstract class AbstractCommand implements ICommand {
 		}
 		
 		return this.argumentInfo;
-	}
-	
-	public List<String> getExamples() {
-		return Collections.unmodifiableList(this.examples);
 	}
 	
 	public List<String> getAliases() {
@@ -196,6 +192,12 @@ public abstract class AbstractCommand implements ICommand {
 		return this.subCommands;
 	}
 	
+	public AbstractCommand setCommand(String command) {
+		this.command = command;
+		
+		return this;
+	}
+	
 	public AbstractCommand setDeveloper(boolean developerCommand) {
 		this.developerCommand = developerCommand;
 		
@@ -234,12 +236,6 @@ public abstract class AbstractCommand implements ICommand {
 	
 	public AbstractCommand setArgumentInfo(String argumentInfo) {
 		this.argumentInfo = argumentInfo;
-		
-		return this;
-	}
-	
-	public AbstractCommand setExamples(String... examples) {
-		this.examples = List.of(examples);
 		
 		return this;
 	}

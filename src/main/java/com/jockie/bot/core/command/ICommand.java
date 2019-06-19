@@ -8,6 +8,7 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
+import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
@@ -17,6 +18,61 @@ import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.utils.tuple.Pair;
 
 public interface ICommand {
+	
+	/**
+	 * This is used to determine how the {@link ICommandParser} should handle a command when an unknown option is provided
+	 */
+	public static enum InvalidOptionPolicy {
+		/** Adds the option which can then be accessed through {@link CommandEvent#getOptionsPresent()}  */
+		ADD,
+		/** Includes the option content as an argument instead of an option */
+		INCLUDE,
+		/** Ignores (removes) the option from the message */
+		IGNORE,
+		/** Fails the command */
+		FAIL;
+	}
+	
+	/**
+	 * This is used to determine how the {@link ICommandParser} should handle a command when a message has more content than the command can take
+	 */
+	public static enum ContentOverflowPolicy {
+		IGNORE,
+		FAIL;
+	}
+	
+	/**
+	 * This is used to determine which parsing types are allowed for the {@link ICommandParser}
+	 */
+	public static enum ArgumentParsingType {
+		/** Positional arguments are arguments which are not specified by key=value but rather the order/index they are in, for instance
+		 * <b>!create role hello 8</b> where "hello" is the role name and "8" is the raw Discord permissions
+		 */
+		POSITIONAL,
+		/** Named arguments are arguments which are not specified by their order/index but rather key=value, for instance 
+		 * <b>!create role name=hello permissions=8</b>
+		 */
+		NAMED;
+	}
+	
+	/**
+	 * This is used to determine how the {@link ICommandParser} should handle spaces in argument
+	 */
+	public static enum ArgumentTrimType {
+		/** Does nothing */
+		NONE,
+		/**
+		 * Removes any leading and trailing spaces as long as they are not explicitly
+		 * entered through a quote
+		 */
+		LENIENT,
+		/** 
+		 * Removes any leading and trailing spaces no matter what, 
+		 * even if the argument was quoted like the following <b>" hello "</b> 
+		 * it would still end up without any spaces
+		 */
+		STRICT;
+	}
 	
 	/**
 	 * @return the command which the command listener should look for
@@ -54,11 +110,6 @@ public interface ICommand {
 	public String getDescription();
 	
 	/**
-	 * @return a set of examples which can be used in a help command 
-	 */
-	public List<String> getExamples();
-	
-	/**
 	 * @return all the possible aliases for this command
 	 */
 	public List<String> getAliases();
@@ -74,68 +125,19 @@ public interface ICommand {
 	public InvalidOptionPolicy getInvalidOptionPolicy();
 	
 	/**
-	 * This is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
-	 */
-	public enum InvalidOptionPolicy {
-		/** Adds the option which can then be accessed through {@link CommandEvent#getOptionsPresent()}  */
-		ADD,
-		/** Includes the option content as an argument instead of an option */
-		INCLUDE,
-		/** Ignores (removes) the option from the message */
-		IGNORE,
-		/** Fails the command */
-		FAIL;
-	}
-	
-	/**
 	 * @return a {@link ContentOverflowPolicy} which is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
 	 */
 	public ContentOverflowPolicy getContentOverflowPolicy();
-	
-	/**
-	 * This is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
-	 */
-	public enum ContentOverflowPolicy {
-		IGNORE,
-		FAIL;
-	}
 	
 	/**
 	 * @return an array of {@link ArgumentParsingType}s which is used to determine how the arguments are allowed to be defined
 	 */
 	public List<ArgumentParsingType> getAllowedArgumentParsingTypes();
 	
-	public enum ArgumentParsingType {
-		/** Positional arguments are arguments which are not specified by key=value but rather the order/index they are in, for instance
-		 * <b>!create role hello 8</b> where "hello" is the role name and "8" is the raw Discord permissions
-		 */
-		POSITIONAL,
-		/** Named arguments are arguments which are not specified by their order/index but rather key=value, for instance 
-		 * <b>!create role name=hello permissions=8</b>
-		 */
-		NAMED;
-	}
-	
 	/**
 	 * @return the argument trim type, this is used to determine how spaces in arguments are handled
 	 */
 	public ArgumentTrimType getArgumentTrimType();
-	
-	public enum ArgumentTrimType {
-		/** Does nothing */
-		NONE,
-		/**
-		 * Removes any leading and trailing spaces as long as they are not explicitly
-		 * entered through a quote
-		 */
-		LENIENT,
-		/** 
-		 * Removes any leading and trailing spaces no matter what, 
-		 * even if the argument was quoted like the following <b>" hello "</b> 
-		 * it would still end up without any spaces
-		 */
-		STRICT;
-	}
 	
 	/**
 	 * @return the discord permissions required for this command to function correctly.

@@ -11,9 +11,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import com.jockie.bot.core.Context;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.Command;
+import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.Command.Async;
 import com.jockie.bot.core.command.Command.AuthorPermissions;
 import com.jockie.bot.core.command.Command.BotPermissions;
@@ -152,7 +152,6 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		this.setShortDescription(annotation.shortDescription());
 		this.setArgumentInfo(annotation.argumentInfo());
 		this.setAliases(annotation.aliases());
-		this.setExamples(annotation.examples());
 		
 		this.setBotTriggerable(annotation.botTriggerable());
 		this.setCaseSensitive(annotation.caseSensitive());

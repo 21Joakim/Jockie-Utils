@@ -1209,7 +1209,9 @@ public class CommandListener implements EventListener {
 					return null;
 				}
 			}catch(Exception e) {
-				throw new IllegalStateException("Failed on pre-parse check", e);
+				new IllegalStateException("Failed on pre-parse check", e).printStackTrace();
+				
+				return null;
 			}
 		}
 		
@@ -1370,18 +1372,16 @@ public class CommandListener implements EventListener {
 		
 		try {
 			/* TODO: Should this also be added to the pre-execute predicates? */
-			if(command.getCooldownDuration() > 0) {
-				ICooldown cooldown = this.cooldownManager.getCooldown(actualCommand, event.getMessage());
-				long timeRemaining = cooldown != null ? cooldown.getTimeRemainingMillis() : -1;
-				
-				if(timeRemaining > 0) {
-					if(this.cooldownFunction != null) {
-						this.cooldownFunction.accept(event, cooldown);
-					}
-					
-					return;
+			ICooldown cooldown = this.cooldownManager.getCooldown(actualCommand, event.getMessage());
+			if(cooldown != null && cooldown.getTimeRemainingMillis() > 0) {
+				if(this.cooldownFunction != null) {
+					this.cooldownFunction.accept(event, cooldown);
 				}
 				
+				return;
+			}
+			
+			if(command.getCooldownDuration() > 0) {
 				/* Add the cooldown before the command has executed so that in case the command has a long execution time it will not get there */
 				this.cooldownManager.applyCooldown(actualCommand, event.getMessage());
 			}

@@ -9,23 +9,23 @@ import net.dv8tion.jda.core.entities.Message;
 
 public interface ICooldown {
 	
-	public enum Scope {
+	public static enum Scope {
 		/** This scope applies to the current user, the command can be used by any other user */
-		USER(event -> String.format("u:%s", event.getAuthor().getId())),
+		USER(message -> String.format("u:%s", message.getAuthor().getId())),
 		/** This scope applies to the current channel for the user, the command can be used in another channel by the same user */
-		USER_CHANNEL(event -> String.format("u:%s,c:%s", event.getAuthor().getId(), event.getChannel().getId())),
+		USER_CHANNEL(message -> String.format("u:%s,c:%s", message.getAuthor().getId(), message.getChannel().getId())),
 		/** This scope applies to the current guild for the user, the command can be used in another guild by the same user */
-		USER_GUILD(event -> event.getChannelType().isGuild() ? String.format("u:%s,g:%s", event.getAuthor().getId(), event.getGuild().getId()) : USER_CHANNEL.getContextKey(event)),
+		USER_GUILD(message -> message.getChannelType().isGuild() ? String.format("u:%s,g:%s", message.getAuthor().getId(), message.getGuild().getId()) : USER_CHANNEL.getContextKey(message)),
 		/** This scope applies to the current shard for the user, the command can be used in another shard by the same user */
-		USER_SHARD(event -> event.getJDA().getShardInfo() != null ? String.format("u:%s,s:%s", event.getAuthor().getId(), event.getJDA().getShardInfo()) : USER.getContextKey(event)),
+		USER_SHARD(message -> message.getJDA().getShardInfo() != null ? String.format("u:%s,s:%s", message.getAuthor().getId(), message.getJDA().getShardInfo()) : USER.getContextKey(message)),
 		/** This scope applies to the current channel, the command can be used in any other channel */
-		CHANNEL(event -> String.format("c:%s", event.getChannel().getId())),
+		CHANNEL(message -> String.format("c:%s", message.getChannel().getId())),
 		/** This scope applies to the entire guild, the command can be used in any other guild */
-		GUILD(event -> String.format("g:%s", event.getGuild().getId())),
+		GUILD(message -> String.format("g:%s", message.getGuild().getId())),
 		/** This scope applies to the current shard, the command can be used in any other shard */
-		SHARD(event -> event.getJDA().getShardInfo() != null ? String.format("s:%s", event.getJDA().getShardInfo()) : ""),
+		SHARD(message -> message.getJDA().getShardInfo() != null ? String.format("s:%s", message.getJDA().getShardInfo()) : ""),
 		/** This scope applies to everything, the command can not be used anywhere else */
-		GLOBAL(event -> "");
+		GLOBAL(message -> "");
 		
 		private Function<Message, String> keyFunction;
 		

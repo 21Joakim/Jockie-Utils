@@ -113,7 +113,7 @@ public interface IArgument<Type> {
 		}
 		
 		public BT setDefaultAsNull() {			
-			return this.setDefaultValue((a) -> null);
+			return this.setDefaultValue((event) -> null);
 		}
 		
 		public BT setParser(IArgumentParser<RT> parser) {

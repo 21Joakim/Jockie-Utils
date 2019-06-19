@@ -106,7 +106,7 @@ public class CommandImpl extends MethodCommandImpl {
 					
 					/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
 					if(!(parent instanceof AbstractCommand)) {
-						System.err.println("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement CommandImpl");
+						System.err.println("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
 						
 						continue;
 					}

@@ -56,11 +56,6 @@ public @interface Command {
 	public String argumentInfo() default "";
 	
 	/**
-	 * @see {@link ICommand#getExamples()}
-	 */
-	public String[] examples() default {};
-	
-	/**
 	 * @see {@link ICommand#getBotDiscordPermissions()}
 	 */
 	public Permission[] botPermissions() default {};

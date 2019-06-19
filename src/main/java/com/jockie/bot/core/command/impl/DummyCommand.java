@@ -138,10 +138,6 @@ public class DummyCommand implements ICommand {
 		return this.command.getArgumentInfo();
 	}
 	
-	public List<String> getExamples() {
-		return this.command.getExamples();
-	}
-	
 	public List<Permission> getAuthorDiscordPermissions() {
 		return this.command.getAuthorDiscordPermissions();
 	}

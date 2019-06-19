@@ -2,6 +2,7 @@ package com.jockie.bot.core.command.impl;
 
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -11,6 +12,8 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.exception.CancelException;
+import com.jockie.bot.core.command.manager.IContextManager;
+import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
@@ -20,6 +23,7 @@ import net.dv8tion.jda.client.entities.Group;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.JDA.ShardInfo;
 import net.dv8tion.jda.core.entities.ChannelType;
+import net.dv8tion.jda.core.entities.Emote;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.GuildVoiceState;
 import net.dv8tion.jda.core.entities.Member;
@@ -29,6 +33,7 @@ import net.dv8tion.jda.core.entities.MessageEmbed;
 import net.dv8tion.jda.core.entities.PrivateChannel;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.core.requests.RestAction;
 import net.dv8tion.jda.core.requests.restaction.MessageAction;
 
 public class CommandEvent {
@@ -183,17 +188,17 @@ public class CommandEvent {
 		return this.commandListener;
 	}
 	
-	/** @return the command which was triggered */
+	/** @return the command which was executed, this should always return the actual instance of the command */
 	public ICommand getCommand() {
-		return this.command;
-	}
-	
-	/** @return the actual command; if this command is a DummyCommand the command which it replicates is the command which will be returned */
-	public ICommand getActualCommand() {
 		if(this.command instanceof DummyCommand) {
 			return this.command.getParent();
 		}
 		
+		return this.command;
+	}
+	
+	/** @return the actual command which was triggered and executed, this could be a {@link DummyCommand} */
+	public ICommand getTriggeredCommand() {
 		return this.command;
 	}
 	
@@ -220,7 +225,7 @@ public class CommandEvent {
 	}
 	
 	/** @return true if the person that executed this command is a developer ({@link CommandListener#isDeveloper(long)}) */
-	public boolean isDeveloper() {
+	public boolean isAuthorDeveloper() {
 		return this.commandListener.isDeveloper(this.message.getAuthor());
 	}
 	
@@ -314,6 +319,26 @@ public class CommandEvent {
 		return this.getChannel().sendFile(data, fileName, message);
 	}
 	
+	/** Equivalent to {@link MessageChannel#sendMessageFormat(String, Object...)}, using the event's channel */
+	public MessageAction replyFormat(String format, Object... args) {
+		return this.getChannel().sendMessageFormat(format, args);
+	}
+	
+	/** Equivalent to {@link MessageChannel#sendTyping()}, using the event's channel */
+	public RestAction<Void> replyTyping() {
+		return this.getChannel().sendTyping();
+	}
+	
+	/** Equivalent to {@link Message#addReaction(Emote)}, using the event's message */
+	public RestAction<Void> react(Emote emote) {
+		return this.getMessage().addReaction(emote);
+	}
+	
+	/** Equivalent to {@link Message#addReaction(String)}, using the event's message */
+	public RestAction<Void> react(String unicode) {
+		return this.getMessage().addReaction(unicode);
+	}
+	
 	/** throws a new CancelException to cancel the execution of the current command */
 	public void cancel() {
 		throw new CancelException();
@@ -338,5 +363,23 @@ public class CommandEvent {
 	/** Remove the cooldown from this command */
 	public ICooldown removeCooldown() {
 		return this.commandListener.getCoooldownManager().removeCooldown(this.command, this.message);
+	}
+	
+	/**
+	 * @param clazz the type of the context
+	 * 
+	 * @return the context for the provided type, gotten from {@link IContextManager#getContext(CommandEvent, Class)}
+	 */
+	public <T> T getContext(Class<T> clazz) {
+		return ContextManagerFactory.getDefault().getContext(this, clazz);
+	}
+	
+	/**
+	 * @param type the type of the context
+	 * 
+	 * @return the context for the provided type, gotten from {@link IContextManager#getContext(CommandEvent, Type)}
+	 */
+	public <T> T getContext(Type type) {
+		return ContextManagerFactory.getDefault().getContext(this, type);
 	}
 }

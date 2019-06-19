@@ -66,7 +66,7 @@ public class CommandUtility {
 		return method.getName().replace("_", " ");
 	}
 	
-	public static Method getCommandCreateMethod(Method[] methods) {
+	public static Method findCommandCreateMethod(Method[] methods) {
 		for(Method method : methods) {
 			if(method.getName().equals("createCommand")) {
 				if(!CommandUtility.isAssignableFrom(method.getReturnType(), IMethodCommand.class)) {
@@ -89,7 +89,7 @@ public class CommandUtility {
 		return null;
 	}
 	
-	public static Method getOnCommandLoadMethod(Method[] methods) {
+	public static Method findCommandLoadMethod(Method[] methods) {
 		for(Method method : methods) {
 			if(method.getName().equals("onCommandLoad")) {
 				if(method.getParameterCount() == 1) {
@@ -103,7 +103,7 @@ public class CommandUtility {
 		return null;
 	}
 	
-	public static Method getOnModuleLoad(Method[] methods) {
+	public static Method findModuleLoadMethod(Method[] methods) {
 		for(Method method : methods) {
 			if(method.getName().equals("onModuleLoad")) {
 				if(method.getParameterCount() == 0) {

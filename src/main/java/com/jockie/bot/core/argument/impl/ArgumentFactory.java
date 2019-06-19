@@ -34,6 +34,7 @@ public class ArgumentFactory {
 	private static Map<Class<?>, Class<?>> aliases = new HashMap<>();
 	
 	private static boolean automaticallyCreateEnums = true;
+	private static boolean useShardManager = true;
 	
 	static {
 		ArgumentFactory.registerEssentialParsers();
@@ -55,6 +56,14 @@ public class ArgumentFactory {
 	 */
 	public static boolean isAutomaticallyCreateEnums() {
 		return ArgumentFactory.automaticallyCreateEnums;
+	}
+	
+	public static void setUseShardManager(boolean useShardManager) {
+		ArgumentFactory.useShardManager = useShardManager;
+	}
+	
+	public static boolean getUseShardManager() {
+		return ArgumentFactory.useShardManager;
 	}
 	
 	/**
@@ -287,7 +296,7 @@ public class ArgumentFactory {
 		
 		ArgumentFactory.registerParser(User.class, (event, argument, value) -> {
 			User user = null;
-			if(event.getJDA().getAccountType().equals(AccountType.BOT)) {
+			if(ArgumentFactory.useShardManager && event.getJDA().getAccountType().equals(AccountType.BOT)) {
 				ShardManager shardManager = event.getJDA().asBot().getShardManager();
 				if(shardManager != null) {
 					user = ArgumentUtility.getUserByIdOrTag(shardManager, value, true);
@@ -307,7 +316,7 @@ public class ArgumentFactory {
 		
 		ArgumentFactory.registerParser(Guild.class, (event, argument, value) -> {
 			Guild guild = null;
-			if(event.getJDA().getAccountType().equals(AccountType.BOT)) {
+			if(ArgumentFactory.useShardManager && event.getJDA().getAccountType().equals(AccountType.BOT)) {
 				ShardManager shardManager = event.getJDA().asBot().getShardManager();
 				if(shardManager != null) {
 					guild = ArgumentUtility.getGuildByIdOrName(shardManager, value, true);

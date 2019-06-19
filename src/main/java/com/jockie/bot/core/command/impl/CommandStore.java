@@ -86,9 +86,9 @@ public class CommandStore {
 		Method[] methods = moduleClass.getDeclaredMethods();
 		Class<?>[] classes = moduleClass.getDeclaredClasses();
 		
-		Method createCommand = CommandUtility.getCommandCreateMethod(methods);
-		Method onCommandLoadMethod = CommandUtility.getOnCommandLoadMethod(methods);
-		Method onModuleLoad = CommandUtility.getOnModuleLoad(methods);
+		Method createCommand = CommandUtility.findCommandCreateMethod(methods);
+		Method onCommandLoadMethod = CommandUtility.findCommandLoadMethod(methods);
+		Method onModuleLoad = CommandUtility.findModuleLoadMethod(methods);
 		
 		BiFunction<Method, Object, ? extends IMethodCommand> createFunction;
 		if(createCommand != null) {
@@ -155,20 +155,24 @@ public class CommandStore {
 			SubCommand subCommand = method.getAnnotation(SubCommand.class);
 			
 			String[] path = subCommand.value();
-			if(path.length > 0) {
-				ICommand parent = CommandUtility.getSubCommandRecursive(moduleCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
-				if(parent != null) {
-					/* TODO: Implement a proper way of handling this, commands should not have to extend CommandImpl */
-					if(parent instanceof CommandImpl) {
-						((CommandImpl) parent).addSubCommand(command);
-					}else{
-						System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement CommandImpl");
-					}
-				}else{
-					System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
-				}
-			}else{
+			if(path.length == 0) {
 				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
+				
+				continue;
+			}
+				
+			ICommand parent = CommandUtility.getSubCommandRecursive(moduleCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
+			if(parent == null) {
+				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
+				
+				continue;
+			}
+			
+			/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
+			if(parent instanceof AbstractCommand) {
+				((AbstractCommand) parent).addSubCommand(command);
+			}else{
+				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
 			}
 		}
 		
