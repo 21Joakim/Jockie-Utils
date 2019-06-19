@@ -12,6 +12,6 @@ public class CommandPing extends CommandImpl {
 	}
 	
 	public String onCommand(CommandEvent event) {
-		return event.getJDA().getPing() + " ms";
+		return event.getJDA().getGatewayPing() + " ms";
 	}
 }

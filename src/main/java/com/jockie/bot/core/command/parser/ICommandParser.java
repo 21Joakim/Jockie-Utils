@@ -5,7 +5,7 @@ import com.jockie.bot.core.command.exception.parser.ParseException;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public interface ICommandParser {
 	

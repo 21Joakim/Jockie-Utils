@@ -6,8 +6,8 @@ import java.io.FileInputStream;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.impl.CommandStore;
 
-import net.dv8tion.jda.core.AccountType;
-import net.dv8tion.jda.core.JDABuilder;
+import net.dv8tion.jda.api.AccountType;
+import net.dv8tion.jda.api.JDABuilder;
 
 public class Tests {
 	
@@ -20,10 +20,12 @@ public class Tests {
 		CommandListener listener = new CommandListener()
 			.addCommandStore(CommandStore.of("test.command"))
 			.addDeveloper(190551803669118976L)
-			.setDefaultPrefixes("§");
+			.setDefaultPrefixes("!!");
+		
+		System.out.println(listener);
 		
 		new JDABuilder(AccountType.BOT).setToken(token)
-			.addEventListener(listener)
+			.addEventListeners(listener)
 			.build()
 			.awaitReady();
 	}

@@ -13,7 +13,7 @@ import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 
-import net.dv8tion.jda.core.Permission;
+import net.dv8tion.jda.api.Permission;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

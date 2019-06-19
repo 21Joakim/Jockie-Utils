@@ -13,18 +13,18 @@ import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.utility.ArgumentUtility;
 
-import net.dv8tion.jda.bot.sharding.ShardManager;
-import net.dv8tion.jda.core.AccountType;
-import net.dv8tion.jda.core.entities.Category;
-import net.dv8tion.jda.core.entities.Channel;
-import net.dv8tion.jda.core.entities.Emote;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.entities.VoiceChannel;
+import net.dv8tion.jda.api.AccountType;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.sharding.ShardManager;
 
 public class ArgumentFactory {
 	
@@ -254,8 +254,8 @@ public class ArgumentFactory {
 		});
 		
 		/* Even though Category technically does implement Channel I do not want it to be a part of the Channel argument, objections? */
-		ArgumentFactory.registerParser(Channel.class, (event, argument, value) -> {
-			Channel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
+		ArgumentFactory.registerParser(GuildChannel.class, (event, argument, value) -> {
+			GuildChannel channel = ArgumentUtility.getTextChannelByIdOrName(event.getGuild(), value, true);
 			
 			if(channel != null || (channel = ArgumentUtility.getVoiceChannelByIdOrName(event.getGuild(), value, true)) != null) {
 				return new ParsedArgument<>(true, channel);
@@ -297,7 +297,7 @@ public class ArgumentFactory {
 		ArgumentFactory.registerParser(User.class, (event, argument, value) -> {
 			User user = null;
 			if(ArgumentFactory.useShardManager && event.getJDA().getAccountType().equals(AccountType.BOT)) {
-				ShardManager shardManager = event.getJDA().asBot().getShardManager();
+				ShardManager shardManager = event.getJDA().getShardManager();
 				if(shardManager != null) {
 					user = ArgumentUtility.getUserByIdOrTag(shardManager, value, true);
 				}
@@ -317,7 +317,7 @@ public class ArgumentFactory {
 		ArgumentFactory.registerParser(Guild.class, (event, argument, value) -> {
 			Guild guild = null;
 			if(ArgumentFactory.useShardManager && event.getJDA().getAccountType().equals(AccountType.BOT)) {
-				ShardManager shardManager = event.getJDA().asBot().getShardManager();
+				ShardManager shardManager = event.getJDA().getShardManager();
 				if(shardManager != null) {
 					guild = ArgumentUtility.getGuildByIdOrName(shardManager, value, true);
 				}
@@ -496,7 +496,7 @@ public class ArgumentFactory {
 		ArgumentFactory.unregisterParser(Member.class);
 		ArgumentFactory.unregisterParser(TextChannel.class);
 		ArgumentFactory.unregisterParser(VoiceChannel.class);
-		ArgumentFactory.unregisterParser(Channel.class);
+		ArgumentFactory.unregisterParser(GuildChannel.class);
 		ArgumentFactory.unregisterParser(Category.class);
 		ArgumentFactory.unregisterParser(Role.class);
 		ArgumentFactory.unregisterParser(Emote.class);

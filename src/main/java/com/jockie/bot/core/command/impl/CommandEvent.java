@@ -17,24 +17,23 @@ import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
-import net.dv8tion.jda.bot.JDABot;
-import net.dv8tion.jda.bot.sharding.ShardManager;
-import net.dv8tion.jda.client.entities.Group;
-import net.dv8tion.jda.core.JDA;
-import net.dv8tion.jda.core.JDA.ShardInfo;
-import net.dv8tion.jda.core.entities.ChannelType;
-import net.dv8tion.jda.core.entities.Emote;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.GuildVoiceState;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageChannel;
-import net.dv8tion.jda.core.entities.MessageEmbed;
-import net.dv8tion.jda.core.entities.PrivateChannel;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.requests.RestAction;
-import net.dv8tion.jda.core.requests.restaction.MessageAction;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDA.ShardInfo;
+import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildVoiceState;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.PrivateChannel;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.requests.RestAction;
+import net.dv8tion.jda.api.requests.restaction.MessageAction;
+import net.dv8tion.jda.api.sharding.ShardManager;
+import net.dv8tion.jda.api.utils.AttachmentOption;
 
 public class CommandEvent {
 	
@@ -108,7 +107,7 @@ public class CommandEvent {
 	 * Equivalent to {@link JDABot#getShardManager()}
 	 */
 	public ShardManager getShardManager() {
-		return this.message.getJDA().asBot().getShardManager();
+		return this.message.getJDA().getShardManager();
 	}
 	
 	/**
@@ -156,11 +155,6 @@ public class CommandEvent {
 	/** Equivalent to {@link Message#getPrivateChannel()} */
 	public PrivateChannel getPrivateChannel() {
 		return this.message.getPrivateChannel();
-	}
-	
-	/** Equivalent to {@link Message#getGroup()} */
-	public Group getGroup() {
-		return this.message.getGroup();
 	}
 	
 	/** Equivalent to {@link Message#getChannelType()} */
@@ -279,44 +273,24 @@ public class CommandEvent {
 		return this.getChannel().sendMessage(message);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(File)}, using the event's channel */
-	public MessageAction replyFile(File file) {
-		return this.getChannel().sendFile(file);
+	/** Equivalent to {@link MessageChannel#sendFile(File, AttachmentOption...)}, using the event's channel */
+	public MessageAction replyFile(File file, AttachmentOption... options) {
+		return this.getChannel().sendFile(file, options);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(byte[], String)}, using the event's channel */
-	public MessageAction replyFile(byte[] data, String fileName) {
-		return this.getChannel().sendFile(data, fileName);
+	/** Equivalent to {@link MessageChannel#sendFile(byte[], String, AttachmentOption...)}, using the event's channel */
+	public MessageAction replyFile(byte[] data, String fileName, AttachmentOption... options) {
+		return this.getChannel().sendFile(data, fileName, options);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(File, Message)}, using the event's channel */
-	public MessageAction replyFile(File file, Message message) {
-		return this.getChannel().sendFile(file, message);
+	/** Equivalent to {@link MessageChannel#sendFile(File, String, AttachmentOption...)}, using the event's channel */
+	public MessageAction replyFile(File file, String fileName, AttachmentOption... options) {
+		return this.getChannel().sendFile(file, fileName, options);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(File, String)}, using the event's channel */
-	public MessageAction replyFile(File file, String fileName) {
-		return this.getChannel().sendFile(file, fileName);
-	}
-	
-	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String)}, using the event's channel */
-	public MessageAction replyFile(InputStream data, String fileName) {
-		return this.getChannel().sendFile(data, fileName);
-	}
-	
-	/** Equivalent to {@link MessageChannel#sendFile(byte[], String, message)}, using the event's channel */
-	public MessageAction replyFile(byte[] data, String fileName, Message message) {
-		return this.getChannel().sendFile(data, fileName, message);
-	}
-	
-	/** Equivalent to {@link MessageChannel#sendFile(File, String, Message)}, using the event's channel */
-	public MessageAction replyFile(File file, String fileName, Message message) {
-		return this.getChannel().sendFile(file, fileName, message);
-	}
-	
-	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String, Message)}, using the event's channel */
-	public MessageAction replyFile(InputStream data, String fileName, Message message) {
-		return this.getChannel().sendFile(data, fileName, message);
+	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String, AttachmentOption...)}, using the event's channel */
+	public MessageAction replyFile(InputStream data, String fileName, AttachmentOption... options) {
+		return this.getChannel().sendFile(data, fileName, options);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessageFormat(String, Object...)}, using the event's channel */

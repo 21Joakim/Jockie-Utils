@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public interface ICooldownManager {
 	

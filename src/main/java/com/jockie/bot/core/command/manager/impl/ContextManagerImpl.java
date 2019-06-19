@@ -14,16 +14,15 @@ import com.jockie.bot.core.command.manager.IContextManager;
 import com.jockie.bot.core.utility.CommandUtility;
 import com.jockie.bot.core.utility.TriFunction;
 
-import net.dv8tion.jda.client.entities.impl.GroupImpl;
-import net.dv8tion.jda.core.entities.ChannelType;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageChannel;
-import net.dv8tion.jda.core.entities.impl.GuildImpl;
-import net.dv8tion.jda.core.entities.impl.JDAImpl;
-import net.dv8tion.jda.core.entities.impl.MemberImpl;
-import net.dv8tion.jda.core.entities.impl.PrivateChannelImpl;
-import net.dv8tion.jda.core.entities.impl.TextChannelImpl;
-import net.dv8tion.jda.core.entities.impl.UserImpl;
+import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.internal.JDAImpl;
+import net.dv8tion.jda.internal.entities.GuildImpl;
+import net.dv8tion.jda.internal.entities.MemberImpl;
+import net.dv8tion.jda.internal.entities.PrivateChannelImpl;
+import net.dv8tion.jda.internal.entities.TextChannelImpl;
+import net.dv8tion.jda.internal.entities.UserImpl;
 
 public class ContextManagerImpl implements IContextManager {
 	
@@ -78,10 +77,6 @@ public class ContextManagerImpl implements IContextManager {
 		this.registerContext(PrivateChannelImpl.class, (event, type) -> {
 			return (PrivateChannelImpl) event.getPrivateChannel();
 		}).setHandleInheritance(PrivateChannelImpl.class, true);
-		
-		this.registerContext(GroupImpl.class, (event, type) -> {
-			return (GroupImpl) event.getGroup();
-		}).setHandleInheritance(GroupImpl.class, true);
 	}
 	
 	private Map<Type, ContextProvider<?>> contextProviders = new HashMap<>();

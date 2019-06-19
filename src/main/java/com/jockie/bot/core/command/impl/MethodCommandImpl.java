@@ -13,7 +13,6 @@ import java.util.Optional;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.Command;
-import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.Command.Async;
 import com.jockie.bot.core.command.Command.AuthorPermissions;
 import com.jockie.bot.core.command.Command.BotPermissions;
@@ -22,6 +21,7 @@ import com.jockie.bot.core.command.Command.Developer;
 import com.jockie.bot.core.command.Command.Hidden;
 import com.jockie.bot.core.command.Command.Nsfw;
 import com.jockie.bot.core.command.Command.Policy;
+import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.command.factory.IComponentFactory;
@@ -31,8 +31,8 @@ import com.jockie.bot.core.command.manager.IReturnManager;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.option.Option;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.utils.tuple.Pair;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class MethodCommandImpl extends AbstractCommand implements IMethodCommand {
 	

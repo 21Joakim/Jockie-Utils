@@ -7,8 +7,8 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Invite;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Invite;
 
 public class CommandInviteInfo extends CommandImpl {
 
@@ -17,7 +17,7 @@ public class CommandInviteInfo extends CommandImpl {
 	}
 	
 	public void onCommand(CommandEvent event, @Argument("code") String code) {
-		event.getGuild().getInvites().queue(invites -> {
+		event.getGuild().retrieveInvites().queue(invites -> {
 			invites = invites.stream().filter(invite -> invite.getCode().equalsIgnoreCase(code)).collect(Collectors.toList());
 			
 			Invite invite = null;

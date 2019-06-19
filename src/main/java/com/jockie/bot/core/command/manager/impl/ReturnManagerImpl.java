@@ -11,8 +11,8 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.manager.IReturnManager;
 import com.jockie.bot.core.utility.CommandUtility;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 
 public class ReturnManagerImpl implements IReturnManager {
 	

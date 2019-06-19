@@ -6,8 +6,8 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.entities.Category;
-import net.dv8tion.jda.core.entities.Channel;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.GuildChannel;
 
 public class CommandMoveChannel extends CommandImpl {
 
@@ -15,7 +15,7 @@ public class CommandMoveChannel extends CommandImpl {
 		super("move");
 	}
 	
-	public void onCommand(CommandEvent event, Channel channel, @Argument(value="category") Optional<Category> optionalCategory) {
+	public void onCommand(CommandEvent event, GuildChannel channel, @Argument(value="category") Optional<Category> optionalCategory) {
 		Category category = optionalCategory.orElse(null);
 		Category parent = channel.getParent();
 		

@@ -5,9 +5,9 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Emote;
-import net.dv8tion.jda.core.entities.MessageEmbed;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 
 public class CommandEmoteInfo extends CommandImpl {
 
@@ -23,7 +23,7 @@ public class CommandEmoteInfo extends CommandImpl {
 		builder.addField("Id", emote.getId(), true);
 		builder.addField("Emote", emote.getAsMention(), true);
 		builder.addField("Animated", String.valueOf(emote.isAnimated()), true);
-		builder.addField("Created", Main.FORMATTER.format(emote.getCreationTime()), true);
+		builder.addField("Created", Main.FORMATTER.format(emote.getTimeCreated()), true);
 		
 		return builder.build();
 	}

@@ -8,11 +8,11 @@ import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Channel;
-import net.dv8tion.jda.core.entities.Emote;
-import net.dv8tion.jda.core.entities.Icon;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.Icon;
+import net.dv8tion.jda.api.entities.Role;
 
 public class CommandCopy extends CommandImpl {
 	
@@ -28,7 +28,7 @@ public class CommandCopy extends CommandImpl {
 	}
 	
 	@Command(value="channel", authorPermissions=Permission.MANAGE_CHANNEL, botPermissions=Permission.MANAGE_CHANNEL)
-	public void onCommand(CommandEvent event, @Argument("channel") Channel channel) {
+	public void onCommand(CommandEvent event, @Argument("channel") GuildChannel channel) {
 		channel.createCopy().queue(copy -> {
 			event.reply("Created copy of channel " + channel.getName()).queue();
 		});
@@ -37,7 +37,7 @@ public class CommandCopy extends CommandImpl {
 	@Command(value="emote", authorPermissions=Permission.MANAGE_EMOTES, botPermissions=Permission.MANAGE_EMOTES)
 	public void onCommand(CommandEvent event, @Argument("emote") Emote emote) {
 		try {
-			event.getGuild().getController().createEmote(emote.getName(), Icon.from(new URL(emote.getImageUrl()).openStream())).queue(copy -> {
+			event.getGuild().createEmote(emote.getName(), Icon.from(new URL(emote.getImageUrl()).openStream())).queue(copy -> {
 				event.reply("Created copy of " + emote.getName() + " " + copy.getAsMention()).queue();
 			}, failure -> {
 				event.reply("Ops, that might not be an image or there are too many emotes on this server already!").queue();

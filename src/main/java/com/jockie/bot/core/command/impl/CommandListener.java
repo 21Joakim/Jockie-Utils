@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,19 +34,19 @@ import com.jockie.bot.core.cooldown.ICooldownManager;
 import com.jockie.bot.core.cooldown.impl.CooldownManagerImpl;
 import com.jockie.bot.core.utility.TriConsumer;
 
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.ISnowflake;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageEmbed;
-import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.events.Event;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.core.exceptions.PermissionException;
-import net.dv8tion.jda.core.hooks.EventListener;
-import net.dv8tion.jda.core.utils.Checks;
-import net.dv8tion.jda.core.utils.tuple.Pair;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.ISnowflake;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.PermissionException;
+import net.dv8tion.jda.api.hooks.EventListener;
+import net.dv8tion.jda.internal.utils.Checks;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class CommandListener implements EventListener {
 	
@@ -208,7 +209,7 @@ public class CommandListener implements EventListener {
 		}
 	};
 	
-	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_PERMISSION_FUNCTION = (event, permissions) -> {
+	public static final BiConsumer<CommandEvent, EnumSet<Permission>> DEFAULT_MISSING_PERMISSION_FUNCTION = (event, permissions) -> {
 		StringBuilder missingPermissions = new StringBuilder();
 		for(Permission permission : permissions) {
 			missingPermissions.append(permission.getName() + "\n");
@@ -234,23 +235,26 @@ public class CommandListener implements EventListener {
 	};
 	
 	public static final BiConsumer<CommandEvent, Permission> DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION = (event, permission) -> {
-		CommandListener.DEFAULT_MISSING_PERMISSION_FUNCTION.accept(event, List.of(permission));
+		CommandListener.DEFAULT_MISSING_PERMISSION_FUNCTION.accept(event, EnumSet.of(permission));
 	};
 	
-	public static final BiConsumer<CommandEvent, List<Permission>> DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION = (event, permissions) -> {
+	public static final BiConsumer<CommandEvent, EnumSet<Permission>> DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION = (event, permissions) -> {
 		StringBuilder message = new StringBuilder()
 			.append("You are missing the");
 		
-		for(int i = 0; i < permissions.size(); i++) {
-			message.append(" **" + permissions.get(i).getName() + "**");
+		int index = 0;
+		for(Permission permission : permissions) {
+			message.append(" **" + permission.getName() + "**");
 			
-			if(i != (permissions.size() - 1)) {
-				if(i == (permissions.size() - 2)) {
+			if(index != (permissions.size() - 1)) {
+				if(index == (permissions.size() - 2)) {
 					message.append(" and");
 				}else{
 					message.append(",");
 				}
 			}
+			
+			index++;
 		}
 		
 		message.append(" permission" + (permissions.size() == 1 ? "" : "s") + " to execute that command");
@@ -372,8 +376,8 @@ public class CommandListener implements EventListener {
 	};
 	
 	protected BiConsumer<CommandEvent, Permission> missingPermissionExceptionFunction = DEFAULT_MISSING_PERMISSION_EXCEPTION_FUNCTION;
-	protected BiConsumer<CommandEvent, List<Permission>> missingPermissionFunction = DEFAULT_MISSING_PERMISSION_FUNCTION;
-	protected BiConsumer<CommandEvent, List<Permission>> missingAuthorPermissionFunction = DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION;
+	protected BiConsumer<CommandEvent, EnumSet<Permission>> missingPermissionFunction = DEFAULT_MISSING_PERMISSION_FUNCTION;
+	protected BiConsumer<CommandEvent, EnumSet<Permission>> missingAuthorPermissionFunction = DEFAULT_MISSING_AUTHOR_PERMISSION_FUNCTION;
 	
 	protected BiConsumer<CommandEvent, ICooldown> cooldownFunction = DEFAULT_COOLDOWN_FUNCTION;
 	protected Consumer<CommandEvent> nsfwFunction = DEFAULT_NSFW_FUNCTION;
@@ -844,7 +848,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setMissingPermissionFunction(BiConsumer<CommandEvent, List<Permission>> consumer) {
+	public CommandListener setMissingPermissionFunction(BiConsumer<CommandEvent, EnumSet<Permission>> consumer) {
 		this.missingPermissionFunction = consumer;
 		
 		return this;
@@ -855,7 +859,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @see {@link #setMissingPermissionFunction(BiConsumer)}
 	 */
-	public BiConsumer<CommandEvent, List<Permission>> getMissingPermissionFunction() {
+	public BiConsumer<CommandEvent, EnumSet<Permission>> getMissingPermissionFunction() {
 		return this.missingPermissionFunction;
 	}
 	
@@ -869,7 +873,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setMissingAuthorPermissionFunction(BiConsumer<CommandEvent, List<Permission>> consumer) {
+	public CommandListener setMissingAuthorPermissionFunction(BiConsumer<CommandEvent, EnumSet<Permission>> consumer) {
 		this.missingAuthorPermissionFunction = consumer;
 		
 		return this;
@@ -880,7 +884,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @see {@link #setMissingAuthorPermissionFunction(BiConsumer)}
 	 */
-	public BiConsumer<CommandEvent, List<Permission>> getMissingAuthorPermissionFunction() {
+	public BiConsumer<CommandEvent, EnumSet<Permission>> getMissingAuthorPermissionFunction() {
 		return this.missingAuthorPermissionFunction;
 	}
 	
@@ -1144,7 +1148,7 @@ public class CommandListener implements EventListener {
 		return Collections.unmodifiableSet(this.preExecuteChecks);
 	}
 	
-	public void onEvent(Event event) {
+	public void onEvent(GenericEvent event) {
 		if(event instanceof MessageReceivedEvent) {
 			this.parse(((MessageReceivedEvent) event).getMessage());
 		}

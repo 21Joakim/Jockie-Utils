@@ -10,7 +10,7 @@ import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.cooldown.ICooldownManager;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public class CooldownManagerImpl implements ICooldownManager {
 	

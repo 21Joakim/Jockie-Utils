@@ -12,9 +12,9 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.utils.tuple.Pair;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 /**
  * The DummyCommand is a Command which replicates any ICommand but with different arguments, 

@@ -30,8 +30,8 @@ import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.option.IOption;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.utils.tuple.Pair;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class CommandParserImpl implements ICommandParser {
 	

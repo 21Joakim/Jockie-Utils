@@ -5,9 +5,9 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.MessageEmbed;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Role;
 
 public class CommandRoleInfo extends CommandImpl {
 	
@@ -28,7 +28,7 @@ public class CommandRoleInfo extends CommandImpl {
 		builder.addField("Mention", role.getAsMention(), true);
 		builder.addField("Raw Permissions", String.valueOf(role.getPermissionsRaw()), true);
 		builder.addBlankField(true);
-		builder.addField("Created", Main.FORMATTER.format(role.getCreationTime()), true);
+		builder.addField("Created", Main.FORMATTER.format(role.getTimeCreated()), true);
 		builder.addBlankField(true);
 		builder.addBlankField(true);
 

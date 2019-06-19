@@ -4,8 +4,8 @@ import java.util.function.BiConsumer;
 
 import com.jockie.bot.core.command.impl.CommandEvent;
 
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.impl.GuildImpl;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.internal.entities.GuildImpl;
 
 public interface IReturnManager {
 	

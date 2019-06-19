@@ -2,8 +2,8 @@ package com.jockie.bot.core.command.impl;
 
 import com.jockie.bot.core.command.ICommand;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.exceptions.PermissionException;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.exceptions.PermissionException;
 
 /* Add more events? */
 public class CommandEventListener {

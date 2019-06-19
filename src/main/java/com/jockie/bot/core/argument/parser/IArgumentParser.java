@@ -6,7 +6,7 @@ import org.json.JSONObject;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.impl.ArgumentFactory;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 @FunctionalInterface
 public interface IArgumentParser<Type> {

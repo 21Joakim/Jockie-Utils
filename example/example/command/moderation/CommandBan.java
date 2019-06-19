@@ -6,9 +6,9 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.User;
 
 public class CommandBan extends CommandImpl {
 	
@@ -28,7 +28,7 @@ public class CommandBan extends CommandImpl {
 			
 			if(event.getMember().canInteract(member)) {
 				if(event.getGuild().getSelfMember().canInteract(member)) {
-					event.getGuild().getController().ban(member, 0, reason).queue(success -> {
+					member.ban(0, reason).queue(success -> {
 						event.reply("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
 					});
 				}else{
@@ -39,8 +39,7 @@ public class CommandBan extends CommandImpl {
 			}
 		}else{
 			/* This is for the so called "hackban" command */
-			
-			event.getGuild().getController().ban(user, 0, reason).queue(success -> {
+			event.getGuild().ban(user, 0, reason).queue(success -> {
 				event.reply("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
 			});
 		}

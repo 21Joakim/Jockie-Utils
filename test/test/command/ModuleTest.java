@@ -19,9 +19,9 @@ import com.jockie.bot.core.option.Option;
 import com.jockie.bot.core.utility.CommandUtility;
 import com.jockie.bot.core.utility.TriConsumer;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.impl.AbstractMessage;
-import net.dv8tion.jda.core.utils.tuple.Pair;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.entities.AbstractMessage;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 import test.annotation.TestRun;
 import test.annotation.TestRuns;
 
@@ -138,12 +138,6 @@ public class ModuleTest {
 				}
 			}
 		}
-		
-		/*
-		for(Class<ICommand> commandClass : CommandUtility.getClassesImplementing(ModuleTest.class.getDeclaredClasses(), ICommand.class)) {
-			
-		}
-		*/
 		
 		long timeSinceStarted = TimeUnit.NANOSECONDS.toMillis(event.getTimeSinceStarted());
 		

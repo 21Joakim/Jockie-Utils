@@ -4,8 +4,8 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Emote;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Emote;
 
 public class CommandDeleteEmote extends CommandImpl {
 

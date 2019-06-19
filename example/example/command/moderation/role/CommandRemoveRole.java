@@ -6,10 +6,10 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 
 public class CommandRemoveRole extends CommandImpl {
 	
@@ -27,7 +27,7 @@ public class CommandRemoveRole extends CommandImpl {
 		if(event.getMember().canInteract(role)) {
 			if(event.getGuild().getSelfMember().canInteract(role)) {
 				if(member.getRoles().contains(role)) {
-					event.getGuild().getController().removeSingleRoleFromMember(member, role).queue(success -> {
+					event.getGuild().removeRoleFromMember(member, role).queue(success -> {
 						User user = member.getUser();
 						
 						event.getChannel().sendMessage("Removed " + role.getName() + " from " + user.getName() + "#" + user.getDiscriminator()).queue();

@@ -14,8 +14,8 @@ import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.impl.CommandStore;
 
-import net.dv8tion.jda.core.AccountType;
-import net.dv8tion.jda.core.JDABuilder;
+import net.dv8tion.jda.api.AccountType;
+import net.dv8tion.jda.api.JDABuilder;
 
 public class Main {
 	
@@ -58,10 +58,10 @@ public class Main {
 		CommandListener listener = new CommandListener()
 			.addCommandStore(CommandStore.of("example.command"))
 			.addDeveloper(190551803669118976L)
-			.setDefaultPrefixes("§");
+			.setDefaultPrefixes("!!");
 		
 		new JDABuilder(AccountType.BOT).setToken(token)
-			.addEventListener(listener)
+			.addEventListeners(listener)
 			.build()
 			.awaitReady();
 	}

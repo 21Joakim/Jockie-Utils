@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.cooldown.ICooldown;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public class CooldownImpl implements ICooldown {
 	

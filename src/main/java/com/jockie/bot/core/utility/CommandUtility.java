@@ -10,7 +10,7 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.command.SubCommand;
 
-import net.dv8tion.jda.core.utils.Checks;
+import net.dv8tion.jda.internal.utils.Checks;
 
 /**
  * Methods used internally for loading commands and modules

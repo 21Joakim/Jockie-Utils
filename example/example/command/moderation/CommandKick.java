@@ -6,9 +6,9 @@ import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.User;
 
 public class CommandKick extends CommandImpl {
 
@@ -25,7 +25,7 @@ public class CommandKick extends CommandImpl {
 		
 		if(event.getMember().canInteract(member)) {
 			if(event.getGuild().getSelfMember().canInteract(member)) {
-				event.getGuild().getController().kick(member, reason).queue(success -> {
+				member.kick(reason).queue(success -> {
 					User user = member.getUser();
 					
 					event.reply("**" + user.getName() + "#" + user.getDiscriminator() + "** has been kicked").queue();

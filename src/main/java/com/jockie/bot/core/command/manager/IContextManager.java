@@ -8,8 +8,8 @@ import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.utility.TriFunction;
 
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.impl.GuildImpl;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.internal.entities.GuildImpl;
 
 public interface IContextManager {
 	

@@ -6,7 +6,7 @@ import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public interface IArgument<Type> {
 	
