@@ -84,7 +84,7 @@ public static void main(String[] args) throws Exception {
 		.setDefaultPrefixes("!");
 
 	new JDABuilder(AccountType.BOT).setToken(TOKEN)
-		.addEventListener(listener)
+		.addEventListeners(listener)
 		.build()
 		.awaitReady();
 }
