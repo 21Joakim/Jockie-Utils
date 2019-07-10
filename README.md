@@ -184,7 +184,6 @@ This example could then be executed like
 	* **acceptEmpty** - This is for when the argument can accept empty input, most of the time this won't be used.
 	* **acceptQuote** - If you want a String for instance to be endless but not the last argument you can use this parameter to 			force the user to surround the argument with quotes if it is multiple words
 	* **nullDefault** - This is used if you want an argument to be optional, if the argument was not provided it will be null (There 		are other ways to do optional arguments too)
-	* **description** - A simple description/name of the parameter so that the user knowns what they are inputing
 
 #### CommandImpl
 ----
