@@ -172,7 +172,7 @@ public onCommand(CommandEvent event, @Option("greet") boolean greet) {
 ```
 
 This example could then be executed like 
-*`prefix` `command` **--greet*** which would yield the result
+`!how are you --greet`, where `!` is the prefix, `how are you` is the command and `--greet` is the option, which would yield the result
 **Greetings! How are you today?**.
 
 #### Arguments
