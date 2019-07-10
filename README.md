@@ -37,6 +37,8 @@ All suggestion and contributions are welcome!\
 
 Use `jda-v4-SNAPSHOT` as the version if you are using JDA v4. The JDA v3 version will continue to be updated until the crucial bugs are fixed and then JDA v4 will be moved to master and get versioned updates.
 
+Alternatively if you want to use versions for JDA v4 you can use the commit hash of the version you want, for instance, `36df741642`.
+
 ### Gradle
 ```Gradle
 repositories {
@@ -361,12 +363,12 @@ public class ModuleFun {
 		System.out.println(String.format("Module %s has loaded", this.getClass().getSimpleName()));
 	}
 	
-	public void onCommandLoad(MethodCommand command) {
+	public void onCommandLoad(MethodCommandImpl command) {
 		System.out.println(String.format("Command \"%s\" has loaded", command.getCommand()));
 	}
 	
 	@Initialize
-	public void rollDice(MethodCommand command) {
+	public void rollDice(MethodCommandImpl command) {
 		command.setDescription("The best command for rolling a dice!");
 	}
 }
@@ -431,7 +433,7 @@ public class DonatorCommand extends ExtendedCommand {
 }
 ```
 
-To register it for method based commands you need to first create a **IMethodCommandFactory** which is used to create the **MethodCommand** instances, like this
+To register it for method based commands you need to first create a **IMethodCommandFactory** which is used to create the **IMethodCommand** instances, like this
 ```Java
 public class ExtendedCommandFactory implements IMethodCommandFactory<ExtendedCommand> {
 	
@@ -467,14 +469,16 @@ public boolean verify(Message message, CommandListener commandListener) {
 
 **Through a pre-execute check**, this means that you can add a custom message to it if you so desire.
 ```Java
-CommandListener listener = new CommandListener();
 listener.addPreExecuteCheck((event, command) -> {
-	if(command instanceof ExtendedCommand) {
-		if(((ExtendedCommand) command).isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
-			event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
+	if(!(command instanceof ExtendedCommand)) {
+		return true;
+	}
+	
+	ExtendedCommand extendedCommand = (ExtendedCommand) command;
+	if(extendedCommand.isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
+		event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
 			
-			return false;
-		}
+		return false;
 	}
 	
 	return true;
