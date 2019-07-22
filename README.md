@@ -2,6 +2,9 @@
 All suggestion and contributions are welcome!\
 **NOTE:** This project does lack examples of all the available features.
 
+**DISCLAIMER:** This project is changing a lot from version to version, new breaking changes can be introduced in any version, this project jumped a bit too quickly on the `1.xx` versions and the API is still taking shape.\
+When version `2` comes out and the API base has taken shape there will be a proper versioning system with `x.y.z` versions and non-breaking changes.
+
 #### Content
 
 * [Libraries Used](#libraries-used)
@@ -35,6 +38,10 @@ All suggestion and contributions are welcome!\
 
 ## Download
 [![](https://jitpack.io/v/21Joakim/Jockie-Utils.svg)](https://jitpack.io/#21Joakim/Jockie-Utils)
+
+Use `jda-v4-SNAPSHOT` as the version if you are using JDA v4. The JDA v3 version will continue to be updated until the crucial bugs are fixed and then JDA v4 will be moved to master and get versioned updates.
+
+Alternatively if you want to use versions for JDA v4 you can use the commit hash of the version you want, for instance, `36df741642`.
 
 ### Gradle
 ```Gradle
@@ -79,12 +86,12 @@ The **CommandListener** class is the brain of this library, this is where everyt
 ```Java
 public static void main(String[] args) throws Exception {
 	CommandListener listener = new CommandListener()
-		.addCommandStore(CommandStore.of("com.jockie.bot.commands"))
-		.addDeveloper(190551803669118976L)
+		.addCommandStores(CommandStore.of("com.jockie.bot.commands"))
+		.addDevelopers(190551803669118976L)
 		.setDefaultPrefixes("!");
 
 	new JDABuilder(AccountType.BOT).setToken(TOKEN)
-		.addEventListeners(listener)
+		.addEventListener(listener)
 		.build()
 		.awaitReady();
 }
@@ -103,12 +110,16 @@ store.loadFrom(packagePath, true);
 
 /* Add a command manually */
 store.addCommands(new CommandHelp());
+/* Alternatively */
+store.addCommands(CommandHelp.class);
 
 /* Add a module manually */
 store.addCommands(new ModuleFun());
+/* Alternatively */
+store.addCommands(ModuleFun.class);
 
 /* Add the command store to the command listener */
-listener.addCommandStore(store);
+listener.addCommandStores(store);
 ```
 
 You can also load from a package directly.
@@ -169,7 +180,7 @@ public onCommand(CommandEvent event, @Option("greet") boolean greet) {
 ```
 
 This example could then be executed like 
-*`prefix` `command` **--greet*** which would yield the result
+`!how are you --greet`, where `!` is the prefix, `how are you` is the command and `--greet` is the option, which would yield the result
 **Greetings! How are you today?**.
 
 #### Arguments
@@ -181,7 +192,6 @@ This example could then be executed like
 	* **acceptEmpty** - This is for when the argument can accept empty input, most of the time this won't be used.
 	* **acceptQuote** - If you want a String for instance to be endless but not the last argument you can use this parameter to 			force the user to surround the argument with quotes if it is multiple words
 	* **nullDefault** - This is used if you want an argument to be optional, if the argument was not provided it will be null (There 		are other ways to do optional arguments too)
-	* **description** - A simple description/name of the parameter so that the user knowns what they are inputing
 
 #### CommandImpl
 ----
@@ -360,12 +370,12 @@ public class ModuleFun {
 		System.out.println(String.format("Module %s has loaded", this.getClass().getSimpleName()));
 	}
 	
-	public void onCommandLoad(MethodCommand command) {
+	public void onCommandLoad(MethodCommandImpl command) {
 		System.out.println(String.format("Command \"%s\" has loaded", command.getCommand()));
 	}
 	
 	@Initialize
-	public void rollDice(MethodCommand command) {
+	public void rollDice(MethodCommandImpl command) {
 		command.setDescription("The best command for rolling a dice!");
 	}
 }
@@ -430,7 +440,7 @@ public class DonatorCommand extends ExtendedCommand {
 }
 ```
 
-To register it for method based commands you need to first create a **IMethodCommandFactory** which is used to create the **MethodCommand** instances, like this
+To register it for method based commands you need to first create a **IMethodCommandFactory** which is used to create the **IMethodCommand** instances, like this
 ```Java
 public class ExtendedCommandFactory implements IMethodCommandFactory<ExtendedCommand> {
 	
@@ -466,14 +476,16 @@ public boolean verify(Message message, CommandListener commandListener) {
 
 **Through a pre-execute check**, this means that you can add a custom message to it if you so desire.
 ```Java
-CommandListener listener = new CommandListener();
 listener.addPreExecuteCheck((event, command) -> {
-	if(command instanceof ExtendedCommand) {
-		if(((ExtendedCommand) command).isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
-			event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
+	if(!(command instanceof ExtendedCommand)) {
+		return true;
+	}
+	
+	ExtendedCommand extendedCommand = (ExtendedCommand) command;
+	if(extendedCommand.isDonator() && !Donators.isDonator(event.getAuthor().getIdLong())) {
+		event.reply("This command is for donators only, check out our patreon https://www.patreon.com/Jockie").queue();
 			
-			return false;
-		}
+		return false;
 	}
 	
 	return true;

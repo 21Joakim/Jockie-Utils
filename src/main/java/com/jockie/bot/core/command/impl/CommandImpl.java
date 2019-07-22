@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +15,17 @@ import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.factory.IComponentFactory;
 import com.jockie.bot.core.command.factory.impl.ComponentFactory;
 import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
+import com.jockie.bot.core.command.impl.DummyCommand.AlternativeCommand;
 import com.jockie.bot.core.utility.CommandUtility;
+
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class CommandImpl extends MethodCommandImpl {
 	
-	private boolean defaultGenerated;
+	protected boolean defaultGenerated;
+	
+	protected List<AlternativeCommand> alternativeImplementations = new ArrayList<>();
 	
 	public CommandImpl(String name) {
 		this(name, true);
@@ -46,7 +53,7 @@ public class CommandImpl extends MethodCommandImpl {
 			}else if(commandMethods.size() > 1) {
 				/* Convert all onCommand methods in to alternative implementations of the command */
 				for(int i = 0; i < commandMethods.size(); i++) {
-					this.addSubCommand(MethodCommandFactory.getDefault().create(commandMethods.get(i), null, this));
+					this.alternativeImplementations.add(new AlternativeCommand(this, commandMethods.get(i), this));
 				}
 			}
 			
@@ -141,5 +148,23 @@ public class CommandImpl extends MethodCommandImpl {
 		}
 		
 		return methods;
+	}
+	
+	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
+		List<Pair<String, ICommand>> commands = super.getAllCommandsRecursiveWithTriggers(message, prefix);
+		
+		for(ICommand command : this.alternativeImplementations) {
+			commands.add(Pair.of((prefix + " " + command.getCommand()).trim(), command));
+			
+			for(String alias : this.aliases) {
+				commands.add(Pair.of((prefix + " " + alias).trim(), command));
+			}
+		}
+		
+		return commands;
+	}
+	
+	public List<AlternativeCommand> getAlternativeCommandImplementations() {
+		return Collections.unmodifiableList(this.alternativeImplementations);
 	}
 }

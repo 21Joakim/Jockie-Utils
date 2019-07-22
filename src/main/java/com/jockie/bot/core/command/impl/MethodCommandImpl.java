@@ -29,6 +29,7 @@ import com.jockie.bot.core.command.factory.impl.ComponentFactory;
 import com.jockie.bot.core.command.manager.IContextManager;
 import com.jockie.bot.core.command.manager.IReturnManager;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
+import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.Option;
 
 import net.dv8tion.jda.api.entities.Message;
@@ -79,7 +80,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		return this;
 	}
 	
-	public AbstractCommand setArguments(IArgument<?>... arguments) {
+	public MethodCommandImpl setArguments(IArgument<?>... arguments) {
 		super.setArguments(arguments);
 		
 		this.dummyCommands = MethodCommandImpl.generateDummyCommands(this);
@@ -128,9 +129,9 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		return commands;
 	}
 	
-	public void execute(CommandEvent event, Object... args) throws Throwable {
+	public void execute(CommandEvent event, Object... arguments) throws Throwable {
 		if(!this.passive && this.method != null) {
-			MethodCommandImpl.executeMethodCommand(this.invoker, this.method, event, args);
+			MethodCommandImpl.executeMethodCommand(this, this.invoker, this.method, event, arguments);
 		}
 	}
 	
@@ -222,11 +223,11 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 	}
 	
-	public static void executeMethodCommand(Object invoker, Method command, CommandEvent event, Object... args) throws Throwable {
+	public static void executeMethodCommand(ICommand command, Object invoker, Method commandMethod, CommandEvent event, Object... args) throws Throwable {
 		IContextManager contextManager = ContextManagerFactory.getDefault();
 		
-		Parameter[] parameters = command.getParameters();
-		Type[] genericTypes = command.getGenericParameterTypes();
+		Parameter[] parameters = commandMethod.getParameters();
+		Type[] genericTypes = commandMethod.getGenericParameterTypes();
 		
 		List<Integer> contextIndexes = new ArrayList<>();
 		for(int i = 0; i < parameters.length; i++) {
@@ -241,6 +242,8 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		
 		Object[] arguments = new Object[args.length + contextIndexes.size()];
 		
+		List<IOption<?>> options = command.getOptions();
+		
 		for(int i = 0, i2 = 0; i < arguments.length; i++) {
 			Parameter parameter = parameters[i];
 			Class<?> type = parameter.getType();
@@ -248,25 +251,35 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 			if(contextIndexes.contains(i)) {
 				if(parameter.isAnnotationPresent(Option.class)) {
 					Option optionAnnotation = parameter.getAnnotation(Option.class);
+					IOption<?> option = null;
 					
-					boolean contains = false;
-					for(String option : event.getOptionsPresent()) {
-						if(option.equalsIgnoreCase(optionAnnotation.value())) {
-							contains = true;
-							
-							break;
-						}
-						
-						for(String alias : optionAnnotation.aliases()) {
-							if(option.equalsIgnoreCase(alias)) {
-								contains = true;
-								
-								break;
-							}
+					for(IOption<?> opt : options) {
+						if(opt.getName().equals(optionAnnotation.value())) {
+							option = opt;
 						}
 					}
 					
-					arguments[i] = contains;
+					if(option == null) {
+						throw new IllegalStateException("The option, " + optionAnnotation.value() + ", specified in the annotation does not exist in the command");
+					}
+					
+					Object value = event.getOption(optionAnnotation.value());
+					if(value == null) {
+						for(String alias : optionAnnotation.aliases()) {
+							value = event.getOption(alias);
+						}
+					}
+					
+					if(value == null) {
+						Class<?> optionType = option.getType();
+						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
+							arguments[i] = false;
+							
+							continue;
+						}
+					}
+					
+					arguments[i] = value;
 					
 					continue;
 				}else{
@@ -304,11 +317,11 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 		
 		try {
-			if(!command.canAccess(invoker)) {
-				command.setAccessible(true);
+			if(!commandMethod.canAccess(invoker)) {
+				commandMethod.setAccessible(true);
 			}
 			
-			Object object = command.invoke(invoker, arguments);
+			Object object = commandMethod.invoke(invoker, arguments);
 			if(object != null) {
 				IReturnManager returnManager = event.getCommandListener().getReturnManager();
 				
@@ -332,7 +345,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				}
 				
 				information.append("    Arguments expected:\n");
-				for(Class<?> clazz : command.getParameterTypes()) {
+				for(Class<?> clazz : commandMethod.getParameterTypes()) {
 					information.append("        " + clazz.getName() + "\n");
 				}
 				
@@ -343,12 +356,12 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				Throwable cause = e.getCause();
 				if(cause != null) {
 					if(event.getCommandListener().isFilterStackTrace()) {
-						List<StackTraceElement> elements = Arrays.asList(cause.getStackTrace());
+						List<StackTraceElement> elements = List.of(cause.getStackTrace());
 						
 						int index = -1;
 						for(int i = 0; i < elements.size(); i++) {
 							StackTraceElement element = elements.get(i);
-							if(element.getClassName().equals(command.getDeclaringClass().getName()) && element.getMethodName().equals(command.getName())) {
+							if(element.getClassName().equals(commandMethod.getDeclaringClass().getName()) && element.getMethodName().equals(commandMethod.getName())) {
 								index = i;
 							}
 						}

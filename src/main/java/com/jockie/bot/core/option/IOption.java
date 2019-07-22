@@ -2,7 +2,12 @@ package com.jockie.bot.core.option;
 
 import com.jockie.bot.core.command.impl.CommandListener;
 
-public interface IOption {
+public interface IOption<Type> {
+	
+	/**
+	 * @return the type of the option
+	 */
+	public Class<Type> getType();
 	
 	/**
 	 * @return the name of this option, used to determine whether the option is used or not
@@ -29,7 +34,9 @@ public interface IOption {
 	 */
 	public boolean isDeveloper();
 	
-	public abstract class Builder<Type extends IOption, BuilderType extends Builder<Type, BuilderType>> {
+	public abstract class Builder<Type, ReturnType extends IOption<Type>, BuilderType extends Builder<Type, ReturnType, BuilderType>> {
+		
+		protected final Class<Type> type;
 		
 		protected String name;
 		
@@ -39,6 +46,10 @@ public interface IOption {
 		
 		protected boolean hidden;
 		protected boolean developerOption;
+		
+		public Builder(Class<Type> type) {
+			this.type = type;
+		}
 		
 		public BuilderType setName(String name) {
 			this.name = name;
@@ -70,6 +81,10 @@ public interface IOption {
 			return this.self();
 		}
 		
+		public Class<Type> getType() {
+			return this.type;
+		}
+		
 		public String getName() {
 			return this.name;
 		}
@@ -92,6 +107,6 @@ public interface IOption {
 		
 		public abstract BuilderType self();
 		
-		public abstract Type build();
+		public abstract ReturnType build();
 	}
 }

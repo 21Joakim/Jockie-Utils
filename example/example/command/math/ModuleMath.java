@@ -6,18 +6,18 @@ import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.command.SubCommand;
 import com.jockie.bot.core.command.impl.CommandEvent;
-import com.jockie.bot.core.command.impl.CommandImpl;
 import com.jockie.bot.core.module.Module;
 
-import example.Categories;
+import example.CommandCategory;
+import example.core.command.ExtendedCommand;
 
 @Module
 public class ModuleMath {
 	
 	//@Initialize({"multiply", "remainder", "add", "addAll"})	
 	@Initialize(all=true)
-	public void init(CommandImpl command) {
-		command.setCategory(Categories.MATH);
+	public void init(ExtendedCommand command) {
+		command.setCategory(CommandCategory.MATH);
 	}
 	
 	@Command(description="Multiply two numbers")

@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.argument.parser.IArgumentParser;
@@ -48,7 +48,7 @@ public class CommandEvent {
 	protected String prefix;
 	protected String commandTrigger;
 	
-	protected List<String> optionsPresent;
+	protected Map<String, Object> options;
 	
 	protected ArgumentParsingType parsingType;
 	
@@ -64,14 +64,14 @@ public class CommandEvent {
 	 * @param rawArguments the raw arguments before they were processed
 	 * @param prefix the prefix which was used to trigger this
 	 * @param commandTrigger the String which was used to trigger this command, could be an alias
-	 * @param optionsPresent a list of the raw options provided in this command
+	 * @param options a map of the raw options and their values provided in this command
 	 * @param parsingType the type of parsing which was used to parse this command
 	 * @param contentOverflow any additional content 
 	 * @param timeStarted the time as {@link System#nanoTime()} when this started parsing
 	 */
 	public CommandEvent(Message message, CommandListener listener, ICommand command, 
 			Object[] arguments, String[] rawArguments, String prefix, String commandTrigger, 
-			List<String> optionsPresent, ArgumentParsingType parsingType, String contentOverflow, long timeStarted) {
+			Map<String, Object> options, ArgumentParsingType parsingType, String contentOverflow, long timeStarted) {
 		
 		this.message = message;
 		this.commandListener = listener;
@@ -84,7 +84,7 @@ public class CommandEvent {
 		this.prefix = prefix;
 		this.commandTrigger = commandTrigger;
 		
-		this.optionsPresent = optionsPresent;
+		this.options = options;
 		
 		this.parsingType = parsingType;
 		
@@ -104,7 +104,7 @@ public class CommandEvent {
 	}
 	
 	/**
-	 * Equivalent to {@link JDABot#getShardManager()}
+	 * Equivalent to {@link JDA#getShardManager()}
 	 */
 	public ShardManager getShardManager() {
 		return this.message.getJDA().getShardManager();
@@ -162,6 +162,16 @@ public class CommandEvent {
 		return this.message.getChannelType();
 	}
 	
+	/** Equivalent to {@link ChannelType#isGuild()} called on the ChannelType of the Channel the message was sent from */
+	public boolean isFromGuild() {
+		return this.getChannelType().isGuild();
+	}
+	
+	/** Equivalent to {@link Message#isFromType(ChannelType)} */
+	public boolean isFromType(ChannelType channelType) {
+		return this.message.isFromType(channelType);
+	}
+	
 	/** Equivalent to {@link Message#getGuild()} */
 	public Guild getGuild() {
 		return this.message.getGuild();
@@ -185,7 +195,7 @@ public class CommandEvent {
 	/** @return the command which was executed, this should always return the actual instance of the command */
 	public ICommand getCommand() {
 		if(this.command instanceof DummyCommand) {
-			return this.command.getParent();
+			return ((DummyCommand) this.command).getActualCommand();
 		}
 		
 		return this.command;
@@ -211,11 +221,11 @@ public class CommandEvent {
 		return this.prefix;
 	}
 	
-	/** @return true if the prefix is a mention of the current bot (<@bot_id> or <@!bot_id> bot_id being the value of {@link User#getIdLong()}) */
+	/** @return true if the prefix is a mention of the current bot, &lt;@bot_id&gt; or &lt;@!bot_id&gt; bot_id being the value of {@link User#getIdLong()} */
 	public boolean isPrefixMention() {
 		long id = this.getSelfUser().getIdLong();
 		
-		return this.prefix.equals("<@" + id + ">") || this.prefix.equals("<@!" + id + ">");
+		return this.prefix.equals("<@" + id + "> ") || this.prefix.equals("<@!" + id + "> ");
 	}
 	
 	/** @return true if the person that executed this command is a developer ({@link CommandListener#isDeveloper(long)}) */
@@ -229,13 +239,25 @@ public class CommandEvent {
 	}
 	
 	/** @return all the options which were present when the command was executed */
-	public List<String> getOptionsPresent() {
-		return Collections.unmodifiableList(this.optionsPresent);
+	public Map<String, Object> getOptions() {
+		return Collections.unmodifiableMap(this.options);
+	}
+	
+	/** @return the option by the provided name or null if there is no option by that name */
+	@SuppressWarnings("unchecked")
+	public <T> T getOption(String name, Class<T> type) {
+		return (T) this.options.get(name);
+	}
+	
+	/** @return the option by the provided name or null if there is no option by that name */
+	@SuppressWarnings("unchecked")
+	public <T> T getOption(String name) {
+		return (T) this.options.get(name);
 	}
 	
 	/** @return whether or not the option specified is present */
 	public boolean isOptionPresent(String option) {
-		return this.optionsPresent.contains(option);
+		return this.options.containsKey(option);
 	}
 	
 	/** @return the argument parsing type used for the parsing of this command */
@@ -320,23 +342,23 @@ public class CommandEvent {
 	
 	/** Apply a cooldown to this command */
 	public ICooldown applyCooldown() {
-		return this.commandListener.getCoooldownManager().applyCooldownAndGet(this.command, this.message);
+		return this.commandListener.getCoooldownManager().applyCooldownAndGet(this.getCommand(), this.message);
 	}
 	
 	/** Apply a cooldown to this command */
 	public ICooldown applyCooldown(long duration, TimeUnit unit) {
 		ICooldownManager manager = this.commandListener.getCoooldownManager();
-		ICooldown cooldown = manager.createEmptyCooldown(this.command.getCooldownScope(), duration, unit);
+		ICooldown cooldown = manager.createEmptyCooldown(this.getCommand().getCooldownScope(), duration, unit);
 		cooldown.applyContext(this.message);
 		
-		this.commandListener.getCoooldownManager().applyCooldown(this.command, cooldown);
+		this.commandListener.getCoooldownManager().applyCooldown(this.getCommand(), cooldown);
 		
 		return cooldown;
 	}
 	
 	/** Remove the cooldown from this command */
 	public ICooldown removeCooldown() {
-		return this.commandListener.getCoooldownManager().removeCooldown(this.command, this.message);
+		return this.commandListener.getCoooldownManager().removeCooldown(this.getCommand(), this.message);
 	}
 	
 	/**

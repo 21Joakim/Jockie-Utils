@@ -3,7 +3,9 @@ package com.jockie.bot.core.command.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -27,18 +29,18 @@ public abstract class AbstractCommand implements ICommand {
 	protected List<String> aliases = Collections.emptyList();
 	
 	protected List<IArgument<?>> arguments = Collections.emptyList();
-	protected List<IOption> options = Collections.emptyList();
+	protected List<IOption<?>> options = Collections.emptyList();
 	
 	protected InvalidOptionPolicy invalidOptionPolicy = InvalidOptionPolicy.INCLUDE;
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
-	protected List<ArgumentParsingType> allowedArgumentParsingTypes = List.of(ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED);
+	protected EnumSet<ArgumentParsingType> allowedArgumentParsingTypes = EnumSet.of(ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED);
 	
 	protected ArgumentTrimType argumentTrimType = ArgumentTrimType.LENIENT;
 	
-	protected List<Permission> botDiscordPermissions = Collections.emptyList();
-	protected List<Permission> authorDiscordPermissions = Collections.emptyList();
+	protected EnumSet<Permission> botDiscordPermissions = EnumSet.noneOf(Permission.class);
+	protected EnumSet<Permission> authorDiscordPermissions = EnumSet.noneOf(Permission.class);
 	
 	protected boolean guildTriggerable = true;
 	protected boolean privateTriggerable;
@@ -100,7 +102,7 @@ public abstract class AbstractCommand implements ICommand {
 		return Collections.unmodifiableList(this.arguments);
 	}
 	
-	public List<IOption> getOptions() {
+	public List<IOption<?>> getOptions() {
 		return Collections.unmodifiableList(this.options);
 	}
 	
@@ -112,7 +114,7 @@ public abstract class AbstractCommand implements ICommand {
 		return this.overflowPolicy;
 	}
 	
-	public List<ArgumentParsingType> getAllowedArgumentParsingTypes() {
+	public EnumSet<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.allowedArgumentParsingTypes;
 	}
 	
@@ -120,12 +122,12 @@ public abstract class AbstractCommand implements ICommand {
 		return this.argumentTrimType;
 	}
 	
-	public List<Permission> getBotDiscordPermissions() {
-		return Collections.unmodifiableList(this.botDiscordPermissions);
+	public Set<Permission> getBotDiscordPermissions() {
+		return Collections.unmodifiableSet(this.botDiscordPermissions);
 	}
 	
-	public List<Permission> getAuthorDiscordPermissions() {
-		return Collections.unmodifiableList(this.authorDiscordPermissions);
+	public Set<Permission> getAuthorDiscordPermissions() {
+		return Collections.unmodifiableSet(this.authorDiscordPermissions);
 	}
 	
 	public boolean isGuildTriggerable() {
@@ -211,13 +213,21 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	public AbstractCommand setBotDiscordPermissions(Permission... permissions) {
-		this.botDiscordPermissions = List.of(permissions);
+		this.botDiscordPermissions.clear();
+		
+		for(Permission type : permissions) {
+			this.botDiscordPermissions.add(type);
+		}
 		
 		return this;
 	}
 	
 	public AbstractCommand setAuthorDiscordPermissions(Permission... permissions) {
-		this.authorDiscordPermissions = List.of(permissions);
+		this.authorDiscordPermissions.clear();
+		
+		for(Permission type : permissions) {
+			this.authorDiscordPermissions.add(type);
+		}
 		
 		return this;
 	}
@@ -259,7 +269,7 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
-	public AbstractCommand setOptions(IOption... options) {
+	public AbstractCommand setOptions(IOption<?>... options) {
 		this.options = List.of(options);
 		
 		return this;
@@ -278,7 +288,11 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	public AbstractCommand setAllowedArgumentParsingTypes(ArgumentParsingType... argumentParsingTypes) {
-		this.allowedArgumentParsingTypes = List.of(argumentParsingTypes);
+		this.allowedArgumentParsingTypes.clear();
+		
+		for(ArgumentParsingType type : argumentParsingTypes) {
+			this.allowedArgumentParsingTypes.add(type);
+		}
 		
 		return this;
 	}
@@ -320,8 +334,11 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	/**
-	 * See {@link #getCooldownDuration()}
-	 * @param duration milliseconds
+	 * @param duration in milliseconds
+	 * 
+	 * @return the {@link AbstractCommand} instance, useful for chaining
+	 * 
+	 * @see #getCooldownDuration()
 	 */
 	public AbstractCommand setCooldownDuration(long duration) {
 		this.cooldownDuration = duration;
@@ -330,7 +347,12 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	/**
-	 * See {@link #getCooldownDuration()}
+	 * @param duration in the specified unit
+	 * @param unit the unit of the duration
+	 * 
+	 * @return the {@link AbstractCommand} instance, useful for chaining
+	 * 
+	 * @see #getCooldownDuration()
 	 */
 	public AbstractCommand setCooldownDuration(long duration, TimeUnit unit) {
 		return this.setCooldownDuration(unit.toMillis(duration));

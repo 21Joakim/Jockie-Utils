@@ -6,9 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface Arguments {
+@Target(ElementType.PARAMETER)
+public @interface Error {
 	
-	public Argument[] value();
+	public String value();
 	
 }

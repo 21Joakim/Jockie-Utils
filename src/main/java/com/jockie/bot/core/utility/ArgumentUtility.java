@@ -45,7 +45,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found role, may be null
 	 */
-	public static Role getRole(Guild guild, String value) {
+	public static Role getRoleById(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
 		
 		if(id != null) {
@@ -65,7 +65,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found member, may be null
 	 */
-	public static Member getMember(Guild guild, String value) {
+	public static Member getMemberById(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
 		if(id != null) {
@@ -85,7 +85,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found text channel, may be null
 	 */
-	public static TextChannel getTextChannel(Guild guild, String value) {
+	public static TextChannel getTextChannelById(Guild guild, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
 		
 		if(id != null) {
@@ -105,7 +105,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found emote, may be null
 	 */
-	public static Emote getEmote(Guild guild, String value) {
+	public static Emote getEmoteById(Guild guild, String value) {
 		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
 		Emote emote = null;
@@ -132,7 +132,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found user, may be null
 	 */
-	public static User getUser(JDA jda, String value) {
+	public static User getUserById(JDA jda, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
 		if(id != null) {
@@ -152,7 +152,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found user, may be null
 	 */
-	public static User getUser(ShardManager shardManager, String value) {
+	public static User getUserById(ShardManager shardManager, String value) {
 		Checks.notNull(shardManager, "ShardManager");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
@@ -172,10 +172,10 @@ public class ArgumentUtility {
 	 * @param jda the JDA instance to make the request from
 	 * @param value the mention or id of the user
 	 * 
-	 * @return RestAction - Type: User</br>
+	 * @return RestAction - Type: User<br>
 	 * On request, gets the User with id matching provided id from Discord.
 	 */
-	public static RestAction<User> retrieveUser(JDA jda, String value) {
+	public static RestAction<User> retrieveUserById(JDA jda, String value) {
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
 		
 		if(id != null) {
@@ -193,10 +193,10 @@ public class ArgumentUtility {
 	 * @param shardManager the shard manager instance to search for the user in
 	 * @param value the mention or id of the user
 	 * 
-	 * @return RestAction - Type: User</br>
+	 * @return RestAction - Type: User<br>
 	 * On request, gets the User with id matching provided id from Discord.
 	 */
-	public static RestAction<User> retrieveUser(ShardManager shardManager, String value) {
+	public static RestAction<User> retrieveUserById(ShardManager shardManager, String value) {
 		Checks.notNull(shardManager, "ShardManager");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
@@ -218,10 +218,10 @@ public class ArgumentUtility {
 	 * the shard manager
 	 * @param value the mention or id of the user
 	 * 
-	 * @return RestAction - Type: User</br>
+	 * @return RestAction - Type: User<br>
 	 * On request, gets the User with id matching provided id from Discord.
 	 */
-	public static RestAction<User> retrieveUser(ShardManager shardManager, JDA jda, String value) {
+	public static RestAction<User> retrieveUserById(ShardManager shardManager, JDA jda, String value) {
 		Checks.notNull(shardManager, "ShardManager");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
@@ -246,19 +246,20 @@ public class ArgumentUtility {
 	}
 	
 	/**
-	 * Get a member by id, mention, effective name or tag
+	 * Get members by id, mention, effective name or tag
+	 * If a member was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the member in
-	 * @param value the mention, id or tag of the member
+	 * @param guild the guild to search for the members in
+	 * @param value the mention, id or tag of the member to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found member, may be null
+	 * @return the found members
 	 */
-	public static Member getMemberByIdOrTag(Guild guild, String value, boolean ignoreCase) {
+	public static List<Member> getMembersByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		{
-			Member member = ArgumentUtility.getMember(guild, value);
+			Member member = ArgumentUtility.getMemberById(guild, value);
 			if(member != null) {
-				return member;
+				return List.of(member);
 			}
 		}
 		
@@ -274,148 +275,136 @@ public class ArgumentUtility {
 				.orElse(null);
 			
 			if(member != null) {
-				return member;
+				return List.of(member);
 			}
 		}
 		
-		List<Member> members = guild.getMembersByEffectiveName(value, ignoreCase);
-		if(members.size() == 1) {
-			return members.get(0);
-		}
-		
-		return null;
+		return guild.getMembersByEffectiveName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a role by id, mention or name
+	 * Get roles by id, mention or name
+	 * If a role was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the role in
-	 * @param value the mention, id or name of the role
+	 * @param guild the guild to search for the roles in
+	 * @param value the mention, id or name of the role to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found role, may be null
+	 * @return the found roles
 	 */
-	public static Role getRoleByIdOrName(Guild guild, String value, boolean ignoreCase) {
+	public static List<Role> getRolesByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		String processed = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
 		
 		if(processed != null) {
-			return guild.getRoleById(processed);
+			Role role = guild.getRoleById(processed);
+			if(role != null) {
+				return List.of(role);
+			}
 		}else if(ID_PATTERN.matcher(value).matches()) {
-			return guild.getRoleById(value);
+			Role role = guild.getRoleById(value);
+			if(role != null) {
+				return List.of(role);
+			}
 		}
 		
-		List<Role> roles = guild.getRolesByName(value, ignoreCase);
-		if(roles.size() == 1) {
-			return roles.get(0);
-		}
-		
-		return null;
+		return guild.getRolesByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get an emote by id, mention or name
+	 * Get emotes by id, mention or name
+	 * If a category was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the emote in
-	 * @param value the mention, id or name of the emote
+	 * @param guild the guild to search for the emotes in
+	 * @param value the mention, id or name of the emote to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found emote, may be null
+	 * @return the found emotes
 	 */
-	public static Emote getEmoteByIdOrName(Guild guild, String value, boolean ignoreCase) {
-		Emote emote = ArgumentUtility.getEmote(guild, value);
+	public static List<Emote> getEmotesByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		Emote emote = ArgumentUtility.getEmoteById(guild, value);
 		if(emote != null) {
-			return emote;
+			return List.of(emote);
 		}
 		
-		List<Emote> emotes = guild.getEmotesByName(value, ignoreCase);
-		if(emotes.size() == 1) {
-			emote = emotes.get(0);
-		}
-		
-		return emote;
+		return guild.getEmotesByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a text channel by id, mention or name
+	 * Get text channels by id, mention or name
+	 * If a text channel was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the text channel in
-	 * @param value the mention, id or name of the text channel
+	 * @param guild the guild to search for the text channels in
+	 * @param value the mention, id or name of the text channel to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found text channel, may be null
+	 * @return the found text channels
 	 */
-	public static TextChannel getTextChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
-		TextChannel channel = ArgumentUtility.getTextChannel(guild, value);
+	public static List<TextChannel> getTextChannelsByIdOrName(Guild guild, String value, boolean ignoreCase) {
+		TextChannel channel = ArgumentUtility.getTextChannelById(guild, value);
 		if(channel != null) {
-			return channel;
+			return List.of(channel);
 		}
 		
-		List<TextChannel> channels = guild.getTextChannelsByName(value, ignoreCase);
-		if(channels.size() == 1) {
-			return channels.get(0);
-		}
-		
-		return null;
+		return guild.getTextChannelsByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a voice channel by id or name
+	 * Get voice channels by id or name
+	 * If a voice channel was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the voice channel in
-	 * @param value the id or name of the voice channel
+	 * @param guild the guild to search for the voice channels in
+	 * @param value the id or name of the voice channel to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found voice channel, may be null
+	 * @return the found voice channels
 	 */
-	public static VoiceChannel getVoiceChannelByIdOrName(Guild guild, String value, boolean ignoreCase) {
+	public static List<VoiceChannel> getVoiceChannelsByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
-			return guild.getVoiceChannelById(value);
+			VoiceChannel channel = guild.getVoiceChannelById(value);
+			if(channel != null) {
+				return List.of(channel);
+			}
 		}
 		
-		List<VoiceChannel> channels = guild.getVoiceChannelsByName(value, ignoreCase);
-		if(channels.size() == 1) {
-			return channels.get(0);
-		}
-		
-		return null;
+		return guild.getVoiceChannelsByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a category by id or name
+	 * Get categories by id or name.
+	 * If a category was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the category in
-	 * @param value the id or name of the category
+	 * @param guild the guild to search for the categories in
+	 * @param value the id or name of the category to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found category, may be null
+	 * @return the found categories
 	 */
-	public static Category getCategoryByIdOrName(Guild guild, String value, boolean ignoreCase) {
+	public static List<Category> getCategoriesByIdOrName(Guild guild, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
-			return guild.getCategoryById(value);
+			Category category = guild.getCategoryById(value);
+			if(category != null) {
+				return List.of(category);
+			}
 		}
 		
-		List<Category> categories = guild.getCategoriesByName(value, ignoreCase);
-		if(categories.size() == 1) {
-			return categories.get(0);
-		}
-		
-		return null;
+		return guild.getCategoriesByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a user by id, mention, name or tag
+	 * Get users by id, mention, name or tag.
+	 * If a user was found by id it will not check for names
 	 * 
-	 * @param jda the shard manager instance to search for the user in
-	 * @param value the id or name of the user
+	 * @param jda the shard manager instance to search for the users in
+	 * @param value the id or name of the user to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found user, may be null
+	 * @return the found user
 	 */
-	public static User getUserByIdOrTag(JDA jda, String value, boolean ignoreCase) {
+	public static List<User> getUsersByIdOrName(JDA jda, String value, boolean ignoreCase) {
 		{
-			User user = ArgumentUtility.getUser(jda, value);
+			User user = ArgumentUtility.getUserById(jda, value);
 			if(user != null) {
-				return user;
+				return List.of(user);
 			}
 		}
 		
@@ -431,32 +420,28 @@ public class ArgumentUtility {
 				.orElse(null);
 			
 			if(user != null) {
-				return user;
+				return List.of(user);
 			}
 		}
 		
-		List<User> users = jda.getUserCache().getElementsByName(value, ignoreCase);
-		if(users.size() == 1) {
-			return users.get(0);
-		}
-		
-		return null;
+		return jda.getUserCache().getElementsByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a user by id, mention, name or tag
+	 * Get users by id, mention, name or tag. 
+	 * If a user is found by id it will not check for names
 	 * 
-	 * @param shardManager the shard manager instance to search for the user in
-	 * @param value the id or name of the user
+	 * @param shardManager the shard manager instance to search for the users in
+	 * @param value the id or name of the user to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found user, may be null
+	 * @return the found users
 	 */
-	public static User getUserByIdOrTag(ShardManager manager, String value, boolean ignoreCase) {
+	public static List<User> getUsersByIdOrName(ShardManager shardManager, String value, boolean ignoreCase) {
 		{
-			User user = ArgumentUtility.getUser(manager, value);
+			User user = ArgumentUtility.getUserById(shardManager, value);
 			if(user != null) {
-				return user;
+				return List.of(user);
 			}
 		}
 		
@@ -465,66 +450,59 @@ public class ArgumentUtility {
 			String name = matcher.group(1);
 			String descriminator = matcher.group(2);
 			
-			User user = manager.getUserCache().stream()
+			User user = shardManager.getUserCache().stream()
 				.filter(a -> a.getDiscriminator().equals(descriminator))
 				.filter(a -> a.getName().equals(name))
 				.findFirst()
 				.orElse(null);
 			
 			if(user != null) {
-				return user;
+				return List.of(user);
 			}
 		}
 		
-		List<User> users = manager.getUserCache().getElementsByName(value, ignoreCase);
-		if(users.size() == 1) {
-			return users.get(0);
-		}
-		
-		return null;
+		return shardManager.getUserCache().getElementsByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a guild by id or name
+	 * Get guilds by id or name. 
+	 * If a guild is found by id it will not check for names
 	 * 
-	 * @param jda the JDA instance to search for the guild in
-	 * @param value the id or name of the guild
+	 * @param jda the JDA instance to search for the guilds in
+	 * @param value the id or name of the guild to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found guild, may be null
+	 * @return the found guilds
 	 */
-	public static Guild getGuildByIdOrName(JDA jda, String value, boolean ignoreCase) {
+	public static List<Guild> getGuildsByIdOrName(JDA jda, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
-			return jda.getGuildById(value);
+			Guild guild = jda.getGuildById(value);
+			if(guild != null) {
+				return List.of(guild);
+			}
 		}
 		
-		List<Guild> guilds = jda.getGuildsByName(value, ignoreCase);
-		if(guilds.size() == 1) {
-			return guilds.get(0);
-		}
-		
-		return null;
+		return jda.getGuildsByName(value, ignoreCase);
 	}
 	
 	/**
-	 * Get a guild by id or name
+	 * Get guilds by id or name.
+	 * If a guild is found by id it will not check for names
 	 * 
-	 * @param shardManager the shard manager instance to search for the guild in
-	 * @param value the id or name of the guild
+	 * @param shardManager the shard manager instance to search for the guilds in
+	 * @param value the id or name of the guild to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found guild, may be null
+	 * @return the found guilds
 	 */
-	public static Guild getGuildByIdOrName(ShardManager shardManager, String value, boolean ignoreCase) {
+	public static List<Guild> getGuildsByIdOrName(ShardManager shardManager, String value, boolean ignoreCase) {
 		if(ID_PATTERN.matcher(value).matches()) {
-			return shardManager.getGuildById(value);
+			Guild guild = shardManager.getGuildById(value);
+			if(guild != null) {
+				return List.of(guild);
+			}
 		}
 		
-		List<Guild> guilds = shardManager.getGuildsByName(value, ignoreCase);
-		if(guilds.size() == 1) {
-			return guilds.get(0);
-		}
-		
-		return null;
+		return shardManager.getGuildsByName(value, ignoreCase);
 	}
 }

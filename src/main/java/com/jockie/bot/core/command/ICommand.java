@@ -2,6 +2,7 @@ package com.jockie.bot.core.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
@@ -23,7 +24,7 @@ public interface ICommand {
 	 * This is used to determine how the {@link ICommandParser} should handle a command when an unknown option is provided
 	 */
 	public static enum InvalidOptionPolicy {
-		/** Adds the option which can then be accessed through {@link CommandEvent#getOptionsPresent()}  */
+		/** Adds the option to the map of provided options which can then be accessed through {@link CommandEvent#getOptions()}  */
 		ADD,
 		/** Includes the option content as an argument instead of an option */
 		INCLUDE,
@@ -117,7 +118,7 @@ public interface ICommand {
 	/**
 	 * @return all options for this command
 	 */
-	public List<IOption> getOptions();
+	public List<IOption<?>> getOptions();
 	
 	/**
 	 * @return a {@link InvalidOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
@@ -132,7 +133,7 @@ public interface ICommand {
 	/**
 	 * @return an array of {@link ArgumentParsingType}s which is used to determine how the arguments are allowed to be defined
 	 */
-	public List<ArgumentParsingType> getAllowedArgumentParsingTypes();
+	public Set<ArgumentParsingType> getAllowedArgumentParsingTypes();
 	
 	/**
 	 * @return the argument trim type, this is used to determine how spaces in arguments are handled
@@ -142,12 +143,12 @@ public interface ICommand {
 	/**
 	 * @return the discord permissions required for this command to function correctly.
 	 */
-	public List<Permission> getBotDiscordPermissions();
+	public Set<Permission> getBotDiscordPermissions();
 	
 	/**
 	 * @return the discord permissions the author is required to have to trigger this command
 	 */
-	public List<Permission> getAuthorDiscordPermissions();
+	public Set<Permission> getAuthorDiscordPermissions();
 	
 	/**
 	 * @return a boolean that will prove if this command is a <strong>developer</strong> command, if it is a developer command it can only be triggered by developers/authorised users
@@ -155,7 +156,7 @@ public interface ICommand {
 	public boolean isDeveloperCommand();
 	
 	/**
-	 * @return a boolean that will prove if this command can be triggered by a bot {@link net.dv8tion.jda.core.entities.User#isBot() User.isBot()}
+	 * @return a boolean that will prove if this command can be triggered by a bot {@link net.dv8tion.jda.api.entities.User#isBot() User.isBot()}
 	 */
 	public boolean isBotTriggerable();
 	
@@ -189,6 +190,8 @@ public interface ICommand {
 	public boolean isExecuteAsync();
 	
 	/**
+	 * @param event the context
+	 * 
 	 * @return a possibly-null object that will determine what order asynchronous commands should be executed in
 	 */
 	public Object getAsyncOrderingKey(CommandEvent event);
@@ -228,6 +231,9 @@ public interface ICommand {
 	/**
 	 * Should only be used by the class that implements this and the class that verifies the commands
 	 * 
+	 * @param message the context of what to verify
+	 * @param commandListener the context of what {@link CommandListener} handled the request
+	 * 
 	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
 	 */
 	
@@ -261,6 +267,8 @@ public interface ICommand {
 	 * 
 	 * @param event the event which triggered the command
 	 * @param arguments the arguments which triggered the command
+	 * 
+	 * @throws Throwable if the command in any way fails
 	 */
 	public void execute(CommandEvent event, Object... arguments) throws Throwable;
 	
@@ -322,7 +330,7 @@ public interface ICommand {
 	/** 
 	 * @return all commands which are related to this command, this includes sub-commands
 	 * 
-	 * @see {{@link #getAllCommandsRecursive(boolean)}
+	 * @see ICommand#getAllCommandsRecursive(boolean)
 	 */
 	public default List<ICommand> getAllCommandsRecursive() {
 		return this.getAllCommandsRecursive(false);
@@ -370,10 +378,10 @@ public interface ICommand {
 	/**
 	 * @return the information about all the arguments of this command
 	 * 
-	 * @see {@link ICommand#getArgumentInfo()}
+	 * @see ICommand#getArgumentInfo()
 	 */
 	public default String getArgumentInfo() {
-		return getArgumentInfo(this);
+		return ICommand.getArgumentInfo(this);
 	}
 	
 	/**
@@ -399,28 +407,30 @@ public interface ICommand {
 	 * 
 	 * @return full usage information for the provided command, this includes the command and {@link #getArgumentInfo()}
 	 * 
-	 * @see {@link ICommand#getUsage(ICommand, String)}
+	 * @see ICommand#getUsage(ICommand, String)
 	 */
 	public static String getUsage(ICommand command) {
-		return getUsage(command, "");
+		return ICommand.getUsage(command, "");
 	}
 	
 	/**
+	 * @param prefix the prefix displayed along with the usage
+	 * 
 	 * @return full usage information for this command, this includes the prefix, command and {@link #getArgumentInfo()}
 	 * 
-	 * @see {@link ICommand#getUsage(ICommand, String)}
+	 * @see ICommand#getUsage(ICommand, String)
 	 */
 	public default String getUsage(String prefix) {
-		return getUsage(this, prefix);
+		return ICommand.getUsage(this, prefix);
 	}
 	
 	/**
 	 * @return full usage information for this command, this includes the command and {@link #getArgumentInfo()}
 	 * 
-	 * @see {@link ICommand#getUsage(ICommand, String)}
+	 * @see ICommand#getUsage(ICommand, String)
 	 */
 	public default String getUsage() {
-		return getUsage(this);
+		return ICommand.getUsage(this);
 	}
 	
 	/**
@@ -443,7 +453,7 @@ public interface ICommand {
 	 * @return the actual trigger for this command which is created by recursively getting the parents of this command
 	 */
 	public default String getCommandTrigger() {
-		return getCommandTrigger(this);
+		return ICommand.getCommandTrigger(this);
 	}
 	
 	/**
@@ -469,9 +479,9 @@ public interface ICommand {
 	/**
 	 * @return the top parent of this command or itself if it has no parent
 	 * 
-	 * @see {@link ICommand#getTopParent(ICommand)}
+	 * @see ICommand#getTopParent(ICommand)
 	 */
 	public default ICommand getTopParent() {
-		return getTopParent(this);
+		return ICommand.getTopParent(this);
 	}
 }

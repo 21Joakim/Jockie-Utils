@@ -21,72 +21,72 @@ import net.dv8tion.jda.api.Permission;
 public @interface Command {
 	
 	/**
-	 * @see {@link ICommand#getCommand()}
+	 * @see ICommand#getCommand()
 	 */
 	public String value() default "";
 	
 	/**
-	 * @see {@link ICommand#getAliases()}
+	 * @see ICommand#getAliases()
 	 */
 	public String[] aliases() default {};
 	
 	/**
-	 * @see {@link ICommand#isGuildTriggerable()}
+	 * @see ICommand#isGuildTriggerable()
 	 */
 	public boolean guildTriggerable() default true;
 	
 	/**
-	 * @see {@link ICommand#isPrivateTriggerable()}
+	 * @see ICommand#isPrivateTriggerable()
 	 */
 	public boolean privateTriggerable() default false;
 	
 	/**
-	 * @see {@link ICommand#getDescription()}
+	 * @see ICommand#getDescription()
 	 */
 	public String description() default "";
 	
 	/**
-	 * @see {@link ICommand#getShortDescription()}
+	 * @see ICommand#getShortDescription()
 	 */
 	public String shortDescription() default "";
 	
 	/**
-	 * @see {@link ICommand#getArgumentInfo()}
+	 * @see ICommand#getArgumentInfo()
 	 */
 	public String argumentInfo() default "";
 	
 	/**
-	 * @see {@link ICommand#getBotDiscordPermissions()}
+	 * @see ICommand#getBotDiscordPermissions()
 	 */
 	public Permission[] botPermissions() default {};
 	
 	/**
-	 * @see {@link ICommand#getAuthorDiscordPermissions()}
+	 * @see ICommand#getAuthorDiscordPermissions()
 	 */
 	public Permission[] authorPermissions() default {};
 	
 	/**
-	 * @see {@link ICommand#isCaseSensitive()}
+	 * @see ICommand#isCaseSensitive()
 	 */
 	public boolean caseSensitive() default false;
 	
 	/**
-	 * @see {@link ICommand#isDeveloperCommand()}
+	 * @see ICommand#isDeveloperCommand()
 	 */
 	public boolean developer() default false;
 	
 	/**
-	 * @see {@link ICommand#isBotTriggerable()}
+	 * @see ICommand#isBotTriggerable()
 	 */
 	public boolean botTriggerable() default false;
 	
 	/**
-	 * @see {@link ICommand#isHidden()}
+	 * @see ICommand#isHidden()
 	 */
 	public boolean hidden() default false;
 	
 	/**
-	 * @see {@link ICommand#getCooldownDuration()}
+	 * @see ICommand#getCooldownDuration()
 	 */
 	public long cooldown() default 0;
 	
@@ -96,42 +96,42 @@ public @interface Command {
 	public TimeUnit cooldownUnit() default TimeUnit.SECONDS;
 	
 	/**
-	 * @see {@link ICommand#getCooldownScope()}
+	 * @see ICommand#getCooldownScope()
 	 */
 	public Scope cooldownScope() default Scope.USER;
 	
 	/**
-	 * @see {@link ICommand#isExecuteAsync()}
+	 * @see ICommand#isExecuteAsync()
 	 */
 	public boolean async() default false;
 	
 	/**
-	 * @see {@link ICommand#getAsyncOrderingKey(CommandEvent)}
+	 * @see ICommand#getAsyncOrderingKey(CommandEvent)
 	 */
 	public String orderingKey() default "";
 	
 	/**
-	 * @see {@link ICommand#isNSFW()}
+	 * @see ICommand#isNSFW()
 	 */
 	public boolean nsfw() default false;
 	
 	/**
-	 * @see {@link ICommand#getContentOverflowPolicy()}
+	 * @see ICommand#getContentOverflowPolicy()
 	 */
 	public ContentOverflowPolicy contentOverflowPolicy() default ContentOverflowPolicy.FAIL;
 	
 	/**
-	 * @see {@link ICommand#getInvalidOptionPolicy()}
+	 * @see ICommand#getInvalidOptionPolicy()
 	 */
 	public InvalidOptionPolicy invalidOptionPolicy() default InvalidOptionPolicy.INCLUDE;
 	
 	/**
-	 * @see {@link ICommand#getAllowedArgumentParsingTypes()}
+	 * @see ICommand#getAllowedArgumentParsingTypes()
 	 */
 	public ArgumentParsingType[] allowedArgumentParsingTypes() default { ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED };
 	
 	/**
-	 * @see {@link ICommand#getArgumentTrimType()}
+	 * @see ICommand#getArgumentTrimType()
 	 */
 	public ArgumentTrimType argumentTrimType() default ArgumentTrimType.LENIENT;
 	
@@ -140,12 +140,12 @@ public @interface Command {
 	public static @interface Async {
 		
 		/**
-		 * @see {@link ICommand#isExecuteAsync()}
+		 * @see ICommand#isExecuteAsync()
 		 */
 		public boolean value() default true;
 		
 		/**
-		 * @see {@link ICommand#getAsyncOrderingKey(CommandEvent)}
+		 * @see ICommand#getAsyncOrderingKey(CommandEvent)
 		 */
 		public String orderingKey() default "";
 		
@@ -156,7 +156,7 @@ public @interface Command {
 	public static @interface AuthorPermissions {
 		
 		/**
-		 * @see {@link ICommand#getAuthorDiscordPermissions()}
+		 * @see ICommand#getAuthorDiscordPermissions()
 		 */
 		public Permission[] value() default {};
 		
@@ -167,7 +167,7 @@ public @interface Command {
 	public static @interface BotPermissions {
 		
 		/**
-		 * @see {@link ICommand#getBotDiscordPermissions()}
+		 * @see ICommand#getBotDiscordPermissions()
 		 */
 		public Permission[] value() default {};
 		
@@ -178,7 +178,7 @@ public @interface Command {
 	public static @interface Cooldown {
 		
 		/**
-		 * @see {@link ICommand#getCooldownDuration()}
+		 * @see ICommand#getCooldownDuration()
 		 */
 		public long value() default 0;
 		
@@ -188,7 +188,7 @@ public @interface Command {
 		public TimeUnit cooldownUnit() default TimeUnit.SECONDS;
 		
 		/**
-		 * @see {@link ICommand#getCooldownScope()}
+		 * @see ICommand#getCooldownScope()
 		 */
 		public Scope cooldownScope() default Scope.USER;
 		
@@ -199,7 +199,7 @@ public @interface Command {
 	public static @interface Developer {
 		
 		/**
-		 * @see {@link ICommand#isDeveloperCommand()}
+		 * @see ICommand#isDeveloperCommand()
 		 */
 		public boolean value() default true;
 		
@@ -210,7 +210,7 @@ public @interface Command {
 	public static @interface Hidden {
 		
 		/**
-		 * @see {@link ICommand#isHidden()}
+		 * @see ICommand#isHidden()
 		 */
 		public boolean value() default true;
 		
@@ -221,7 +221,7 @@ public @interface Command {
 	public static @interface Nsfw {
 		
 		/**
-		 * @see {@link ICommand#isNSFW()}
+		 * @see ICommand#isNSFW()
 		 */
 		public boolean value() default true;
 		
@@ -232,12 +232,12 @@ public @interface Command {
 	public static @interface Policy {
 		
 		/**
-		 * @see {@link ICommand#getContentOverflowPolicy()}
+		 * @see ICommand#getContentOverflowPolicy()
 		 */
 		public ContentOverflowPolicy contentOverflow() default ContentOverflowPolicy.FAIL;
 		
 		/**
-		 * @see {@link ICommand#getInvalidOptionPolicy()}
+		 * @see ICommand#getInvalidOptionPolicy()
 		 */
 		public InvalidOptionPolicy invalidOption() default InvalidOptionPolicy.INCLUDE;
 		

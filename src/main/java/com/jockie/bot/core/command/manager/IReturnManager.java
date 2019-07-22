@@ -34,7 +34,7 @@ public interface IReturnManager {
 	public <T> IReturnManager registerHandler(Class<T> type, BiConsumer<CommandEvent, T> function);
 	
 	/**
-	 * @param type the type of the context
+	 * @param type the type of the handler
 	 * 
 	 * @return whether or not the specified type should be handled with inheritance, 
 	 * this means that it will, for instance, handle {@link GuildImpl} if {@link Guild}
@@ -43,9 +43,6 @@ public interface IReturnManager {
 	public boolean isHandleInheritance(Class<?> type);
 	
 	/**
-	 * <b>USE WITH CAUTION</b>: The more of these you register the slower the command execution for 
-	 * returned commands will become.
-	 * 
 	 * @param type the type of the handler
 	 * @param handle whether or not the specified type should be handled with inheritance, 
 	 * this means that it will, for instance, handle {@link GuildImpl} if {@link Guild}

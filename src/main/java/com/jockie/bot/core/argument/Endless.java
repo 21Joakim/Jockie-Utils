@@ -10,17 +10,17 @@ import java.lang.annotation.Target;
 public @interface Endless {
 	
 	/**
-	 * @see {@link IEndlessArgument#getMinArguments()}
+	 * @see IEndlessArgument#getMinArguments()
 	 */
 	public int minArguments() default 1;
 	
 	/**
-	 * @see {@link IEndlessArgument#getMaxArguments()}
+	 * @see IEndlessArgument#getMaxArguments()
 	 */
 	public int maxArguments() default 0;
 	
 	/**
-	 * @see {@link IArgument#isEndless()}
+	 * @see IArgument#isEndless()
 	 */
 	public boolean endless() default true;
 	

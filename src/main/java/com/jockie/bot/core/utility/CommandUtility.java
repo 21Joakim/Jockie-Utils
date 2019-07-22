@@ -1,6 +1,8 @@
 package com.jockie.bot.core.utility;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,24 +22,81 @@ public class CommandUtility {
 	private CommandUtility() {}
 	
 	/**
-	 * @return true if clazz either implements or extends otherClazz checked recursively till the super class is null
+	 * @param clazz the class to get as an array, if the type is already an array
+	 * it will return it as the next layer, String[] would become String[][]
+	 * 
+	 * @return the provided clazz as an array
 	 */
-	public static boolean isAssignableFrom(Class<?> clazz, Class<?> otherClazz) {
-		while(clazz != null) {
-			if(clazz.equals(otherClazz)) {
-				return true;
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T[]> getClassAsArray(Class<T> clazz) {
+		Checks.notNull(clazz, "clazz");
+		
+		String className;
+		if(clazz.isArray()) {
+			className = clazz.getName();
+		}else if(clazz.isPrimitive()) {
+			if(clazz.equals(boolean.class)) {
+				className = "Z";
+			}else if(clazz.equals(byte.class)) {
+				className = "B";
+			}else if(clazz.equals(short.class)) {
+				className = "S";
+			}else if(clazz.equals(int.class)) {
+				className = "I";
+			}else if(clazz.equals(long.class)) {
+				className = "J";
+			}else if(clazz.equals(float.class)) {
+				className = "F";
+			}else if(clazz.equals(double.class)) {
+				className = "D";
+			}else if(clazz.equals(char.class)) {
+				className = "C";
+			}else{
+				throw new IllegalStateException();
 			}
+		}else{
+			className = "L" + clazz.getName() + ";";
+		}
+		
+		try {
+			return (Class<T[]>) Class.forName("[" + className);
+		}catch(ClassNotFoundException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+	
+	/**
+	 * @return the generic classes of the provided type, 
+	 * if the generic type is not a class it will be a null instead of the class
+	 */
+	public static Class<?>[] getClasses(Type type) {
+		if(type instanceof ParameterizedType) {
+			ParameterizedType parameterizedType = (ParameterizedType) type;
 			
-			for(Class<?> interfaze : clazz.getInterfaces()) {
-				if(interfaze.equals(otherClazz)) {
-					return true;
+			Type[] typeArguments = parameterizedType.getActualTypeArguments();
+			Class<?>[] classes = new Class<?>[typeArguments.length];
+			
+			for(int i = 0; i < typeArguments.length; i++) {
+				Type typeArgument = typeArguments[i];
+				
+				if(typeArgument instanceof Class) {
+					classes[i] = (Class<?>) typeArgument;
+				}else{
+					classes[i] = null;
 				}
 			}
 			
-			clazz = clazz.getSuperclass();
+			return classes;
 		}
 		
-		return false;
+		return new Class[0];
+	}
+	
+	/**
+	 * @return true if an instance of clazz would be an instance of otherClazz
+	 */
+	public static boolean isInstanceOf(Class<?> clazz, Class<?> otherClazz) {
+		return otherClazz.isAssignableFrom(clazz);
 	}
 	
 	/**
@@ -54,7 +113,7 @@ public class CommandUtility {
 		
 		List<Class<T>> foundClasses = new ArrayList<>();
 		for(Class<?> clazz : classes) {
-			if(CommandUtility.isAssignableFrom(clazz, interfaze)) {
+			if(CommandUtility.isInstanceOf(clazz, interfaze)) {
 				foundClasses.add((Class<T>) clazz);
 			}
 		}
@@ -69,7 +128,7 @@ public class CommandUtility {
 	public static Method findCommandCreateMethod(Method[] methods) {
 		for(Method method : methods) {
 			if(method.getName().equals("createCommand")) {
-				if(!CommandUtility.isAssignableFrom(method.getReturnType(), IMethodCommand.class)) {
+				if(!CommandUtility.isInstanceOf(method.getReturnType(), IMethodCommand.class)) {
 					continue;
 				}
 				

@@ -8,6 +8,7 @@ import com.jockie.bot.core.command.impl.CommandStore;
 
 import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.JDABuilder;
+import test.command.CommandRunTests;
 
 public class Tests {
 	
@@ -18,11 +19,9 @@ public class Tests {
 		}
 		
 		CommandListener listener = new CommandListener()
-			.addCommandStore(CommandStore.of("test.command"))
-			.addDeveloper(190551803669118976L)
-			.setDefaultPrefixes("!!");
-		
-		System.out.println(listener);
+			.addCommandStores(new CommandStore().addCommands(new CommandRunTests()))
+			.addDevelopers(190551803669118976L)
+			.setDefaultPrefixes("!");
 		
 		new JDABuilder(AccountType.BOT).setToken(token)
 			.addEventListeners(listener)
