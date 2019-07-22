@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -34,19 +35,21 @@ public class ReturnManagerImpl implements IReturnManager {
 		});
 	}
 	
-	private Map<Class<?>, ReturnHandler<?>> returnHandlers = new HashMap<>();
-	private Set<ReturnHandler<?>> handleInheritence = new LinkedHashSet<>();
+	protected Map<Class<?>, ReturnHandler<?>> returnHandlers = new HashMap<>();
+	
+	protected Set<ReturnHandler<?>> handleInheritance = new LinkedHashSet<>();
+	protected Map<Class<?>, Class<?>> inheritanceCache = new HashMap<>();
 	
 	@SuppressWarnings("unchecked")
-	private <T> ReturnHandler<T> getReturnHandler(Class<?> type) {
+	protected <T> ReturnHandler<T> getReturnHandler(Class<?> type) {
 		return (ReturnHandler<T>) this.returnHandlers.get(type);
 	}
 	
-	private ReturnHandler<?> getInheritenceHandler(Class<?> type) {
-		for(ReturnHandler<?> inheritenceProvider : this.handleInheritence) {
+	protected ReturnHandler<?> getInheritanceHandler(Class<?> type) {
+		for(ReturnHandler<?> inheritenceProvider : this.handleInheritance) {
 			Class<?> secondType = inheritenceProvider.getType();
 			
-			if(CommandUtility.isAssignableFrom(type, secondType)) {
+			if(CommandUtility.isInstanceOf(type, secondType)) {
 				return inheritenceProvider;
 			}
 		}
@@ -55,17 +58,33 @@ public class ReturnManagerImpl implements IReturnManager {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public <T> boolean perform(CommandEvent event, T object) {		
-		ReturnHandler<T> provider = this.getReturnHandler(object.getClass());
-		if(provider != null) {
-			provider.getReturnHandler().accept(event, object);
+	public <T> boolean perform(CommandEvent event, T object) {
+		Class<?> type = object.getClass();
+		
+		ReturnHandler<T> handler = this.getReturnHandler(type);
+		if(handler != null) {
+			handler.getReturnHandler().accept(event, object);
 			
 			return true;
 		}
 		
-		provider = (ReturnHandler<T>) this.getInheritenceHandler(object.getClass());
-		if(provider != null) {
-			provider.getReturnHandler().accept(event, object);
+		if(this.inheritanceCache.containsKey(type)) {
+			Class<?> cachedType = this.inheritanceCache.get(type);
+			if(cachedType != null) {
+				handler = this.getReturnHandler(cachedType);
+				handler.getReturnHandler().accept(event, object);
+				
+				return true;
+			}
+			
+			return false;
+		}
+		
+		handler = (ReturnHandler<T>) this.getInheritanceHandler(type);
+		this.inheritanceCache.put(type, handler != null ? handler.getType() : null);
+		
+		if(handler != null) {
+			handler.getReturnHandler().accept(event, object);
 			
 			return true;
 		}
@@ -74,43 +93,51 @@ public class ReturnManagerImpl implements IReturnManager {
 	}
 	
 	public ReturnManagerImpl unregisterHandler(Class<?> type) {
-		this.handleInheritence.remove(this.returnHandlers.remove(type));
+		this.handleInheritance.remove(this.returnHandlers.remove(type));
 		
 		return this;
 	}
 	
 	public <T> ReturnManagerImpl registerHandler(Class<T> type, BiConsumer<CommandEvent, T> function) {
-		ReturnHandler<T> provider = this.getReturnHandler(type);
-		if(provider != null) {
-			provider.setReturnHandler(function);
+		ReturnHandler<T> handler = this.getReturnHandler(type);
+		if(handler != null) {
+			handler.setReturnHandler(function);
 		}else{
 			this.returnHandlers.put(type, new ReturnHandler<T>(type, function));
+			this.inheritanceCache.remove(type);
 		}
 		
 		return this;
 	}
 	
 	public boolean isHandleInheritance(Class<?> type) {
-		ReturnHandler<?> provider = this.returnHandlers.get(type);
-		if(provider != null) {
-			return provider.isHandleInheritence();
+		ReturnHandler<?> handler = this.returnHandlers.get(type);
+		if(handler != null) {
+			return handler.isHandleInheritence();
 		}
 		
 		return false;
 	}
 	
 	public ReturnManagerImpl setHandleInheritance(Class<?> type, boolean handle) {		
-		ReturnHandler<?> provider = this.returnHandlers.get(type);
-		if(provider == null) {
+		ReturnHandler<?> handler = this.returnHandlers.get(type);
+		if(handler == null) {
 			throw new IllegalArgumentException(type.getTypeName() + " is not a registered context");
 		}
 		
-		provider.setHandleInheritence(handle);
+		handler.setHandleInheritence(handle);
 		
 		if(handle) {
-			this.handleInheritence.add(provider);
+			this.handleInheritance.add(handler);
 		}else{
-			this.handleInheritence.remove(provider);
+			this.handleInheritance.remove(handler);
+		}
+		
+		/* Re-compute cache */
+		for(Entry<Class<?>, Class<?>> entry : this.inheritanceCache.entrySet()) {
+			handler = this.getInheritanceHandler(entry.getKey());
+			
+			this.inheritanceCache.put(entry.getKey(), handler != null ? handler.getType() : null);
 		}
 		
 		return this;

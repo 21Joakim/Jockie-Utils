@@ -28,7 +28,7 @@ public class CommandEventListener {
 	
 	/** 
 	 * This is only called if a PermissionException was thrown.
-	 * </br></br>
+	 * <br><br>
 	 * <b>NOTE:</b>
 	 * This means that this will not be called if it was handled correctly through the handlers of
 	 * {@link ICommand#getAuthorDiscordPermissions()} and {@link ICommand#getBotDiscordPermissions()}

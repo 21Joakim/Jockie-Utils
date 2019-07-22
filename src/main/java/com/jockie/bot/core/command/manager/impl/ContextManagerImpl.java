@@ -5,6 +5,7 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -12,7 +13,7 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.manager.IContextManager;
 import com.jockie.bot.core.utility.CommandUtility;
-import com.jockie.bot.core.utility.TriFunction;
+import com.jockie.bot.core.utility.function.TriFunction;
 
 import net.dv8tion.jda.client.entities.impl.GroupImpl;
 import net.dv8tion.jda.core.entities.ChannelType;
@@ -85,7 +86,9 @@ public class ContextManagerImpl implements IContextManager {
 	}
 	
 	private Map<Type, ContextProvider<?>> contextProviders = new HashMap<>();
-	private Set<ContextProvider<?>> handleInheritence = new LinkedHashSet<>();
+	
+	private Set<ContextProvider<?>> handleInheritance = new LinkedHashSet<>();
+	private Map<Type, Type> inheritanceCache = new HashMap<>();
 	
 	@SuppressWarnings("unchecked")
 	private <T> ContextProvider<T> getContextProvider(Type type) {
@@ -99,10 +102,10 @@ public class ContextManagerImpl implements IContextManager {
 		
 		Class<?> firstType = (Class<?>) type;
 		
-		for(ContextProvider<?> inheritenceProvider : this.handleInheritence) {
+		for(ContextProvider<?> inheritenceProvider : this.handleInheritance) {
 			Class<?> secondType = (Class<?>) inheritenceProvider.getType();
 			
-			if(CommandUtility.isAssignableFrom(secondType, firstType)) {
+			if(CommandUtility.isInstanceOf(secondType, firstType)) {
 				return inheritenceProvider;
 			}
 		}
@@ -140,7 +143,19 @@ public class ContextManagerImpl implements IContextManager {
 		}
 		
 		if(!initialProvider) {
+			if(this.inheritanceCache.containsKey(type)) {
+				Type cachedType = this.inheritanceCache.get(type);
+				provider = this.getContextProvider(cachedType);
+				
+				if(cachedType != null) {
+					return this.getContext(event, provider, cachedType, parameter);
+				}else{
+					return null;
+				}
+			}
+			
 			provider = (ContextProvider<T>) this.getInheritenceProvider(type);
+			this.inheritanceCache.put(type, provider.getType());
 			
 			if(provider != null) {
 				return this.getContext(event, provider, type, parameter);
@@ -204,16 +219,23 @@ public class ContextManagerImpl implements IContextManager {
 		provider.setHandleInheritence(handle);
 		
 		if(handle) {
-			this.handleInheritence.add(provider);
+			this.handleInheritance.add(provider);
 		}else{
-			this.handleInheritence.remove(provider);
+			this.handleInheritance.remove(provider);
+		}
+		
+		/* Re-compute cache */
+		for(Entry<Type, Type> entry : this.inheritanceCache.entrySet()) {
+			provider = this.getInheritenceProvider(entry.getKey());
+			
+			this.inheritanceCache.put(entry.getKey(), provider != null ? provider.getType() : null);
 		}
 		
 		return this;
 	}
 	
 	public ContextManagerImpl unregisterContext(Type type) {
-		this.handleInheritence.remove(this.contextProviders.remove(type));
+		this.handleInheritance.remove(this.contextProviders.remove(type));
 		
 		return this;
 	}
@@ -224,6 +246,7 @@ public class ContextManagerImpl implements IContextManager {
 			provider.setContextFunction(function);
 		}else{
 			this.contextProviders.put(type, new ContextProvider<>(type, function));
+			this.inheritanceCache.remove(type);
 		}
 		
 		return this;

@@ -5,7 +5,7 @@ import com.jockie.bot.core.command.manager.IContextManager;
 /**
  * A factory to get to get the global ContextManager, 
  * the provided ContextManager is used in the creation and execution of commands.
- * </br></br>
+ * <br><br>
  * <b>NOTE:</b> Changing the default {@link IContextManager} after commands have been created may have unintended consequences. 
  */
 

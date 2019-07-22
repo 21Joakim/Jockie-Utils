@@ -11,27 +11,27 @@ import java.lang.annotation.Target;
 public @interface Option {
 	
 	/**
-	 * @see {@link IOption#getName()}
+	 * @see IOption#getName()
 	 */
 	public String value();
 	
 	/**
-	 * @see {@link IOption#getDescription()}
+	 * @see IOption#getDescription()
 	 */
 	public String description() default "";
 	
 	/**
-	 * @see {@link IOption#getAliases()}
+	 * @see IOption#getAliases()
 	 */
 	public String[] aliases() default {};
 	
 	/**
-	 * @see {@link IOption#isHidden()}
+	 * @see IOption#isHidden()
 	 */
 	public boolean hidden() default false;
 	
 	/**
-	 * @see {@link IOption#isDeveloper()}
+	 * @see IOption#isDeveloper()
 	 */
 	public boolean developer() default false;
 	

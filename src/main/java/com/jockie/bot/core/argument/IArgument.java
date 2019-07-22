@@ -1,14 +1,22 @@
 package com.jockie.bot.core.argument;
 
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
+import com.jockie.bot.core.command.parser.ParseContext;
 
 import net.dv8tion.jda.core.entities.Message;
 
 public interface IArgument<Type> {
+	
+	/**
+	 * @return the type of the argument
+	 */
+	public Class<Type> getType();
 	
 	/**
 	 * @return whether or not this argument should take all the remaining content
@@ -41,6 +49,14 @@ public interface IArgument<Type> {
 	public String getName();
 	
 	/**
+	 * Used to give the user information about what happened or give them an error response,
+	 * the consumer which this returns will be called when this argument is incorrectly parsed
+	 * 
+	 * @return an error consumer
+	 */
+	public BiConsumer<Message, String> getErrorConsumer();
+	
+	/**
 	 * @param commandEvent the context to the default from
 	 * 
 	 * @return the default argument
@@ -56,67 +72,108 @@ public interface IArgument<Type> {
 	 * A default method using this argument's parser ({@link #getParser()})
 	 * to parse the content provided
 	 *  
-	 * @param message the context
+	 * @param context the context
 	 * @param content the content to parse
 	 * 
 	 * @return the parsed argument
 	 */
-	public default ParsedArgument<Type> parse(Message message, String content) {
-		return this.getParser().parse(message, this, content);
+	public default ParsedArgument<Type> parse(ParseContext context, String content) {
+		return this.getParser().parse(context, this, content);
 	}
 	
-	public abstract class Builder<RT, A extends IArgument<RT>, BT extends Builder<RT, A, BT>> {
+	public abstract class Builder<Type, ArgumentType extends IArgument<Type>, BuilderType extends Builder<Type, ArgumentType, BuilderType>> {
 		
-		/* I see no reason not to allow quoted by default */
+		protected final Class<Type> type;
+		
 		protected boolean endless, empty, quote = true;
 		
-		protected String name, error;
+		protected String name;
 		
-		protected Function<CommandEvent, RT> defaultValueFunction;
+		protected BiConsumer<Message, String> errorConsumer;
 		
-		protected IArgumentParser<RT> parser;
+		protected Function<CommandEvent, Type> defaultValueFunction;
 		
-		public BT setEndless(boolean endless) {
+		protected IArgumentParser<Type> parser;
+		
+		protected Builder(Class<Type> type)  {
+			this.type = type;
+		}
+		
+		public Class<Type> getType() {
+			return this.type;
+		}
+		
+		public BuilderType setEndless(boolean endless) {
 			this.endless = endless;
 			
 			return this.self();
 		}
 		
-		public BT setAcceptEmpty(boolean empty) {
+		public BuilderType setAcceptEmpty(boolean empty) {
 			this.empty = empty;
 			
 			return this.self();
 		}
 		
-		public BT setAcceptQuote(boolean quote) {
+		public BuilderType setAcceptQuote(boolean quote) {
 			this.quote = quote;
 			
 			return this.self();
 		}
 		
-		public BT setName(String name) {
+		public BuilderType setName(String name) {
 			this.name = name;
 			
 			return this.self();
 		}
 		
-		public BT setDefaultValue(Function<CommandEvent, RT> defaultValueFunction) {
+		public BuilderType setErrorConsumer(BiConsumer<Message, String> consumer) {
+			this.errorConsumer = consumer;
+			
+			return this.self();
+		}
+		
+		public BuilderType setErrorFunction(BiFunction<Message, String, String> function) {
+			if(function != null) {
+				this.errorConsumer = (message, content) -> {
+					message.getChannel().sendMessage(function.apply(message, content)).queue();
+				};
+			}else{
+				this.errorConsumer = null;
+			}
+			
+			return this.self();
+		}
+		
+		public BuilderType setErrorMessage(String errorMessage) {
+			if(errorMessage != null) {
+				this.errorConsumer = (message, content) -> {
+					message.getChannel().sendMessage(String.format(errorMessage, content)).queue();
+				};
+			}else{
+				this.errorConsumer = null;
+			}
+			
+			return this.self();
+		}
+		
+		public BuilderType setDefaultValue(Function<CommandEvent, Type> defaultValueFunction) {
 			this.defaultValueFunction = defaultValueFunction;
 			
 			return this.self();
 		}
 		
-		public BT setDefaultValue(RT defaultValue) {
+		public BuilderType setDefaultValue(Type defaultValue) {
 			return this.setDefaultValue((event) -> {
 				return defaultValue;
 			});
 		}
 		
-		public BT setDefaultAsNull() {			
+		public BuilderType setDefaultAsNull() {			
 			return this.setDefaultValue((event) -> null);
 		}
 		
-		public BT setParser(IArgumentParser<RT> parser) {
+		public BuilderType setParser(IArgumentParser<Type> parser) {
 			this.parser = parser;
 			
 			return this.self();
@@ -138,16 +195,21 @@ public interface IArgument<Type> {
 			return this.name;
 		}
 		
-		public Function<CommandEvent, RT> getDefaultValueFunction() {
+		public BiConsumer<Message, String> getErrorConsumer() {
+			return this.errorConsumer;
+		}
+		
+		public Function<CommandEvent, Type> getDefaultValueFunction() {
 			return this.defaultValueFunction;
 		}
 		
-		public IArgumentParser<RT> getParser() {
+		public IArgumentParser<Type> getParser() {
 			return this.parser;
 		}
 		
-		public abstract BT self();
+		public abstract BuilderType self();
 		
-		public abstract A build();
+		public abstract ArgumentType build();
+		
 	}
 }

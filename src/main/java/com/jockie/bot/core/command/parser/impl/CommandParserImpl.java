@@ -1,9 +1,7 @@
 package com.jockie.bot.core.command.parser.impl;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +15,6 @@ import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
-import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
 import com.jockie.bot.core.command.exception.parser.ArgumentParseException;
 import com.jockie.bot.core.command.exception.parser.ContentOverflowException;
 import com.jockie.bot.core.command.exception.parser.InvalidArgumentCountException;
@@ -28,7 +25,9 @@ import com.jockie.bot.core.command.exception.parser.UnknownOptionException;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.parser.ICommandParser;
+import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.option.IOption;
+import com.jockie.bot.core.utility.StringUtility;
 
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.utils.tuple.Pair;
@@ -43,10 +42,10 @@ public class CommandParserImpl implements ICommandParser {
 	
 	/**
 	 * Adds a bunch of different quote characters, these were gotten from the 
-	 * source code of <a href="https://github.com/Rapptz/discord.py/blob/fc5a2936dd9456f1489dc1125c12448a2af23e15/discord/ext/commands/view.py#L30-L48">discord.py<a/> 
+	 * source code of <a href="https://github.com/Rapptz/discord.py/blob/fc5a2936dd9456f1489dc1125c12448a2af23e15/discord/ext/commands/view.py#L30-L48">discord.py</a> 
 	 * as they already had a list of quotes
 	 * 
-	 * </br></br>
+	 * <br><br>
 	 * <b>NOTE:</b> These are added by default
 	 */
 	public void addDefaultQuoteCharacters() {
@@ -157,7 +156,7 @@ public class CommandParserImpl implements ICommandParser {
 	}
 	
 	/**
-	 * @param character the allowed quote characters to remove
+	 * @param characters the allowed quote characters to remove
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
@@ -174,7 +173,9 @@ public class CommandParserImpl implements ICommandParser {
 		return Collections.unmodifiableSet(this.quoteCharacters);
 	}
 	
-	public CommandEvent parse(CommandListener listener, ICommand command, String trigger, Message message, String prefix, String contentToParse, long timeStarted) throws ParseException {
+	public CommandEvent parse(CommandListener listener, ICommand command, Message message, String prefix, String trigger, String contentToParse, long timeStarted) throws ParseException {
+		ParseContext context = new ParseContext(listener, this, command, message, prefix, trigger, contentToParse, timeStarted);
+		
 		String messageContent = contentToParse;
 		
 		int argumentCount = 0;
@@ -184,53 +185,105 @@ public class CommandParserImpl implements ICommandParser {
 		Object[] parsedArguments = new Object[arguments.size()];
 		String[] parsedArgumentsAsString = new String[parsedArguments.length];
 		
-		boolean developer = listener.isDeveloper(message.getAuthor());
-		
-		/* Creates a map of all the options which can be used by this user */
-		Map<String, IOption> optionMap = new HashMap<>();
-		for(IOption option : command.getOptions()) {
-			if(option.isDeveloper() && !developer) {
-				continue;
-			}
-			
-			optionMap.put(option.getName(), option);
-			for(String alias : option.getAliases()) {
-				optionMap.put(alias, option);
-			}
-		}
+		Map<String, IOption<?>> validOptions = this.getValidOptions(listener, command, message);
 		
 		/* Pre-processing */
 		StringBuilder builder = new StringBuilder();
 		
-		List<String> options = new ArrayList<>();
+		Map<String, Object> options = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		for(int i = 0; i < messageContent.length(); i++) {
-			if(messageContent.startsWith(" --", i) && messageContent.length() - i > 3 && messageContent.charAt(i + 3) != ' ') {
-				String optionStr = messageContent.substring(i + 1);
-				optionStr = optionStr.substring(2, (optionStr.contains(" ")) ? optionStr.indexOf(" ") : optionStr.length()).toLowerCase();
+			if(messageContent.length() - i <= 3) {
+				for(; i < messageContent.length(); i++) {
+					builder.append(messageContent.charAt(i)); 
+				}
 				
-				IOption option = optionMap.get(optionStr);
-				if(option != null) {
-					options.add(optionStr);
+				break;
+			}
+			
+			if(messageContent.startsWith(" --", i) && messageContent.charAt(i + 3) != ' ') {
+				String content = messageContent.substring(i + 3);
+				
+				String option = null;
+				String stringValue = null;
+				
+				int spaceIndex = content.indexOf(' ');
+				int equalIndex = content.indexOf('=');
+				int length = 2;
+				
+				if(equalIndex != -1 && (spaceIndex == -1 || equalIndex < spaceIndex)) {
+					String optionContent = content.substring(0, equalIndex);
+					String valueContent = content.substring(equalIndex + 1, content.length());
 					
-					i += (optionStr.length() + 2);
+					String temp = null;
+					for(Pair<Character, Character> quotes : this.quoteCharacters) {
+						temp = StringUtility.parseWrapped(valueContent, quotes.getLeft(), quotes.getRight());
+						if(temp != null) {
+							length += equalIndex + 1 + temp.length();
+							
+							option = optionContent;
+							stringValue = StringUtility.unwrap(temp, quotes.getLeft(), quotes.getRight());
+							
+							break;
+						}
+					}
+				}
+				
+				if(option == null) {
+					content = content.substring(0, spaceIndex != -1 ? spaceIndex : content.length());
+					length += content.length();
+					
+					equalIndex = content.indexOf('=');
+					
+					if(equalIndex != -1) {
+						stringValue = content.substring(equalIndex + 1);
+						option = content.substring(0, equalIndex);
+					}else{
+						option = content;
+					}
+				}
+				
+				IOption<?> foundOption = validOptions.get(option);
+				if(foundOption != null) {
+					Class<?> optionType = foundOption.getType();
+					
+					if(stringValue == null || stringValue.isEmpty()) {
+						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
+							options.put(option, true);
+						}
+					}else{
+						Object value;
+						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
+							value = Boolean.parseBoolean(stringValue);
+						}else{
+							value = stringValue;
+						}
+						
+						options.put(option, value);
+					}
+					
+					i += length;
 					
 					continue;
-				}else{
-					InvalidOptionPolicy optionPolicy = command.getInvalidOptionPolicy();
-					if(optionPolicy.equals(InvalidOptionPolicy.ADD)) {
-						options.add(optionStr);
+				}
+				
+				switch(command.getInvalidOptionPolicy()) {
+					case ADD: {
+						options.put(option, stringValue);
 						
-						i += (optionStr.length() + 2);
-						
-						continue;
-					}else if(optionPolicy.equals(InvalidOptionPolicy.IGNORE)) {
-						i += (optionStr.length() + 2);
+						i += length;
 						
 						continue;
-					}else if(optionPolicy.equals(InvalidOptionPolicy.FAIL)) {
-						/* The specified option does not exist */
-						throw new UnknownOptionException(optionStr);
 					}
+					case IGNORE: {
+						i += length;
+						
+						continue;
+					}
+					case FAIL: {
+						/* The specified option does not exist */
+						throw new UnknownOptionException(content);
+					}
+					case INCLUDE: {}
 				}
 			}
 			
@@ -243,12 +296,12 @@ public class CommandParserImpl implements ICommandParser {
 		ArgumentParsingType parsingType;
 		ARGUMENT_PARSING:
 		{
-			List<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
+			Set<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
 			
 			if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
 				if(messageContent.length() > 0) {
 					/* Handle command as key-value */
-					Map<String, String> map = this.asMap(messageContent);
+					Map<String, String> map = StringUtility.asMap(messageContent);
 					
 					if(map != null) {
 						for(int i = 0; i < arguments.size(); i++) {
@@ -256,7 +309,7 @@ public class CommandParserImpl implements ICommandParser {
 							if(map.containsKey(argument.getName())) {
 								String value = map.get(argument.getName());
 								
-								ParsedArgument<?> parsedArgument = argument.parse(message, value);
+								ParsedArgument<?> parsedArgument = argument.parse(context, value);
 								if(parsedArgument.isValid() && (parsedArgument.getContentLeft() == null || parsedArgument.getContentLeft().isEmpty())) {
 									parsedArguments[argumentCount] = parsedArgument.getObject();
 									parsedArgumentsAsString[argumentCount] = value;
@@ -292,7 +345,7 @@ public class CommandParserImpl implements ICommandParser {
 						if(messageContent.startsWith(" ")) {
 							ArgumentTrimType trimType = command.getArgumentTrimType();
 							if(!trimType.equals(ArgumentTrimType.NONE) && !(argument.isEndless() && !trimType.equals(ArgumentTrimType.STRICT))) {
-								messageContent = this.stripLeading(messageContent);
+								messageContent = StringUtility.stripLeading(messageContent);
 							}else{
 								messageContent = messageContent.substring(1);
 							}
@@ -310,7 +363,7 @@ public class CommandParserImpl implements ICommandParser {
 					ParsedArgument<?> parsedArgument;
 					String content = null;
 					if(argument.getParser().isHandleAll()) {
-						parsedArgument = argument.parse(message, content = messageContent);
+						parsedArgument = argument.parse(context, content = messageContent);
 						
 						if(parsedArgument.getContentLeft() != null) {
 							messageContent = parsedArgument.getContentLeft();
@@ -323,31 +376,31 @@ public class CommandParserImpl implements ICommandParser {
 							throw new OutOfContentException(argument);
 						}
 						
-						parsedArgument = argument.parse(message, content = messageContent);
+						parsedArgument = argument.parse(context, content = messageContent);
 						messageContent = "";
 					}else{
 						if(messageContent.length() > 0) {
-							/* Is this even worth having? Not quite sure if I like the implementation */
+							/* TODO: Is this even worth having? Not quite sure if I like the implementation */
 							if(argument instanceof IEndlessArgument) {
-								content = this.parseWrapped(messageContent, '[', ']');
+								content = StringUtility.parseWrapped(messageContent, '[', ']');
 								if(content != null) {
 									messageContent = messageContent.substring(content.length());
 									
-									content = this.updateWrapped(content, '[', ']');
+									content = StringUtility.unwrap(content, '[', ']');
 									
 									if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
-										content = strip(content);
+										content = StringUtility.strip(content);
 									}
 								}
 							}else if(argument.acceptQuote()) {
 								for(Pair<Character, Character> quotes : this.quoteCharacters) {
-									content = this.parseWrapped(messageContent, quotes.getLeft(), quotes.getRight());
+									content = StringUtility.parseWrapped(messageContent, quotes.getLeft(), quotes.getRight());
 									if(content != null) {
 										messageContent = messageContent.substring(content.length());
-										content = this.updateWrapped(content, quotes.getLeft(), quotes.getRight());
+										content = StringUtility.unwrap(content, quotes.getLeft(), quotes.getRight());
 										
 										if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
-											content = strip(content);
+											content = StringUtility.strip(content);
 										}
 										
 										break;
@@ -368,7 +421,7 @@ public class CommandParserImpl implements ICommandParser {
 							throw new OutOfContentException(argument);
 						}
 						
-						parsedArgument = argument.parse(message, content);
+						parsedArgument = argument.parse(context, content);
 					}
 					
 					if(parsedArgument.isValid()) {
@@ -410,103 +463,24 @@ public class CommandParserImpl implements ICommandParser {
 		return new CommandEvent(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
 	}
 	
-	protected String stripLeading(String content) {
-		int index = -1;
-		while(content.charAt(++index) == ' ');
-		
-		return content.substring(index);
-	}
-	
-	protected String strinTrailing(String content) {
-		int index = content.length();
-		while(content.charAt(--index) == ' ');
-		
-		return content.substring(0, index + 1);
-	}
-	
-	protected String strip(String content) {
-		int start = -1;
-		while(content.charAt(++start) == ' ');
-		
-		int end = content.length();
-		while(content.charAt(--end) == ' ');
-		
-		return content.substring(start, end + 1);
-	}
-	
-	protected String updateWrapped(String wrapped, char wrapping) {
-		return wrapped.substring(1, wrapped.length() - 1)
-			.replace("\\" + wrapping, String.valueOf(wrapping));
-	}
-
-	protected String updateWrapped(String wrapped, char wrapStart, char wrapEnd) {
-		return wrapped.substring(1, wrapped.length() - 1)
-			.replace("\\" + wrapStart, String.valueOf(wrapStart))
-			.replace("\\" + wrapEnd, String.valueOf(wrapEnd));
-	}
-
-	protected String parseWrapped(String wrapped, char wrapping) {
-		return this.parseWrapped(wrapped, wrapping, wrapping);
-	}
-
-	protected String parseWrapped(String wrapped, char wrapStart, char wrapEnd) {
-		if(wrapped.charAt(0) == wrapStart) {
-			int nextWrap = 0;
-			while((nextWrap = wrapped.indexOf(wrapEnd, nextWrap + 1)) != -1 && wrapped.charAt(nextWrap - 1) == '\\');
-			
-			if(nextWrap != -1) {
-				return wrapped.substring(0, nextWrap + 1);
-			}
-		}
-		
-		return null;
-	}
-
-	/** Method used to convert a command to a map, for instance 
-	 * </br><b>color=#00FFFF name="a cyan role" permissions=8</b>
-	 * </br>would be parsed to a map with all the values, like this
-	 * </br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
+	/**
+	 * @return a map of all the options which can be used by the author of the message 
 	 */
-	protected Map<String, String> asMap(String command) {
-		Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+	protected Map<String, IOption<?>> getValidOptions(CommandListener listener, ICommand command, Message message) {
+		boolean developer = listener.isDeveloper(message.getAuthor());
 		
-		String message = command;
-		while(message.length() > 0) {
-			int index = message.indexOf("=");
-			if(index == -1) {
-				return null;
+		Map<String, IOption<?>> validOptions = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		for(IOption<?> option : command.getOptions()) {
+			if(option.isDeveloper() && !developer) {
+				continue;
 			}
 			
-			String key = message.substring(0, index);
-			message = message.substring(key.length() + 1);
-			
-			/* Trim to ignore any spaces between the end of the key and the = */
-			key = key.trim();
-			
-			/* Trim to ignore any spaces between the = and the start of the value */
-			message = message.trim();
-			
-			String value = this.parseWrapped(message, '"');
-			if(value != null) {
-				message = message.substring(value.length());
-				value = this.updateWrapped(value, '"');
-			}else{
-				value = message.substring(0, (index = message.indexOf(" ")) != -1 ? index : message.length());
-				message = message.substring(value.length());
+			validOptions.put(option.getName(), option);
+			for(String alias : option.getAliases()) {
+				validOptions.put(alias, option);
 			}
-			
-			String quotedKey = this.parseWrapped(key, '"');
-			if(quotedKey != null) {
-				key = this.updateWrapped(quotedKey, '"');
-			}else{
-				if(key.contains(" ")) {
-					return null;
-				}
-			}
-			
-			map.put(key, value);
 		}
 		
-		return map;
+		return validOptions;
 	}
 }

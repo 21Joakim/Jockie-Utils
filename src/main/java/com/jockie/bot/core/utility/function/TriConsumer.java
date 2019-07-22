@@ -1,4 +1,4 @@
-package com.jockie.bot.core.utility;
+package com.jockie.bot.core.utility.function;
 
 import java.util.Objects;
 

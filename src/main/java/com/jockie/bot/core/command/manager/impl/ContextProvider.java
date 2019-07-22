@@ -5,7 +5,7 @@ import java.lang.reflect.Type;
 import java.util.function.BiFunction;
 
 import com.jockie.bot.core.command.impl.CommandEvent;
-import com.jockie.bot.core.utility.TriFunction;
+import com.jockie.bot.core.utility.function.TriFunction;
 
 class ContextProvider<ProviderType> {
 	

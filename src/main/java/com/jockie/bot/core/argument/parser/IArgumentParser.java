@@ -4,9 +4,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.impl.ArgumentFactory;
-
-import net.dv8tion.jda.core.entities.Message;
+import com.jockie.bot.core.argument.factory.impl.ArgumentFactory;
+import com.jockie.bot.core.command.parser.ParseContext;
 
 @FunctionalInterface
 public interface IArgumentParser<Type> {
@@ -14,18 +13,18 @@ public interface IArgumentParser<Type> {
 	/**
 	 * Parse an argument
 	 * 
-	 * @param message the context
+	 * @param context the context
 	 * @param argument the argument this parser is attached to
 	 * @param content the content to parse
 	 * 
 	 * @return the parsed argument
 	 */
-	public ParsedArgument<Type> parse(Message message, IArgument<Type> argument, String content);
+	public ParsedArgument<Type> parse(ParseContext context, IArgument<Type> argument, String content);
 	
 	/**
 	 * <b>NOTE:</b>
 	 * By using this property in a parser you have to yourself return any left over content in the {@link ParsedArgument}.
-	 * </br></br>
+	 * <br><br>
 	 * This can, for instance, be useful for creating JSON arguments, an example of this exists in 
 	 * {@link ArgumentFactory} for {@link JSONObject} and {@link JSONArray}
 	 * 

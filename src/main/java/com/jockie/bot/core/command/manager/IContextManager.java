@@ -6,7 +6,7 @@ import java.util.function.BiFunction;
 
 import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.impl.CommandEvent;
-import com.jockie.bot.core.utility.TriFunction;
+import com.jockie.bot.core.utility.function.TriFunction;
 
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.impl.GuildImpl;
@@ -66,8 +66,6 @@ public interface IContextManager {
 	public boolean isHandleInheritance(Type type);
 	
 	/**
-	 * <b>USE WITH CAUTION</b>: The more of these you register the slower the command execution will become.
-	 * 
 	 * @param type the type of the context
 	 * @param handle whether or not the specified type should be handled with inheritance, 
 	 * this means that it will, for instance, allow {@link Guild} as a context if 

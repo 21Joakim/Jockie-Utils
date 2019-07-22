@@ -2,6 +2,9 @@
 All suggestion and contributions are welcome!\
 **NOTE:** This project does lack examples of all the available features.
 
+**DISCLAIMER:** This project is changing a lot from version to version, new breaking changes can be introduced in any version, this project jumped a bit too quickly on the `1.xx` versions and the API is still taking shape.\
+When version `2` comes out and the API base has taken shape there will be a proper versioning system with `x.y.z` versions and non-breaking changes.
+
 #### Content
 
 * [Libraries Used](#libraries-used)
@@ -82,8 +85,8 @@ The **CommandListener** class is the brain of this library, this is where everyt
 ```Java
 public static void main(String[] args) throws Exception {
 	CommandListener listener = new CommandListener()
-		.addCommandStore(CommandStore.of("com.jockie.bot.commands"))
-		.addDeveloper(190551803669118976L)
+		.addCommandStores(CommandStore.of("com.jockie.bot.commands"))
+		.addDevelopers(190551803669118976L)
 		.setDefaultPrefixes("!");
 
 	new JDABuilder(AccountType.BOT).setToken(TOKEN)
@@ -106,12 +109,16 @@ store.loadFrom(packagePath, true);
 
 /* Add a command manually */
 store.addCommands(new CommandHelp());
+/* Alternatively */
+store.addCommands(CommandHelp.class);
 
 /* Add a module manually */
 store.addCommands(new ModuleFun());
+/* Alternatively */
+store.addCommands(ModuleFun.class);
 
 /* Add the command store to the command listener */
-listener.addCommandStore(store);
+listener.addCommandStores(store);
 ```
 
 You can also load from a package directly.
