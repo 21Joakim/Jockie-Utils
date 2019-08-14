@@ -145,7 +145,7 @@ public class CommandRunTests extends CommandImpl {
 			}
 		}
 		
-		/* TODO: Implement tests for clas based commands as well
+		/* TODO: Implement tests for class based commands as well
 		for(Class<ICommand> commandClass : CommandUtility.getClassesImplementing(ModuleTest.class.getDeclaredClasses(), ICommand.class)) {
 			
 		}

@@ -30,4 +30,11 @@ public @interface Initialize {
 	 */
 	public boolean subCommands() default false;
 	
+	/**
+	 * @return whether or not this should be applied recursively on
+	 * all sub-commands, only works when {@link Initialize#subCommands()}
+	 * is true
+	 */
+	public boolean recursive() default true;
+	
 }

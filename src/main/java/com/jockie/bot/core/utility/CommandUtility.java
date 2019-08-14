@@ -202,14 +202,13 @@ public class CommandUtility {
 		Objects.requireNonNull(path, "path must not be null");
 		
 		if(path.length > 0 && start != null) {
-			String thePath = path[0];
+			String path0 = path[0];
 			for(ICommand subCommand : start.getSubCommands()) {
-				if(subCommand.getCommand().equalsIgnoreCase(thePath)) {
+				if(subCommand.getCommand().equalsIgnoreCase(path0)) {
 					String[] newPath = new String[path.length - 1];
-					
 					System.arraycopy(path, 1, newPath, 0, path.length - 1);
 					
-					return getSubCommandRecursive(start, newPath);
+					return getSubCommandRecursive(subCommand, newPath);
 				}
 			}
 		}
