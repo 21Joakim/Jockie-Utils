@@ -1,12 +1,14 @@
 package com.jockie.bot.core.command.impl;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +63,14 @@ public class CommandStore {
 	private static final BiFunction<Method, Object, ? extends IMethodCommand> DEFAULT_CREATE_FUNCTION = (method, module) -> {
 		return MethodCommandFactory.getDefault().create(method, CommandUtility.getCommandName(method), module);
 	};
+	
+	private static void invokeRecursive(ICommand command, Object module, Method method) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		method.invoke(module, command);
+
+ 		for(ICommand subCommand : command.getSubCommands()) {
+			CommandStore.invokeRecursive(subCommand, module, method);
+		}
+	}
 	
 	/**
 	 * Load a module and get all the loaded commands
@@ -168,8 +178,11 @@ public class CommandStore {
 			}
 		}
 		
+		List<Method> subCommandMethods = CommandUtility.getSubCommandMethods(methods);
+		subCommandMethods.sort(Comparator.comparingInt(method -> method.getAnnotation(SubCommand.class).value().length));
+		
 		/* Load commands marked as sub-commands */
-		for(Method method : CommandUtility.getSubCommandMethods(methods)) {
+		for(Method method : subCommandMethods) {
 			if(method.isAnnotationPresent(Ignore.class)) {
 				continue;
 			}
@@ -215,12 +228,18 @@ public class CommandStore {
 						String key = command.getCommand();
 						
 						try {
-							method.invoke(module, command);
-							
 							if(initialize.subCommands()) {
-								for(ICommand subCommand : command.getSubCommands()) {
-									method.invoke(module, subCommand);
+								if(initialize.recursive()) {
+									CommandStore.invokeRecursive(command, module, method);
+								}else{
+									method.invoke(module, command);
+
+									for(ICommand subCommand : command.getSubCommands()) {
+										method.invoke(module, subCommand);
+									}
 								}
+							}else{
+								method.invoke(module, command);
 							}
 						}catch(Throwable e) {
 							new CommandLoadException(command, e).printStackTrace();

@@ -35,7 +35,7 @@ public abstract class AbstractCommand implements ICommand {
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
-	protected EnumSet<ArgumentParsingType> allowedArgumentParsingTypes = EnumSet.of(ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED);
+	protected EnumSet<ArgumentParsingType> allowedArgumentParsingTypes = EnumSet.of(ArgumentParsingType.POSITIONAL);
 	
 	protected ArgumentTrimType argumentTrimType = ArgumentTrimType.LENIENT;
 	

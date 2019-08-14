@@ -7,26 +7,47 @@ public class StringUtility {
 	
 	private StringUtility() {}
 	
+	/**
+	 * Removes all leading spaces from the provided string
+	 * 
+	 * @param string the string to remove the leading spaces from
+	 * 
+	 * @return the result
+	 */
 	public static String stripLeading(String string) {
 		int index = -1;
-		while(string.charAt(++index) == ' ');
+		while(++index < string.length() && string.charAt(index) == ' ');
 		
 		return string.substring(index);
 	}
 	
+	/**
+	 * Removes all trailing spaces from the provided string
+	 * 
+	 * @param string the string to remove the trailing spaces from
+	 * 
+	 * @return the result
+	 */
 	public static String stripTrailing(String string) {
 		int index = string.length();
-		while(string.charAt(--index) == ' ');
+		while(--index >= 0 && string.charAt(index) == ' ');
 		
 		return string.substring(0, index + 1);
 	}
 	
+	/**
+	 * Removes all leading and trailing spaces in the provided string
+	 * 
+	 * @param string the string to remove the leading and trailing spaces from
+	 * 
+	 * @return the result
+	 */
 	public static String strip(String string) {
 		int start = -1;
-		while(string.charAt(++start) == ' ');
+		while(++start < string.length() && string.charAt(start) == ' ');
 		
 		int end = string.length();
-		while(string.charAt(--end) == ' ');
+		while(--end >= 0 && string.charAt(end) == ' ');
 		
 		return string.substring(start, end + 1);
 	}
@@ -47,7 +68,7 @@ public class StringUtility {
 	}
 	
 	public static String parseWrapped(String wrappedString, char wrapStart, char wrapEnd) {
-		if(wrappedString.charAt(0) == wrapStart) {
+		if(wrappedString.length() > 0 && wrappedString.charAt(0) == wrapStart) {
 			int nextWrap = 0;
 			while((nextWrap = wrappedString.indexOf(wrapEnd, nextWrap + 1)) != -1 && wrappedString.charAt(nextWrap - 1) == '\\');
 			
@@ -59,7 +80,8 @@ public class StringUtility {
 		return null;
 	}
 	
-	/** Method used to convert a string to a map, for instance 
+	/** 
+	 * Method used to convert a string to a map, for instance 
 	 * <br><b>color=#00FFFF name="a cyan role" permissions=8</b>
 	 * <br>would be parsed to a map with all the values, like this
 	 * <br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>

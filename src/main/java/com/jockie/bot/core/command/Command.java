@@ -128,7 +128,7 @@ public @interface Command {
 	/**
 	 * @see ICommand#getAllowedArgumentParsingTypes()
 	 */
-	public ArgumentParsingType[] allowedArgumentParsingTypes() default { ArgumentParsingType.POSITIONAL, ArgumentParsingType.NAMED };
+	public ArgumentParsingType[] allowedArgumentParsingTypes() default ArgumentParsingType.POSITIONAL;
 	
 	/**
 	 * @see ICommand#getArgumentTrimType()
