@@ -172,7 +172,7 @@ public class StringUtility {
 	 * <br>would be parsed to a map with all the values, like this
 	 * <br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
 	 * 
-	 * @param the String to parse
+	 * @param string the String to parse
 	 * 
 	 * @return the map containing the parsed values
 	 */

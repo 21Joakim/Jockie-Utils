@@ -43,7 +43,7 @@ public interface IArgumentFactory {
 	public <T> IArgumentFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IArgumentBeforeParser<T> parser);
 	
 	/**
-	 * @param the type of the parser to remove
+	 * @param type the type of the parser to remove
 	 * @param parser the parser to remove
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
@@ -71,7 +71,7 @@ public interface IArgumentFactory {
 	public <T> IArgumentFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IArgumentAfterParser<T> parser);
 	
 	/**
-	 * @param the type of the parser to remove
+	 * @param type the type of the parser to remove
 	 * @param parser the parser to remove
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining

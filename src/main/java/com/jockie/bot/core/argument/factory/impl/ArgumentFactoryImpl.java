@@ -958,13 +958,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> List<IArgumentBeforeParser<T>> getParsersBefore(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.beforeParsers.containsKey(type)) {
 			return this.beforeParsers.get(type).stream()
-				.map(IArgumentBeforeParser.class::cast)
+				.map(parser -> (IArgumentBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -993,13 +994,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> List<IArgumentBeforeParser<T>> getGenericParsersBefore(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.genericBeforeParsers.containsKey(type)) {
 			return this.genericBeforeParsers.get(type).stream()
-				.map(IArgumentBeforeParser.class::cast)
+				.map(parser -> (IArgumentBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -1027,14 +1029,15 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		return this;
 	}
-
+	
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> List<IArgumentAfterParser<T>> getParsersAfter(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.afterParsers.containsKey(type)) {
 			return this.afterParsers.get(type).stream()
-				.map(IArgumentAfterParser.class::cast)
+				.map(parser -> (IArgumentAfterParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		

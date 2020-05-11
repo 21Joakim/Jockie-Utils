@@ -32,7 +32,7 @@ public interface IGenericArgumentParser<Type> extends IArgumentParser<Type> {
 	 * if you do not handle it correctly this will throw exceptions once an argument is parsed.
 	 * 
 	 * @param context the context
-	 * @param type the type of the argument to parse
+	 * @param argument the argument this parser is attached to
 	 * @param content the content to parse
 	 * 
 	 * @return the generically parsed argument
