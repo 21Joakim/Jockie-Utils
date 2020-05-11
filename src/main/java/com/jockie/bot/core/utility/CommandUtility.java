@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.IMethodCommand;
@@ -27,8 +30,9 @@ public class CommandUtility {
 	 * 
 	 * @return the provided clazz as an array
 	 */
+	@Nonnull
 	@SuppressWarnings("unchecked")
-	public static <T> Class<T[]> getClassAsArray(Class<T> clazz) {
+	public static <T> Class<T[]> getClassAsArray(@Nonnull Class<T> clazz) {
 		Checks.notNull(clazz, "clazz");
 		
 		String className;
@@ -66,10 +70,82 @@ public class CommandUtility {
 	}
 	
 	/**
+	 * @param clazz primitive data type
+	 * 
+	 * @return the boxed (wrapper) version of the provided primitive class
+	 */
+	public static Class<?> getBoxedClass(Class<?> clazz) {
+		Checks.notNull(clazz, "clazz");
+		
+		if(!clazz.isPrimitive()) {
+			throw new IllegalArgumentException("The provided class is not a primitive class");
+		}
+		
+		if(clazz.equals(boolean.class)) {
+			return Boolean.class;
+		}else if(clazz.equals(byte.class)) {
+			return Byte.class;
+		}else if(clazz.equals(short.class)) {
+			return Short.class;
+		}else if(clazz.equals(int.class)) {
+			return Integer.class;
+		}else if(clazz.equals(long.class)) {
+			return Long.class;
+		}else if(clazz.equals(float.class)) {
+			return Float.class;
+		}else if(clazz.equals(double.class)) {
+			return Double.class;
+		}else if(clazz.equals(char.class)) {
+			return Character.class;
+		}else{
+			throw new RuntimeException();
+		}
+	}
+	
+	/**
+	 * @param clazz primitive data type
+	 * 
+	 * @return the Java default value for the provided primitive data type
+	 */
+	@Nullable
+	public static Object getDefaultValue(@Nonnull Class<?> clazz) {
+		Checks.notNull(clazz, "clazz");
+		
+		if(!clazz.isPrimitive()) {
+			return null;
+		}
+		
+		if(clazz.equals(boolean.class)) {
+			return false;
+		}else if(clazz.equals(byte.class)) {
+			return (byte) 0;
+		}else if(clazz.equals(short.class)) {
+			return (short) 0;
+		}else if(clazz.equals(int.class)) {
+			return 0;
+		}else if(clazz.equals(long.class)) {
+			return 0L;
+		}else if(clazz.equals(float.class)) {
+			return 0.0F;
+		}else if(clazz.equals(double.class)) {
+			return 0.0D;
+		}else if(clazz.equals(char.class)) {
+			return '\u0000';
+		}else{
+			throw new RuntimeException();
+		}
+	}
+	
+	/**
+	 * @param type the type
+	 * 
 	 * @return the generic classes of the provided type, 
 	 * if the generic type is not a class it will be a null instead of the class
 	 */
-	public static Class<?>[] getClasses(Type type) {
+	@Nonnull
+	public static Class<?>[] getGenericClasses(@Nonnull Type type) {
+		Checks.notNull(type, "type");
+		
 		if(type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
 			
@@ -95,7 +171,10 @@ public class CommandUtility {
 	/**
 	 * @return true if an instance of clazz would be an instance of otherClazz
 	 */
-	public static boolean isInstanceOf(Class<?> clazz, Class<?> otherClazz) {
+	public static boolean isInstanceOf(@Nonnull Class<?> clazz, @Nonnull Class<?> otherClazz) {
+		Checks.notNull(clazz, "clazz");
+		Checks.notNull(otherClazz, "otherClazz");
+		
 		return otherClazz.isAssignableFrom(clazz);
 	}
 	
@@ -107,8 +186,12 @@ public class CommandUtility {
 	 * 
 	 * @return a list of classes; classes that implemented the provided interface
 	 */
+	@Nonnull
 	@SuppressWarnings("unchecked")
-	public static <T> List<Class<T>> getClassesImplementing(Class<?>[] classes, Class<T> interfaze) {
+	public static <T> List<Class<T>> getClassesImplementing(@Nonnull Class<?>[] classes, @Nonnull Class<T> interfaze) {
+		Checks.noneNull(classes, "classes");
+		Checks.notNull(interfaze, "interfaze");
+		
 		Checks.check(interfaze.isInterface(), "interfaze is not an interface");
 		
 		List<Class<T>> foundClasses = new ArrayList<>();
@@ -121,8 +204,33 @@ public class CommandUtility {
 		return foundClasses;
 	}
 	
-	public static String getCommandName(Method method) {
-		return method.getName().replace("_", " ");
+	/**
+	 * Convert the method name to a command name, this will convert
+	 * <b>hello_there</b> and <b>helloThere</b> to <b>hello there</b>
+	 * 
+	 * @param method the method to convert to a command name
+	 * 
+	 * @return the command name for the provided method
+	 */
+	@Nonnull
+	public static String getCommandName(@Nonnull Method method) {
+		Checks.notNull(method, "method");
+		
+		String methodName = method.getName();
+		if(methodName.contains("_")) {
+			return methodName.replace("_", " ");
+		}
+		
+		StringBuilder name = new StringBuilder(methodName.length());
+		for(char character : methodName.toCharArray()) {
+			if(Character.isUpperCase(character)) {
+				name.append(' ').append(Character.toLowerCase(character));
+			}else{
+				name.append(character);
+			}
+		}
+		
+		return name.toString();
 	}
 	
 	public static Method findCommandCreateMethod(Method[] methods) {

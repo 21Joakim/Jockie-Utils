@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -16,6 +17,7 @@ import com.jockie.bot.core.command.manager.IContextManager;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.cooldown.ICooldownManager;
+import com.jockie.bot.core.property.IPropertyContainer;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDA.ShardInfo;
@@ -35,7 +37,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.AttachmentOption;
 
-public class CommandEvent {
+public class CommandEvent implements IPropertyContainer {
 	
 	protected Message message;
 	protected CommandListener commandListener;
@@ -55,6 +57,8 @@ public class CommandEvent {
 	protected String contentOverflow;
 	
 	protected long timeStarted;
+	
+	protected Map<String, Object> properties = new HashMap<>();
 	
 	/**
 	 * @param message the context for this; the message which was sent to trigger this command
@@ -107,14 +111,14 @@ public class CommandEvent {
 	 * Equivalent to {@link JDA#getShardManager()}
 	 */
 	public ShardManager getShardManager() {
-		return this.message.getJDA().getShardManager();
+		return this.getJDA().getShardManager();
 	}
 	
 	/**
 	 * Equivalent to {@link JDA#getShardInfo()}
 	 */
 	public ShardInfo getShardInfo() {
-		return this.message.getJDA().getShardInfo();
+		return this.getJDA().getShardInfo();
 	}
 	
 	/** Equivalent to {@link JDA#getSelfUser()} */
@@ -177,7 +181,7 @@ public class CommandEvent {
 		return this.message.getGuild();
 	}
 	
-	/** Equivalent to {@link Member#getVoiceState()} called on the Member that executed this 
+	/** Equivalent to {@link Member#getVoiceState()} called on {@link CommandEvent#getMember()}
 	 *
 	 * @return possibly-null if the event is not from a guild
 	 */
@@ -244,9 +248,8 @@ public class CommandEvent {
 	}
 	
 	/** @return the option by the provided name or null if there is no option by that name */
-	@SuppressWarnings("unchecked")
 	public <T> T getOption(String name, Class<T> type) {
-		return (T) this.options.get(name);
+		return this.getOption(name);
 	}
 	
 	/** @return the option by the provided name or null if there is no option by that name */
@@ -362,12 +365,12 @@ public class CommandEvent {
 	}
 	
 	/**
-	 * @param clazz the type of the context
+	 * @param type the type of the context
 	 * 
 	 * @return the context for the provided type, gotten from {@link IContextManager#getContext(CommandEvent, Class)}
 	 */
-	public <T> T getContext(Class<T> clazz) {
-		return ContextManagerFactory.getDefault().getContext(this, clazz);
+	public <T> T getContext(Class<T> type) {
+		return ContextManagerFactory.getDefault().getContext(this, type);
 	}
 	
 	/**
@@ -377,5 +380,34 @@ public class CommandEvent {
 	 */
 	public <T> T getContext(Type type) {
 		return ContextManagerFactory.getDefault().getContext(this, type);
+	}
+	
+	/**
+	 * Get a custom property
+	 * 
+	 * @param name the property name
+	 * @param defaultValue the default value if the property does not exist
+	 * 
+	 * @return the property value or the provided default value if it does not exist
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> T getProperty(String name, T defaultValue) {
+		return (T) this.properties.getOrDefault(name, defaultValue);
+	}
+	
+	/**
+	 * Set a custom property, this can be useful if you need to pass a
+	 * property from a pre-execute check
+	 * 
+	 * @param name the property name
+	 * @param value the property value
+	 * 
+	 * @return the {@link CommandEvent} instance, useful for chaining
+	 */
+	public <T> CommandEvent setProperty(String name, T value) {
+		this.properties.put(name, value);
+		
+		return this;
 	}
 }

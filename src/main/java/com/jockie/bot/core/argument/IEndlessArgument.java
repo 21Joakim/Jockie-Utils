@@ -1,5 +1,8 @@
 package com.jockie.bot.core.argument;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.utility.CommandUtility;
 
 public interface IEndlessArgument<Type> extends IArgument<Type[]> {
@@ -18,11 +21,13 @@ public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 	/**
 	 * @return the wrapped argument, this is the argument the content will be parsed as
 	 */
+	@Nonnull
 	public IArgument<Type> getArgument();
 	
 	/**
 	 * @return the component type of the array the content would be parsed as
 	 */
+	@Nonnull
 	public Class<Type> getComponentType();
 	
 	public abstract class Builder<Type, ArgumentType extends IEndlessArgument<Type>, BuilderType extends Builder<Type, ArgumentType, BuilderType>> 
@@ -34,7 +39,7 @@ public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 		
 		protected Class<Type> componentType;
 		
-		protected Builder(Class<Type> componentType) {
+		protected Builder(@Nonnull Class<Type> componentType) {
 			super(CommandUtility.getClassAsArray(componentType));
 			
 			this.quote = false;
@@ -48,12 +53,14 @@ public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 			this.componentType = componentType;
 		}
 		
+		@Nonnull
 		public BuilderType setMinArguments(int minArguments) {
 			this.minArguments = minArguments;
 			
 			return this.self();
 		}
 		
+		@Nonnull
 		public BuilderType setMaxArguments(int maxArguments) {
 			this.maxArguments = maxArguments;
 			
@@ -68,7 +75,8 @@ public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 			return this.maxArguments;
 		}
 		
-		public BuilderType setArgument(IArgument<Type> argument) {
+		@Nonnull
+		public BuilderType setArgument(@Nonnull IArgument<Type> argument) {
 			if(argument instanceof IEndlessArgument || argument.isEndless()) {
 				throw new IllegalArgumentException("Not a valid candidate, argument may not be endless");
 			}
@@ -79,10 +87,12 @@ public interface IEndlessArgument<Type> extends IArgument<Type[]> {
 			return this.self();
 		}
 		
+		@Nullable
 		public IArgument<Type> getArgument() {
 			return this.argument;
 		}
 		
+		@Nonnull
 		public Class<Type> getComponentType() {
 			return this.componentType;
 		}

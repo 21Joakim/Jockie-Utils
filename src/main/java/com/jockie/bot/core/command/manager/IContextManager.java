@@ -4,6 +4,9 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.function.BiFunction;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.utility.function.TriFunction;
@@ -19,7 +22,8 @@ public interface IContextManager {
 	 * 
 	 * @return the context of the type specified
 	 */
-	public <T> T getContext(CommandEvent event, Type type);
+	@Nullable
+	public <T> T getContext(@Nonnull CommandEvent event, @Nonnull Type type);
 	
 	/**
 	 * @param event the event to get the context from
@@ -27,7 +31,8 @@ public interface IContextManager {
 	 * 
 	 * @return the context of the type specified
 	 */
-	public default <T> T getContext(CommandEvent event, Class<T> clazz) {
+	@Nullable
+	public default <T> T getContext(@Nonnull CommandEvent event, @Nonnull Class<T> clazz) {
 		return this.getContext(event, (Type) clazz);
 	}
 	
@@ -37,7 +42,8 @@ public interface IContextManager {
 	 * 
 	 * @return the context of the type specified
 	 */
-	public <T> T getContext(CommandEvent event, Parameter parameter);
+	@Nullable
+	public <T> T getContext(@Nonnull CommandEvent event, @Nonnull Parameter parameter);
 	
 	/**
 	 * @param type the type of the context
@@ -45,7 +51,7 @@ public interface IContextManager {
 	 * @return whether or not the specified type is an enforced context, 
 	 * this means that it does not require the {@link Context} annotation to be a context
 	 */
-	public boolean isEnforcedContext(Type type);
+	public boolean isEnforcedContext(@Nonnull Type type);
 	
 	/**
 	 * @param type the type of the context
@@ -54,7 +60,8 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public IContextManager setEnforcedContext(Type type, boolean enforced);
+	@Nonnull
+	public IContextManager setEnforcedContext(@Nonnull Type type, boolean enforced);
 	
 	/**
 	 * @param type the type of the context
@@ -63,7 +70,8 @@ public interface IContextManager {
 	 * this means that it will, for instance, allow {@link Guild} as a context if 
 	 * {@link GuildImpl} is registered as one
 	 */
-	public boolean isHandleInheritance(Type type);
+	@Nonnull
+	public boolean isHandleInheritance(@Nonnull Type type);
 	
 	/**
 	 * @param type the type of the context
@@ -73,14 +81,16 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public IContextManager setHandleInheritance(Type type, boolean handle);
+	@Nonnull
+	public IContextManager setHandleInheritance(@Nonnull Type type, boolean handle);
 	
 	/**
 	 * @param type the type of the context
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public IContextManager unregisterContext(Type type);
+	@Nonnull
+	public IContextManager unregisterContext(@Nonnull Type type);
 	
 	/**
 	 * @param type the type of the context
@@ -88,7 +98,8 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public <T> IContextManager registerContext(Type type, TriFunction<CommandEvent, Parameter, Type, T> function);
+	@Nonnull
+	public <T> IContextManager registerContext(@Nonnull Type type, @Nonnull TriFunction<CommandEvent, Parameter, Type, T> function);
 	
 	/**
 	 * @param clazz the type of the context
@@ -96,7 +107,8 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public default <T> IContextManager registerContext(Class<T> clazz, TriFunction<CommandEvent, Parameter, Type, T> function) {
+	@Nonnull
+	public default <T> IContextManager registerContext(@Nonnull Class<T> clazz, @Nonnull TriFunction<CommandEvent, Parameter, Type, T> function) {
 		return this.registerContext((Type) clazz, function);
 	}
 	
@@ -106,7 +118,8 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public <T> IContextManager registerContext(Type type, BiFunction<CommandEvent, Type, T> function);
+	@Nonnull
+	public <T> IContextManager registerContext(@Nonnull Type type, @Nonnull BiFunction<CommandEvent, Type, T> function);
 	
 	/**
 	 * @param clazz the type of the context
@@ -114,7 +127,8 @@ public interface IContextManager {
 	 * 
 	 * @return the {@link IContextManager} instance, useful for chaining
 	 */
-	public default <T> IContextManager registerContext(Class<T> clazz, BiFunction<CommandEvent, Type, T> function) {
+	@Nonnull
+	public default <T> IContextManager registerContext(@Nonnull Class<T> clazz, @Nonnull BiFunction<CommandEvent, Type, T> function) {
 		return this.registerContext((Type) clazz, function);
 	}
 }

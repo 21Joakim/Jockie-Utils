@@ -21,6 +21,7 @@ import com.jockie.bot.core.option.impl.OptionImpl;
 
 public class ComponentFactoryImpl implements IComponentFactory {
 	
+	/* TODO: Temporary until a custom parser implementation is added */
 	private static Set<Class<?>> supportedOptionTypes = new HashSet<>();
 	
 	static {
@@ -77,49 +78,53 @@ public class ComponentFactoryImpl implements IComponentFactory {
 		for(int i = 0; i < parameters.length; i++) {
 			Parameter parameter = parameters[i];
 			
-			if(parameter.isAnnotationPresent(Option.class)) {
-				optionCount++;
-				
-				Option option = parameter.getAnnotation(Option.class);
-				if(!optionTriggers.add(option.value())) {
-					throw new IllegalArgumentException("Option at parameter " + (i + 1) + " has a name, " + option.value() + ", which already exists in another option");
-				}
-				
-				for(String alias : option.aliases()) {
-					if(!optionTriggers.add(alias)) {
-						throw new IllegalArgumentException("Option at parameter " + (i + 1) + " has an alias, " + alias + ", which already exists in another option");
-					}
+			if(!parameter.isAnnotationPresent(Option.class)) {
+				continue;
+			}
+			
+			optionCount++;
+			
+			Option option = parameter.getAnnotation(Option.class);
+			if(!optionTriggers.add(option.value())) {
+				throw new IllegalArgumentException("Option at parameter " + (i + 1) + " has a name, " + option.value() + ", which already exists in another option");
+			}
+			
+			for(String alias : option.aliases()) {
+				if(!optionTriggers.add(alias)) {
+					throw new IllegalArgumentException("Option at parameter " + (i + 1) + " has an alias, " + alias + ", which already exists in another option");
 				}
 			}
 		}
 		
-		if(optionCount > 0) {
-			IOption<?>[] options = new IOption[optionCount];
-			
-			for(int i = 0, i2 = 0; i < parameters.length; i++) {
-				Parameter parameter = parameters[i];
-				Class<?> type = parameter.getType();
-				
-				if(parameter.isAnnotationPresent(Option.class)) {
-					if(!ComponentFactoryImpl.supportedOptionTypes.contains(type)) {
-						throw new IllegalArgumentException("The type, " +  type.getName() + ", of the option at parameter " + (i + 1) + " is not supported");
-					}
-					
-					Option option = parameter.getAnnotation(Option.class);
-					
-					options[i2++] = new OptionImpl.Builder<>(type)
-						.setName(option.value())
-						.setDescription(option.description())
-						.setAliases(option.aliases())
-						.setHidden(option.hidden())
-						.setDeveloper(option.developer())
-						.build();
-				}
-			}
-			
-			return options;
-		}else{
+		if(optionCount == 0) {
 			return new IOption[0];
 		}
+		
+		IOption<?>[] options = new IOption[optionCount];
+		
+		for(int i = 0, i2 = 0; i < parameters.length; i++) {
+			Parameter parameter = parameters[i];
+			Class<?> type = parameter.getType();
+			
+			if(!parameter.isAnnotationPresent(Option.class)) {
+				continue;
+			}
+			
+			if(!ComponentFactoryImpl.supportedOptionTypes.contains(type)) {
+				throw new IllegalArgumentException("The type, " +  type.getName() + ", of the option at parameter " + (i + 1) + " is not supported");
+			}
+			
+			Option option = parameter.getAnnotation(Option.class);
+			
+			options[i2++] = new OptionImpl.Builder<>(type)
+				.setName(option.value())
+				.setDescription(option.description())
+				.setAliases(option.aliases())
+				.setHidden(option.hidden())
+				.setDeveloper(option.developer())
+				.build();
+		}
+		
+		return options;
 	}
 }

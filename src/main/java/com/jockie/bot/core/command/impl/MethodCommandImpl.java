@@ -11,6 +11,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.Command.Async;
@@ -21,6 +26,7 @@ import com.jockie.bot.core.command.Command.Developer;
 import com.jockie.bot.core.command.Command.Hidden;
 import com.jockie.bot.core.command.Command.Nsfw;
 import com.jockie.bot.core.command.Command.Policy;
+import com.jockie.bot.core.command.CommandTrigger;
 import com.jockie.bot.core.command.Context;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.IMethodCommand;
@@ -33,9 +39,12 @@ import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.Option;
 
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
+import net.dv8tion.jda.internal.utils.Checks;
+import net.dv8tion.jda.internal.utils.JDALogger;
 
 public class MethodCommandImpl extends AbstractCommand implements IMethodCommand {
+	
+	public static final Logger LOG = JDALogger.getLog(MethodCommandImpl.class);
 	
 	protected Method method;
 	protected Object invoker;
@@ -60,10 +69,12 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		this.applyAnnotations();
 	}
 	
+	@Override
 	public Method getCommandMethod() {
 		return this.method;
 	}
 	
+	@Override
 	public Object getCommandInvoker() {
 		return this.invoker;
 	}
@@ -88,6 +99,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		return this;
 	}
 	
+	@Override
 	public boolean isPassive() {
 		if(this.passive) {
 			return true;
@@ -100,6 +112,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		return false;
 	}
 	
+	@Override
 	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		List<ICommand> commands = new ArrayList<>();
 		commands.add(this);
@@ -115,22 +128,24 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		return commands;
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
-		List<Pair<String, ICommand>> commands = super.getAllCommandsRecursiveWithTriggers(message, prefix);
+	@Override
+	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
+		List<CommandTrigger> commands = super.getAllCommandsRecursiveWithTriggers(message, prefix);
 		
 		for(ICommand command : this.dummyCommands) {
-			commands.add(Pair.of((prefix + " " + command.getCommand()).trim(), command));
+			commands.add(new CommandTrigger((prefix + " " + command.getCommand()).trim(), command));
 			
 			for(String alias : this.aliases) {
-				commands.add(Pair.of((prefix + " " + alias).trim(), command));
+				commands.add(new CommandTrigger((prefix + " " + alias).trim(), command));
 			}
 		}
 		
 		return commands;
 	}
 	
+	@Override
 	public void execute(CommandEvent event, Object... arguments) throws Throwable {
-		if(!this.passive && this.method != null) {
+		if(!this.isPassive()) {
 			MethodCommandImpl.executeMethodCommand(this, this.invoker, this.method, event, arguments);
 		}
 	}
@@ -223,7 +238,25 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 	}
 	
-	public static void executeMethodCommand(ICommand command, Object invoker, Method commandMethod, CommandEvent event, Object... args) throws Throwable {
+	/**
+	 * Execute a command from the provided method
+	 * 
+	 * @param command the command to execute
+	 * @param invoker the command method's invoker, if commandMethod is static this should be null
+	 * @param commandMethod the command method to invoke
+	 * @param event the context to execute the command with
+	 * @param args the arguments to execute the command with
+	 * 
+	 * @throws Throwable if the execution of the command fails
+	 */
+	public static void executeMethodCommand(@Nonnull ICommand command, @Nullable Object invoker, 
+			@Nonnull Method commandMethod, @Nonnull CommandEvent event, @Nonnull Object... args) throws Throwable {
+		
+		Checks.notNull(command, "command");
+		Checks.notNull(commandMethod, "commandMethod");
+		Checks.notNull(event, "event");
+		Checks.notNull(args, "args");
+		
 		IContextManager contextManager = ContextManagerFactory.getDefault();
 		
 		Parameter[] parameters = commandMethod.getParameters();
@@ -306,8 +339,8 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 					if(typeArguments.length > 0) {
 						arguments[i] = Optional.ofNullable(argument);
 					}
-				}catch(Exception e) {
-					e.printStackTrace();
+				}catch(Throwable e) {
+					LOG.error(e.getMessage(), e);
 				}
 			}
 			
@@ -326,7 +359,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				IReturnManager returnManager = event.getCommandListener().getReturnManager();
 				
 				if(!returnManager.perform(event, object)) {
-					System.err.println(object.getClass() + " is an unsupported return type for a command method");
+					LOG.warn(object.getClass() + " is an unsupported return type for a command method");
 				}
 			}
 		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -335,21 +368,21 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				
 				information.append("Argument type mismatch for command \"" + event.getCommandTrigger() + "\"\n");
 				
-				information.append("    Arguments provided:\n");
+				information.append("	Arguments provided:\n");
 				for(Object argument : arguments) {
 					if(argument != null) {
-						information.append("        " + argument.getClass().getName() + "\n");
+						information.append("		" + argument.getClass().getName() + "\n");
 					}else{
-						information.append("        null\n");
+						information.append("		null\n");
 					}
 				}
 				
-				information.append("    Arguments expected:\n");
+				information.append("	Arguments expected:\n");
 				for(Class<?> clazz : commandMethod.getParameterTypes()) {
-					information.append("        " + clazz.getName() + "\n");
+					information.append("		" + clazz.getName() + "\n");
 				}
 				
-				information.append("    Argument values: " + Arrays.deepToString(arguments));
+				information.append("	Argument values: " + Arrays.deepToString(arguments));
 				
 				throw new IllegalStateException(information.toString());
 			}else if(e instanceof InvocationTargetException) {
@@ -379,7 +412,17 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 	}
 	
-	public static List<DummyCommand> generateDummyCommands(ICommand command) {
+	/**
+	 * Generate {@link DummyCommand DummyCommands} from the provided command,
+	 * this uses the arguments of the provided command to check
+	 * for optional arguments which are then used to create the dummy commands.
+	 * 
+	 * @param command the command to create {@link DummyCommand DummyCommands} from
+	 * 
+	 * @return the generated {@link DummyCommand DummyCommands}
+	 */
+	@Nonnull
+	public static List<DummyCommand> generateDummyCommands(@Nonnull ICommand command) {
 		List<DummyCommand> dummyCommands = new ArrayList<>();
 		
 		if(!(command instanceof DummyCommand)) {
@@ -395,17 +438,17 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				
 				if(dummyArguments.size() > 0) {
 					List<IArgument<?>> args = new ArrayList<>();
-			    	for(int i = 1, max = 1 << dummyArguments.size(); i < max; ++i) {
-			    	    for(int j = 0, k = 1; j < dummyArguments.size(); ++j, k <<= 1) {
-			    	        if((k & i) != 0) {
-			    	        	args.add(dummyArguments.get(j));
-			    	        }
-			    	    }
-			    	    
-			    	    dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
+					for(int i = 1, max = 1 << dummyArguments.size(); i < max; ++i) {
+						for(int j = 0, k = 1; j < dummyArguments.size(); ++j, k <<= 1) {
+							if((k & i) != 0) {
+								args.add(dummyArguments.get(j));
+							}
+						}
+						
+						dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
 						
 						args.clear();
-			    	}
+					}
 				}
 			}
 		}

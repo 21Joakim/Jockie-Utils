@@ -2,6 +2,8 @@ package com.jockie.bot.core.command.factory;
 
 import java.lang.reflect.Method;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.option.IOption;
 
@@ -17,7 +19,8 @@ public interface IComponentFactory {
 	 * 
 	 * @return the generated arguments
 	 */
-	public IArgument<?>[] createArguments(Method method);
+	@Nonnull
+	public IArgument<?>[] createArguments(@Nonnull Method method);
 	
 	/**
 	 * Method used for generating options for a method based command
@@ -26,6 +29,7 @@ public interface IComponentFactory {
 	 * 
 	 * @return the generated options
 	 */
-	public IOption<?>[] createOptions(Method method);
+	@Nonnull
+	public IOption<?>[] createOptions(@Nonnull Method method);
 	
 }

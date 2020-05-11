@@ -2,9 +2,14 @@ package com.jockie.bot.core.module.impl;
 
 import java.lang.reflect.Method;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.IMethodCommand;
+import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
 import com.jockie.bot.core.module.IModule;
+import com.jockie.bot.core.utility.CommandUtility;
 
 /**
  * A helper implementation of the IModule to show which features can be used,
@@ -19,13 +24,12 @@ public class ModuleImpl implements IModule {
 	 * this can be useful for having the commands extend a custom command implementation.
 	 * 
 	 * @param method the method which the command is based of, one could say the command itself
-	 * @param name the suggested name for this command, by default this is <b>{@code method.getName().replace("_", " ")}</b>
+	 * @param name the suggested name for this command, by default this is {@link CommandUtility#getCommandName(Method)}
 	 * 
-	 * @return the loaded command or null if the default loader 
-	 * 		({@link com.jockie.bot.core.command.factory.impl.MethodCommandFactory#getDefault() MethodCommandFactory#getDefaultFactory()}) 
-	 * 		should be used
+	 * @return the loaded command or null if the default loader ({@link MethodCommandFactory#getDefault()}) should be used
 	 */
-	public IMethodCommand createCommand(Method method, String name) {
+	@Nullable
+	public IMethodCommand createCommand(@Nonnull Method method, @Nonnull String name) {
 		return null;
 	}
 	
@@ -34,7 +38,7 @@ public class ModuleImpl implements IModule {
 	 * 
 	 * @param command the command which was loaded
 	 */
-	public void onCommandLoad(ICommand command) {}
+	public void onCommandLoad(@Nonnull ICommand command) {}
 	
 	/**
 	 * This is called when the module (all the commands) has loaded

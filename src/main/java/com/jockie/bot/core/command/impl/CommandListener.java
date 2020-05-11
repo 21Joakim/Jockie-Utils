@@ -3,15 +3,18 @@ package com.jockie.bot.core.command.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -19,17 +22,21 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.slf4j.Logger;
+
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.IEndlessArgument;
+import com.jockie.bot.core.command.CommandTrigger;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.exception.CancelException;
-import com.jockie.bot.core.command.exception.CommandExecutionException;
 import com.jockie.bot.core.command.exception.parser.ArgumentParseException;
 import com.jockie.bot.core.command.exception.parser.OutOfContentException;
 import com.jockie.bot.core.command.exception.parser.ParseException;
 import com.jockie.bot.core.command.exception.parser.PassiveCommandException;
+import com.jockie.bot.core.command.factory.ICommandEventFactory;
+import com.jockie.bot.core.command.factory.impl.CommandEventFactoryImpl;
 import com.jockie.bot.core.command.impl.DummyCommand.AlternativeCommand;
 import com.jockie.bot.core.command.manager.IErrorManager;
 import com.jockie.bot.core.command.manager.IReturnManager;
@@ -54,169 +61,11 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.PermissionException;
 import net.dv8tion.jda.api.hooks.EventListener;
 import net.dv8tion.jda.internal.utils.Checks;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
+import net.dv8tion.jda.internal.utils.JDALogger;
 
 public class CommandListener implements EventListener {
 	
-	/* More specific goes first */
-	protected static final Comparator<Pair<String, ICommand>> COMMAND_COMPARATOR = new Comparator<Pair<String, ICommand>>() {
-		public int compare(Pair<String, ICommand> pair, Pair<String, ICommand> pair2) {
-			ICommand command = pair.getRight(), command2 = pair2.getRight();
-			
-			/* Check the trigger length, the longer the more specific so it goes first */
-			if(pair.getLeft().length() > pair2.getLeft().length()) {
-				return -1;
-			}else if(pair.getLeft().length() < pair2.getLeft().length()) {
-				return 1;
-			}
-			
-			List<IArgument<?>> arguments = command.getArguments(), arguments2 = command2.getArguments();
-			int argumentCount = arguments.size(), argumentCount2 = arguments2.size();
-			
-			if(argumentCount > 0 && argumentCount2 > 0) {
-				IArgument<?> lastArgument = arguments.get(argumentCount - 1), lastArgument2 = arguments2.get(argumentCount2 - 1);
-				
-				boolean endless = false, endless2 = false;
-				boolean endlessArguments = false, endlessArguments2 = false;
-				
-				/* Update argument count and check for endless arguments */
-				if(lastArgument.isEndless()) {
-					if(lastArgument instanceof IEndlessArgument) {
-						int max = ((IEndlessArgument<?>) lastArgument).getMaxArguments();
-						
-						if(max != -1) {
-							argumentCount += (max - 1);
-						}else{
-							endlessArguments = true;
-						}
-					}
-					
-					endless = true;
-				}
-				
-				/* Update argument count and check for endless arguments */
-				if(lastArgument2.isEndless()) {
-					if(lastArgument2 instanceof IEndlessArgument) {
-						int max = ((IEndlessArgument<?>) lastArgument2).getMaxArguments();
-						
-						if(max != -1) {
-							argumentCount2 += (max - 1);
-						}else{
-							endlessArguments2 = true;
-						}
-					}
-					
-					endless2 = true;
-				}
-				
-				/* Check if the last argument contains an endless amount of arguments */
-				if(!endlessArguments && endlessArguments2) {
-					return -1;
-				}else if(endlessArguments && !endlessArguments2) {
-					return 1;
-				}
-				
-				/**
-				 * Check how many arguments the command has, the more arguments the more specific it is
-				 * and should therefore be closer.
-				 */
-				if(argumentCount > argumentCount2) {
-					return -1;
-				}else if(argumentCount < argumentCount2) {
-					return 1;
-				}
-				
-				/* 
-				 * Check if the last argument is endless, if it is it will simply accept all the remaining content 
-				 * which means it is less specific and should therefore be further back.
-				 */
-				if(!endless && endless2) {
-					return -1;
-				}else if(endless && !endless2) {
-					return 1;
-				}
-				
-				/* 
-				 * Check the order of the argument parsers. This was mostly introduced to combat an issue where
-				 * due to the fact that Class#getDeclaredMethods doesn't return the methods in the order they were
-				 * specified in, let alone any order at all, the order of the commands would sometimes be different
-				 * and could cause weird behaviour.
-				 * 
-				 * One example of a weird behaviour is if you have a command, "prune", which takes one argument, amount (Integer),
-				 * and then you have an alternate command implementation which takes a keyword argument of the type String.
-				 * Now if the first method loads first everything works correctly as the argument can be checked if it is an integer 
-				 * and then move to the String variant.
-				 * If the second version is instead loaded first it will always take it as a keyword as the String parser just accepts any content given to it
-				 * and this causes the first version to become effectively inaccessible. 
-				 */
-				if(argumentCount == argumentCount2) {
-					for(int i = 0; i < argumentCount; i++) {
-						int parsePriority = arguments.get(i).getParser().getPriority();
-						int parsePriority2 = arguments2.get(i).getParser().getPriority();
-						
-						if(parsePriority != parsePriority2) {
-							if(parsePriority > parsePriority2) {
-								return 1;
-							}else if(parsePriority < parsePriority2) {
-								return -1;
-							}
-						}
-					}
-				}
-			}else if(argumentCount == 0 && argumentCount2 > 0) {
-				return 1;
-			}else if(argumentCount > 0 && argumentCount2 == 0) {
-				return -1;
-			}
-			
-			/* 
-			 * Check for case sensitivity, if it is case sensitive it is more specific and therefore goes first.
-			 * 
-			 * This could be useful if you, for instance, had a command called "ban" and then a case sensitive command called "Ban" 
-			 * to fake ban people.
-			 */
-			if(command.isCaseSensitive() && !command2.isCaseSensitive()) {
-				return -1;
-			}else if(!command.isCaseSensitive() && command2.isCaseSensitive()) {
-				return 1;
-			}
-			
-			/* 
-			 * TODO: This is hacky solution to fix the problem with inconsistent order of optional arguments.
-			 * 
-			 * This works by sorting it by the "distance" the arguments is from their original position, for instance
-			 * let's say the arguments are [optional, optional2 and optional3] and this DummyCommand has optional3 as its argument,
-			 * that would mean that the distance is 2 (2 - 0).
-			 * 
-			 * Why 2 - 0?
-			 * This is because optional3 is at index 2 for the original arguments and index 0 for the DummyCommand.
-			 * 
-			 * This works, unsure of how well it works but it has been tested with
-			 * [optional, optional2, optional3, optional4] and [optional, required, optional2, required2]
-			 */
-			if(command instanceof DummyCommand && command2 instanceof DummyCommand) {
-				ICommand actualCommand = ((DummyCommand) command).getActualCommand();
-				ICommand actualCommand2 = ((DummyCommand) command2).getActualCommand();
-				
-				if(actualCommand.equals(actualCommand2)) {
-					List<IArgument<?>> actualArguments = actualCommand.getArguments();
-					
-					int distance = 0, distance2 = 0;
-					for(int i = 0; i < arguments.size(); i++) {
-						distance += actualArguments.indexOf(arguments.get(i)) - i;
-					}
-					
-					for(int i = 0; i < arguments2.size(); i++) {
-						distance2 += actualArguments.indexOf(arguments2.get(i)) - i;
-					}
-					
-					return Integer.compare(distance, distance2);
-				}
-			}
-			
-			return 0;
-		}
-	};
+	public static final Logger LOG = JDALogger.getLog(CommandListener.class);
 	
 	public final BiConsumer<CommandEvent, EnumSet<Permission>> defaultMissingPermissionsFunction = (event, permissions) -> {
 		StringBuilder missingPermissions = new StringBuilder();
@@ -235,9 +84,7 @@ public class CommandListener implements EventListener {
 			.append("```");
 		
 		if(!event.getGuild().getSelfMember().hasPermission(event.getTextChannel(), Permission.MESSAGE_WRITE)) {
-			event.getAuthor().openPrivateChannel().queue(channel -> {
-				channel.sendMessage(message).queue();
-			});
+			event.getAuthor().openPrivateChannel().queue(channel -> channel.sendMessage(message).queue());
 		}else{
 			event.getChannel().sendMessage(message).queue();
 		}
@@ -279,23 +126,7 @@ public class CommandListener implements EventListener {
 		event.reply("NSFW commands are not allowed in non-NSFW channels!").queue();
 	};
 	
-	public final TriConsumer<Message, String, List<Failure>> defaultHelpFunction = (message, prefix, failures) -> {
-		if(message.getChannelType().isGuild()) {
-			Member bot = message.getGuild().getSelfMember();
-			
-			if(!bot.hasPermission(Permission.MESSAGE_WRITE)) {
-				message.getAuthor().openPrivateChannel().queue(channel -> {
-					channel.sendMessage("Missing permission **" + Permission.MESSAGE_WRITE.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
-				});
-				
-				return;
-			}else if(!bot.hasPermission(Permission.MESSAGE_EMBED_LINKS)) {
-				message.getChannel().sendMessage("Missing permission **" + Permission.MESSAGE_EMBED_LINKS.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
-				
-				return;
-			}
-		}
-		
+	protected List<ICommand> getCommands(List<Failure> failures) {
 		List<ICommand> commands = failures.stream()
 			.filter(failure -> !(failure.getReason() instanceof PassiveCommandException))
 			.map(failure -> {
@@ -323,6 +154,12 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
+		return commands;
+	}
+	
+	public final TriConsumer<Message, String, List<Failure>> defaultMessageParseFailureFunction = (message, prefix, failures) -> {		
+		List<ICommand> commands = this.getCommands(failures);
+		
 		if(commands.size() == 1) {
 			Failure failure = failures.stream()
 				.filter(f -> {
@@ -339,6 +176,26 @@ public class CommandListener implements EventListener {
 				IArgument<?> argument = parseException.getArgument();
 				String value = parseException.getValue();
 				
+				/* 
+				 * TODO: Need a better way to check permissions, 
+				 * alternatively just ignore permissions and let the user handle it
+				 */
+				if(message.getChannelType().isGuild()) {
+					Member bot = message.getGuild().getSelfMember();
+					
+					if(!bot.hasPermission(Permission.MESSAGE_WRITE)) {
+						message.getAuthor().openPrivateChannel().queue(channel -> {
+							channel.sendMessage("Missing permission **" + Permission.MESSAGE_WRITE.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
+						});
+						
+						return;
+					}else if(!bot.hasPermission(Permission.MESSAGE_EMBED_LINKS)) {
+						message.getChannel().sendMessage("Missing permission **" + Permission.MESSAGE_EMBED_LINKS.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
+						
+						return;
+					}
+				}
+				
 				BiConsumer<Message, String> errorConsumer = argument.getErrorConsumer();
 				if(errorConsumer != null) {
 					errorConsumer.accept(message, value);
@@ -349,6 +206,42 @@ public class CommandListener implements EventListener {
 				if(this.errorManager.handle(argument, message, value)) {
 					return;
 				}
+			}
+		}
+		
+		/* 
+		 * Check whether or not any commands are left, 
+		 * I think this could happen if a passive command was found with no
+		 * sub-commands
+		 */
+		if(commands.size() > 0) {
+			commands = commands.stream()
+				.map(command -> new CommandTrigger(command.getCommandTrigger(), command))
+				.sorted(CommandTriggerComparator.INSTANCE)
+				.map(CommandTrigger::getCommand)
+				.collect(Collectors.toList());
+			
+			if(this.helpFunction != null) {
+				this.helpFunction.accept(message, prefix, commands);
+			}
+		}
+	};
+	
+	/* TODO: Failures or commands, failures give more control but are less user-friendly */
+	public final TriConsumer<Message, String, List<ICommand>> defaultHelpFunction = (message, prefix, commands) -> {
+		if(message.getChannelType().isGuild()) {
+			Member bot = message.getGuild().getSelfMember();
+			
+			if(!bot.hasPermission(Permission.MESSAGE_WRITE)) {
+				message.getAuthor().openPrivateChannel().queue(channel -> {
+					channel.sendMessage("Missing permission **" + Permission.MESSAGE_WRITE.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
+				});
+				
+				return;
+			}else if(!bot.hasPermission(Permission.MESSAGE_EMBED_LINKS)) {
+				message.getChannel().sendMessage("Missing permission **" + Permission.MESSAGE_EMBED_LINKS.getName() + "** in " + message.getChannel().getName() + ", " + message.getGuild().getName()).queue();
+				
+				return;
 			}
 		}
 		
@@ -422,14 +315,16 @@ public class CommandListener implements EventListener {
 	};
 	
 	public final BiPredicate<CommandEvent, ICommand> defaultNsfwCheck = (event, command) -> {
-		if(event.getChannelType().isGuild()) {
-			if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
-				if(this.nsfwFunction != null) {
-					this.nsfwFunction.accept(event);
-				}
-				
-				return false;
+		if(!event.getChannelType().isGuild()) {
+			return true;
+		}
+		
+		if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
+			if(this.nsfwFunction != null) {
+				this.nsfwFunction.accept(event);
 			}
+			
+			return false;
 		}
 		
 		return true;
@@ -441,13 +336,15 @@ public class CommandListener implements EventListener {
 	
 	protected BiConsumer<CommandEvent, ICooldown> cooldownFunction = this.defaultCooldownFunction;
 	protected Consumer<CommandEvent> nsfwFunction = this.defaultNsfwFunction;
-	protected TriConsumer<Message, String, List<Failure>> helpFunction = this.defaultHelpFunction;
+	protected TriConsumer<Message, String, List<ICommand>> helpFunction = this.defaultHelpFunction;
+	
+	protected TriConsumer<Message, String, List<Failure>> messageParseFailureFunction = this.defaultMessageParseFailureFunction;
 	
 	protected Set<Long> developers = new LinkedHashSet<>();
 	
 	protected Set<CommandStore> commandStores = new LinkedHashSet<>();
 	
-	protected Set<CommandEventListener> commandEventListeners = new LinkedHashSet<>();
+	protected Set<CommandEventListener> commandEventListeners = new CopyOnWriteArraySet<>();
 	
 	protected ExecutorService commandExecutor = Executors.newCachedThreadPool();
 	
@@ -458,6 +355,8 @@ public class CommandListener implements EventListener {
 	protected IErrorManager errorManager = new ErrorManagerImpl();
 	
 	protected ICommandParser commandParser = new CommandParserImpl();
+	
+	protected ICommandEventFactory commandEventFactory = new CommandEventFactoryImpl();
 	
 	protected Set<Predicate<Message>> preParseChecks = new LinkedHashSet<>();
 	protected Set<BiPredicate<CommandEvent, ICommand>> preExecuteChecks = new LinkedHashSet<>();
@@ -481,7 +380,10 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addCommandEventListener(CommandEventListener... commandEventListeners) {
+	@Nonnull
+	public CommandListener addCommandEventListener(@Nonnull CommandEventListener... commandEventListeners) {
+		Checks.noneNull(commandEventListeners, "commandEventListeners");
+		
 		for(CommandEventListener commandEventListener : commandEventListeners) {
 			if(!this.commandEventListeners.contains(commandEventListener)) {
 				this.commandEventListeners.add(commandEventListener);
@@ -498,7 +400,10 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener removeCommandEventListener(CommandEventListener... commandEventListeners) {
+	@Nonnull
+	public CommandListener removeCommandEventListener(@Nonnull CommandEventListener... commandEventListeners) {
+		Checks.noneNull(commandEventListeners, "commandEventListeners");
+		
 		for(CommandEventListener commandEventListener : commandEventListeners) {
 			this.commandEventListeners.remove(commandEventListener);
 		}
@@ -511,6 +416,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return an unmodifiable set of event listeners
 	 */
+	@Nonnull
 	public Set<CommandEventListener> getCommandEventListeners() {
 		return Collections.unmodifiableSet(this.commandEventListeners);
 	}
@@ -518,6 +424,7 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return a list of all registered commands, does not include developer ({@link ICommand#isDeveloperCommand()}) or hidden ({@link ICommand#isHidden()}) commands
 	 */
+	@Nonnull
 	public List<ICommand> getAllCommands() {
 		return this.getAllCommands(false, false);
 	}
@@ -528,6 +435,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return a list of all registered commands
 	 */
+	@Nonnull
 	public List<ICommand> getAllCommands(boolean includeDeveloper, boolean includeHidden) {
 		return this.getCommandStores().stream()
 			.map(CommandStore::getCommands)
@@ -543,10 +451,11 @@ public class CommandListener implements EventListener {
 	/**
 	 * @param message the event which will be used to verify the commands
 	 * 
-	 * @return a list of all registered commands verified ({@link ICommand#verify(Message, CommandListener)}) with the current event, 
+	 * @return a list of all registered commands verified ({@link ICommand#isAccessible(Message, CommandListener)}) with the current event, 
 	 * this does not include hidden ({@link ICommand#isHidden()}) commands
 	 */
-	public List<ICommand> getAllCommands(Message message) {
+	@Nonnull
+	public List<ICommand> getAllCommands(@Nonnull Message message) {
 		return this.getAllCommands(message, false);
 	}
 	
@@ -554,9 +463,10 @@ public class CommandListener implements EventListener {
 	 * @param message the event which will be used to verify the commands
 	 * @param includeHidden whether or not commands that match {@link ICommand#isHidden()} should be returned
 	 * 
-	 * @return a list of all registered commands verified ({@link ICommand#verify(Message, CommandListener)}) with the current event
+	 * @return a list of all registered commands verified ({@link ICommand#isAccessible(Message, CommandListener)}) with the current event
 	 */
-	public List<ICommand> getAllCommands(Message message, boolean includeHidden) {
+	@Nonnull
+	public List<ICommand> getAllCommands(@Nonnull Message message, boolean includeHidden) {
 		Checks.notNull(message, "message");
 		
 		return this.getCommandStores().stream()
@@ -566,7 +476,7 @@ public class CommandListener implements EventListener {
 			.flatMap(List::stream)
 			.filter(command -> !command.isPassive())
 			.filter(command -> !(!includeHidden && command.isHidden()))
-			.filter(command -> command.verify(message, this))
+			.filter(command -> command.isAccessible(message, this))
 			.collect(Collectors.toList());
 	}
 	
@@ -575,8 +485,9 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the registered command instance of the provided class
 	 */
+	@Nullable
 	@SuppressWarnings("unchecked")
-	public <T extends ICommand> T getCommand(Class<T> commandClass) {
+	public <T extends ICommand> T getCommand(@Nonnull Class<T> commandClass) {
 		Checks.notNull(commandClass, "commandClass");
 		
 		return (T) this.getCommandStores().stream()
@@ -594,7 +505,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addCommandStores(CommandStore... commandStores) {
+	@Nonnull
+	public CommandListener addCommandStores(@Nonnull CommandStore... commandStores) {
 		Checks.noneNull(commandStores, "commandStores");
 		
 		for(CommandStore commandStore : commandStores) {
@@ -613,7 +525,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener removeCommandStores(CommandStore... commandStores) {
+	@Nonnull
+	public CommandListener removeCommandStores(@Nonnull CommandStore... commandStores) {
 		Checks.noneNull(commandStores, "commandStores");
 		
 		for(CommandStore commandStore : commandStores) {
@@ -626,6 +539,7 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return an unmodifiable set of command stores
 	 */
+	@Nonnull
 	public Set<CommandStore> getCommandStores() {
 		return Collections.unmodifiableSet(this.commandStores);
 	}
@@ -635,8 +549,9 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setDefaultPrefixes(String... prefixes) {
-		Checks.notNull(prefixes, "prefixes");
+	@Nonnull
+	public CommandListener setDefaultPrefixes(@Nonnull String... prefixes) {
+		Checks.noneNull(prefixes, "prefixes");
 		
 		/* 
 		 * From the longest prefix to the shortest so that if the bot for instance has two prefixes one being "hello" 
@@ -654,6 +569,8 @@ public class CommandListener implements EventListener {
 	 * @return a list of default prefixes which will be checked for when the bot receives a Message, 
 	 * additionally the mention of the bot is by default a prefix <b>(not included in this list)</b>
 	 */
+	
+	@Nonnull
 	public List<String> getDefaultPrefixes() {
 		return Collections.unmodifiableList(this.defaultPrefixes);
 	}
@@ -665,6 +582,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setAllowMentionPrefix(boolean allowMentionPrefix) {
 		this.allowMentionPrefix = allowMentionPrefix;
 		
@@ -683,6 +601,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setFilterStackTrace(boolean filter) {
 		this.filterStackTrace = filter;
 		
@@ -703,7 +622,10 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addDevelopers(long... ids) {
+	@Nonnull
+	public CommandListener addDevelopers(@Nonnull long... ids) {
+		Checks.notNull(ids, "ids");
+		
 		for(long id : ids) {
 			this.developers.add(id);
 		}
@@ -718,7 +640,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addDevelopers(String... ids) {
+	@Nonnull
+	public CommandListener addDevelopers(@Nonnull String... ids) {
 		Checks.notNull(ids, "ids");
 		
 		long[] longIds = new long[ids.length];
@@ -738,7 +661,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addDevelopers(ISnowflake... ids) {
+	@Nonnull
+	public CommandListener addDevelopers(@Nonnull ISnowflake... ids) {
 		Checks.noneNull(ids, "ids");
 		
 		for(ISnowflake id : ids) {
@@ -755,7 +679,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener removeDevelopers(long... ids) {
+	@Nonnull
+	public CommandListener removeDevelopers(@Nonnull long... ids) {
 		for(long id : ids) {
 			this.developers.remove(id);
 		}
@@ -770,7 +695,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener removeDevelopers(ISnowflake... ids) {
+	@Nonnull
+	public CommandListener removeDevelopers(@Nonnull ISnowflake... ids) {
 		Checks.noneNull(ids, "ids");
 		
 		for(ISnowflake id : ids) {
@@ -787,7 +713,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener removeDevelopers(String... ids) {
+	@Nonnull
+	public CommandListener removeDevelopers(@Nonnull String... ids) {
 		Checks.notNull(ids, "ids");
 		
 		long[] longIds = new long[ids.length];
@@ -801,8 +728,9 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * @return the developers which should be checked for in {@link ICommand#verify(Message, CommandListener)} if the command has {@link ICommand#isDeveloperCommand()}
+	 * @return the developers which should be checked for in {@link ICommand#isAccessible(Message, CommandListener)} if the command has {@link ICommand#isDeveloperCommand()}
 	 */
+	@Nonnull
 	public Set<Long> getDevelopers() {
 		return Collections.unmodifiableSet(this.developers);
 	}
@@ -817,7 +745,8 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return whether or not the provided id is the id of a developer
 	 */
-	public boolean isDeveloper(String id) {
+	@Nonnull
+	public boolean isDeveloper(@Nonnull String id) {
 		Checks.isSnowflake(id);
 		
 		return this.developers.contains(Long.valueOf(id));
@@ -826,7 +755,10 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return whether or not the provided id (as a Snowflake) is the id of a developer
 	 */
-	public boolean isDeveloper(ISnowflake id) {
+	@Nonnull
+	public boolean isDeveloper(@Nonnull ISnowflake id) {
+		Checks.notNull(id, "id");
+		
 		return this.developers.contains(id.getIdLong());
 	}
 	
@@ -838,6 +770,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @see #getPrefixes(Message)
 	 */
+	@Nonnull
 	public CommandListener setPrefixesFunction(@Nullable Function<Message, List<String>> function) {
 		this.prefixFunction = function;
 		
@@ -861,7 +794,10 @@ public class CommandListener implements EventListener {
 	 * if a function was not set through {@link #setPrefixesFunction(Function)}
 	 * the default function, {@link #getDefaultPrefixes()}, will instead be used
 	 */
-	public List<String> getPrefixes(Message message) {
+	@Nonnull
+	public List<String> getPrefixes(@Nonnull Message message) {
+		Checks.notNull(message, "message");
+		
 		if(this.prefixFunction != null) {
 			List<String> prefixes = this.prefixFunction.apply(message);
 			
@@ -884,7 +820,7 @@ public class CommandListener implements EventListener {
 				/* Make this unmodifiable for consistency */
 				return Collections.unmodifiableList(prefixes);
 			}else{
-				System.err.println("The prefix function returned a null object, returning the default prefixes instead");
+				LOG.warn("The prefix function returned a null object, returning the default prefixes instead");
 			}
 		}
 		
@@ -901,6 +837,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setMissingPermissionExceptionFunction(@Nullable BiConsumer<CommandEvent, Permission> consumer) {
 		this.missingPermissionExceptionFunction = consumer;
 		
@@ -927,6 +864,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setMissingPermissionFunction(@Nullable BiConsumer<CommandEvent, EnumSet<Permission>> consumer) {
 		this.missingPermissionsFunction = consumer;
 		
@@ -953,6 +891,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setMissingAuthorPermissionFunction(@Nullable BiConsumer<CommandEvent, EnumSet<Permission>> consumer) {
 		this.missingAuthorPermissionFunction = consumer;
 		
@@ -978,6 +917,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setCooldownFunction(@Nullable BiConsumer<CommandEvent, ICooldown> consumer) {
 		this.cooldownFunction = consumer;
 		
@@ -1002,6 +942,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener setNSFWFunction(@Nullable Consumer<CommandEvent> consumer) {
 		this.nsfwFunction = consumer;
 		
@@ -1019,16 +960,17 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * @param consumer the function that will be called when a command had the wrong arguments.
+	 * @param consumer the function that will be called when a message could not be parsed correctly
 	 * <br><br>
 	 * <b>Parameter type definitions:</b>
 	 * <br><b>Message</b> - The message that triggered this
 	 * <br><b>String</b> - The prefix used to trigger this command
-	 * <br><b>List&#60;Failure&#62;</b> - A list of all failures which happened throughout the parsing of the message
+	 * <br><b>List&#60;ICommand&#62;</b> - A list of all commands which could not be parsed correctly throughout the parsing of the message
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setHelpFunction(@Nullable TriConsumer<Message, String, List<Failure>> consumer) {
+	@Nonnull
+	public CommandListener setHelpFunction(@Nullable TriConsumer<Message, String, List<ICommand>> consumer) {
 		this.helpFunction = consumer;
 		
 		return this;
@@ -1040,7 +982,34 @@ public class CommandListener implements EventListener {
 	 * @see #setHelpFunction(TriConsumer)
 	 */
 	@Nullable
-	public TriConsumer<Message, String, List<Failure>> getHelpFunction() {
+	public TriConsumer<Message, String, List<ICommand>> getHelpFunction() {
+		return this.helpFunction;
+	}
+	
+	/**
+	 * @param consumer the function that will be called when a message could not be parsed correctly
+	 * <br><br>
+	 * <b>Parameter type definitions:</b>
+	 * <br><b>Message</b> - The message that triggered this
+	 * <br><b>String</b> - The prefix used to trigger this command
+	 * <br><b>List&#60;Failure&#62;</b> - A list of all failures which happened throughout the parsing of the message
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	@Nonnull
+	public CommandListener setMessageParseFailureFunction(@Nullable TriConsumer<Message, String, List<Failure>> consumer) {
+		this.messageParseFailureFunction = consumer;
+		
+		return this;
+	}
+	
+	/**
+	 * @return the current message parse failure function
+	 * 
+	 * @see #setMessageParseFailureFunction(TriConsumer)
+	 */
+	@Nullable
+	public TriConsumer<Message, String, List<ICommand>> getMessageParseFailureFunction() {
 		return this.helpFunction;
 	}
 	
@@ -1051,7 +1020,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setCommandExecutor(ExecutorService executorService) {
+	public CommandListener setCommandExecutor(@Nonnull ExecutorService executorService) {
 		Checks.notNull(executorService, "executorService");
 		
 		this.commandExecutor = executorService;
@@ -1073,7 +1042,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setCooldownManager(ICooldownManager cooldownManager) {
+	@Nonnull
+	public CommandListener setCooldownManager(@Nonnull ICooldownManager cooldownManager) {
 		Checks.notNull(cooldownManager, "cooldownManager");
 		
 		this.cooldownManager = cooldownManager;
@@ -1084,6 +1054,7 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return the {@link ICooldownManager} which is handling the command cooldowns
 	 */
+	@Nonnull
 	public ICooldownManager getCoooldownManager() {
 		return this.cooldownManager;
 	}
@@ -1096,7 +1067,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setReturnManager(IReturnManager returnManager) {
+	@Nonnull
+	public CommandListener setReturnManager(@Nonnull IReturnManager returnManager) {
 		Checks.notNull(returnManager, "returnManager");
 		
 		this.returnManager = returnManager;
@@ -1108,6 +1080,7 @@ public class CommandListener implements EventListener {
 	 * @return the {@link IReturnManager} which will be used to handle what
 	 * the command returns
 	 */
+	@Nonnull
 	public IReturnManager getReturnManager() {
 		return this.returnManager;
 	}
@@ -1120,7 +1093,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setErrorManager(IErrorManager errorManager) {
+	@Nonnull
+	public CommandListener setErrorManager(@Nonnull IErrorManager errorManager) {
 		Checks.notNull(errorManager, "errorManager");
 		
 		this.errorManager = errorManager;
@@ -1132,19 +1106,21 @@ public class CommandListener implements EventListener {
 	 * @return the {@link IErrorManager} which will be used to handle 
 	 * what happens when an argument is incorrectly parsed
 	 */
+	@Nonnull
 	public IErrorManager getErrorManager() {
 		return this.errorManager;
 	}
 	
 	/**
 	 * Set the command parser which will be used to parse the commands 
-	 * when {@link #parse(Message)} is called
+	 * when {@link #handle(Message)} is called
 	 * 
 	 * @param commandParser the command parser
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener setCommandParser(ICommandParser commandParser) {
+	@Nonnull
+	public CommandListener setCommandParser(@Nonnull ICommandParser commandParser) {
 		Checks.notNull(commandParser, "commandParser");
 		
 		this.commandParser = commandParser;
@@ -1154,10 +1130,37 @@ public class CommandListener implements EventListener {
 	
 	/**
 	 * @return the {@link ICommandParser} which will be used to parse commands
-	 * when {@link #parse(Message)} is called
+	 * when {@link #handle(Message)} is called
 	 */
+	@Nonnull
 	public ICommandParser getCommandParser() {
 		return this.commandParser;
+	}
+	
+	/**
+	 * Set the {@link CommandEvent} factory which will be used to create
+	 * the CommandEvent for the {@link ICommandParser}
+	 * 
+	 * @param commandEventFactory the {@link CommandEvent} factory
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	@Nonnull
+	public CommandListener setCommandEventFactory(@Nonnull ICommandEventFactory commandEventFactory) {
+		Checks.notNull(commandEventFactory, "commandEventFactory");
+		
+		this.commandEventFactory = commandEventFactory;
+		
+		return this;
+	}
+	
+	/**
+	 * @return the {@link ICommandEventFactory} which will be used to create
+	 * the CommandEvent for the {@link ICommandParser}
+	 */
+	@Nonnull
+	public ICommandEventFactory getCommandEventFactory() {
+		return this.commandEventFactory;
 	}
 	
 	/**
@@ -1168,7 +1171,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addPreParseCheck(Predicate<Message> predicate) {
+	@Nonnull
+	public CommandListener addPreParseCheck(@Nonnull Predicate<Message> predicate) {
 		Checks.notNull(predicate, "predicate");
 		
 		this.preParseChecks.add(predicate);
@@ -1185,6 +1189,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @see #addPreParseCheck(Predicate)
 	 */
+	@Nonnull
 	public CommandListener removePreParseCheck(@Nullable Predicate<Message> predicate) {
 		this.preParseChecks.remove(predicate);
 		
@@ -1194,6 +1199,7 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return an unmodifiable set of all the registered pre-parse checks
 	 */
+	@Nonnull
 	public Set<Predicate<Message>> getPreParseChecks() {
 		return Collections.unmodifiableSet(this.preParseChecks);
 	}
@@ -1204,7 +1210,8 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
-	public CommandListener addPreExecuteCheck(BiPredicate<CommandEvent, ICommand> predicate) {
+	@Nonnull
+	public CommandListener addPreExecuteCheck(@Nonnull BiPredicate<CommandEvent, ICommand> predicate) {
 		Checks.notNull(predicate, "predicate");
 		
 		this.preExecuteChecks.add(predicate);
@@ -1221,6 +1228,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @see #addPreExecuteCheck(BiPredicate)
 	 */
+	@Nonnull
 	public CommandListener removePreExecuteCheck(@Nullable BiPredicate<CommandEvent, ICommand> predicate) {
 		this.preExecuteChecks.remove(predicate);
 		
@@ -1232,6 +1240,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener removeDefaultPreExecuteChecks() {
 		return this.removePreExecuteCheck(this.defaultBotPermissionCheck)
 			.removePreExecuteCheck(this.defaultAuthorPermissionCheck)
@@ -1243,6 +1252,7 @@ public class CommandListener implements EventListener {
 	 * 
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandListener addDefaultPreExecuteChecks() {
 		return this.addPreExecuteCheck(this.defaultBotPermissionCheck)
 			.addPreExecuteCheck(this.defaultAuthorPermissionCheck)
@@ -1252,13 +1262,15 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return an unmodifiable set of all the registered pre-execute checks
 	 */
+	@Nonnull
 	public Set<BiPredicate<CommandEvent, ICommand>> getPreExecuteChecks() {
 		return Collections.unmodifiableSet(this.preExecuteChecks);
 	}
 	
+	@Override
 	public void onEvent(GenericEvent event) {
 		if(event instanceof MessageReceivedEvent) {
-			this.parse(((MessageReceivedEvent) event).getMessage());
+			this.handle(((MessageReceivedEvent) event).getMessage());
 		}
 	}
 	
@@ -1282,37 +1294,70 @@ public class CommandListener implements EventListener {
 		}
 	}
 	
-	protected String extractPrefix(Message message) {
+	/**
+	 * Get the prefix for a message
+	 * 
+	 * @param message the message to get the prefix from
+	 * 
+	 * @return the prefix extracted from the provided message
+	 */
+	@Nullable
+	protected String extractPrefix(@Nonnull Message message) {
+		Checks.notNull(message, "message");
+		
 		String contentRaw = message.getContentRaw();
-		String prefix = null;
 		
 		/* Needs to work for both non-nicked mentions and nicked mentions */
 		long botId = message.getJDA().getSelfUser().getIdLong();
-		if(this.allowMentionPrefix && (contentRaw.startsWith("<@" + botId + "> ") || contentRaw.startsWith("<@!" + botId + "> "))) {
-			prefix = contentRaw.substring(0, contentRaw.indexOf(" ") + 1);
-		}else{
-			for(String p : this.getPrefixes(message)) {
-				if(contentRaw.startsWith(p)) {
-					prefix = p;
-					
-					break;
-				}
+		if(this.allowMentionPrefix) {
+			if(contentRaw.startsWith("<@" + botId + "> ") || contentRaw.startsWith("<@!" + botId + "> ")) {
+				return contentRaw.substring(0, contentRaw.indexOf(" ") + 1);
 			}
 		}
 		
-		return prefix;
+		for(String prefix : this.getPrefixes(message)) {
+			if(contentRaw.startsWith(prefix)) {
+				return prefix;
+			}
+		}
+		
+		return null;
 	}
 	
-	protected Map<Object, Object> orderingKeys = new HashMap<Object, Object>();
+	protected Map<Object, Object> orderingKeys = new ConcurrentHashMap<>();
+	
+	protected static class QueuedCommand {
+		
+		public QueuedCommand(ICommand command, CommandEvent event, long timeStarted, Object[] arguments) {
+			this.command = command;
+			this.event = event;
+			this.timeStarted = timeStarted;
+			this.arguments = arguments;
+		}
+		
+		public ICommand command;
+		
+		public CommandEvent event;
+		
+		public long timeStarted;
+		
+		public Object[] arguments;
+		
+	}
+	
+	protected Map<Object, BlockingQueue<QueuedCommand>> queuedCommands = Collections.synchronizedMap(new HashMap<>());
 	
 	/**
-	 * Parse a message
+	 * Parse the message and execute the command (if any)
 	 * 
 	 * @param message the message to parse
 	 * 
 	 * @return the {@link CommandEvent} which was parsed, may be null if no command could be found
 	 */
-	public CommandEvent parse(Message message) {
+	@Nullable
+	public CommandEvent handle(@Nonnull Message message) {
+		Checks.notNull(message, "message");
+		
 		long timeStarted = System.nanoTime();
 		
 		for(Predicate<Message> predicate : this.preParseChecks) {
@@ -1320,8 +1365,8 @@ public class CommandListener implements EventListener {
 				if(!predicate.test(message)) {
 					return null;
 				}
-			}catch(Exception e) {
-				new IllegalStateException("Failed on pre-parse check", e).printStackTrace();
+			}catch(Throwable e) {
+				LOG.error("One of the pre-parse checks had an uncaught exception", e);
 				
 				return null;
 			}
@@ -1337,8 +1382,8 @@ public class CommandListener implements EventListener {
 		for(CommandEventListener listener : this.commandEventListeners) {
 			try {
 				listener.onPrefixedMessage(message, prefix);
-			}catch(Exception e) {
-				e.printStackTrace();
+			}catch(Throwable e) {
+				LOG.error("One of the CommandEventListeners had an uncaught exception", e);
 			}
 		}
 		
@@ -1358,20 +1403,20 @@ public class CommandListener implements EventListener {
 		 * An option to have the commands be immutable and that way improve
 		 * performance should be added.
 		 */
-		List<Pair<String, ICommand>> commands = this.getCommandStores().stream()
+		List<CommandTrigger> commands = this.getCommandStores().stream()
 			.map(CommandStore::getCommands)
 			.flatMap(Set::stream)
-			.map(command -> command.getAllCommandsRecursiveWithTriggers(message, ""))
+			.map(command -> command.getAllCommandsRecursiveWithTriggers(message))
 			.flatMap(List::stream)
-			.filter(pair -> pair.getRight().verify(message, this))
-			.sorted(CommandListener.COMMAND_COMPARATOR)
+			.filter(commandTrigger -> commandTrigger.getCommand().isAccessible(message, this))
+			.sorted(CommandTriggerComparator.INSTANCE)
 			.collect(Collectors.toList());
 		
-		for(Pair<String, ICommand> pair : commands) {
-			ICommand command = pair.getRight();
+		for(CommandTrigger commandTrigger : commands) {
+			ICommand command = commandTrigger.getCommand();
 			
 			String contentToParse = contentRaw;
-			String trigger = pair.getLeft();
+			String trigger = commandTrigger.getTrigger();
 			
 			/* 
 			 * TODO: Should the checking of whether it is the correct command trigger or not (as well as if it starts with a space)
@@ -1404,7 +1449,6 @@ public class CommandListener implements EventListener {
 			CommandEvent commandEvent;
 			try {
 				commandEvent = this.commandParser.parse(this, command, message, prefix, trigger, contentToParse, timeStarted);
-				
 				if(commandEvent == null) {
 					continue;
 				}
@@ -1414,51 +1458,21 @@ public class CommandListener implements EventListener {
 				continue;
 			}
 			
-			Object[] arguments = commandEvent.getArguments();
-			
-			if(command.isExecuteAsync()) {
-				this.commandExecutor.submit(() -> {
-					Object orderingKey = command.getAsyncOrderingKey(commandEvent);
-					if(orderingKey != null) {
-						if(orderingKey.getClass().isPrimitive() || orderingKey instanceof String) {
-							Object key = this.orderingKeys.get(orderingKey);
-							if(key == null) {
-								key = new Object();
-								
-								this.orderingKeys.put(orderingKey, key);
-							}
-							
-							orderingKey = key;
-						}
-						
-						/* TODO: Implement a sort of OrderedExecutor, similar to 
-						 * https://github.com/sedmelluq/lavaplayer/blob/master/main/src/main/java/com/sedmelluq/discord/lavaplayer/tools/OrderedExecutor.java 
-						 * to prevent the need of creating a new task for every command which has to wait
-						 */
-						synchronized(orderingKey) {
-							this.execute(command, commandEvent, timeStarted, arguments);
-						}
-					}else{
-						this.execute(command, commandEvent, timeStarted, arguments);
-					}
-				});
-			}else{
-				this.execute(command, commandEvent, timeStarted, arguments);
-			}
+			this.queueCommand(command, commandEvent, timeStarted, commandEvent.getArguments());
 			
 			return commandEvent;
 		}
 		
 		if(possibleCommands.size() > 0) {
-			if(this.helpFunction != null) {
-				this.helpFunction.accept(message, prefix, possibleCommands);
+			if(this.messageParseFailureFunction != null) {
+				this.messageParseFailureFunction.accept(message, prefix, possibleCommands);
 			}
 		}else{
 			for(CommandEventListener listener : this.commandEventListeners) {
 				try {
 					listener.onUnknownCommand(message, prefix);
-				}catch(Exception e) {
-					e.printStackTrace();
+				}catch(Throwable e) {
+					LOG.error("One of the CommandEventListeners had an uncaught exception", e);
 				}
 			}
 		}
@@ -1467,14 +1481,80 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * Execute a command, used internally. Use at your own risk
+	 * <b><font color="red">Used internally, use at your own risk</font></b>
+	 * <br><br>
+	 * Queue a command
+	 * <br><br>
+	 * This is similar to {@link #executeCommand(ICommand, CommandEvent, long, Object...)} but it checks if
+	 * the command is async and queues it if it is, otherwise it functions the same way.
 	 * 
 	 * @param command the command to execute
 	 * @param event the context
 	 * @param timeStarted the time as {@link System#nanoTime()} when this started parsing
 	 * @param arguments the arguments to execute the provided command with
 	 */
-	public void execute(ICommand command, CommandEvent event, long timeStarted, Object... arguments) {
+	public void queueCommand(@Nonnull ICommand command, @Nonnull CommandEvent event, long timeStarted, @Nonnull Object... arguments) {
+		Checks.notNull(command, "command");
+		Checks.notNull(event, "event");
+		Checks.notNull(arguments, "arguments");
+		
+		if(!command.isExecuteAsync()) {
+			this.executeCommand(command, event, timeStarted, arguments);
+			
+			return;
+		}
+		
+		Object orderingKey = command.getAsyncOrderingKey(event);
+		if(orderingKey == null) {
+			this.commandExecutor.execute(() -> this.executeCommand(command, event, timeStarted, arguments));
+			
+			return;
+		}
+		
+		if(orderingKey.getClass().isPrimitive() || orderingKey instanceof String) {
+			orderingKey = this.orderingKeys.computeIfAbsent(orderingKey, key -> new Object());
+		}
+		
+		Object finalKey = orderingKey;
+		synchronized(this.queuedCommands) {
+			boolean created = !this.queuedCommands.containsKey(finalKey);
+			
+			BlockingQueue<QueuedCommand> queue = this.queuedCommands.computeIfAbsent(orderingKey, key -> new LinkedBlockingQueue<>());
+			queue.add(new QueuedCommand(command, event, timeStarted, arguments));
+			
+			if(!created) {
+				return;
+			}
+			
+			this.commandExecutor.execute(() -> {
+				QueuedCommand queuedCommand;
+				while((queuedCommand = queue.poll()) != null) {
+					this.executeCommand(queuedCommand.command, queuedCommand.event, queuedCommand.timeStarted, queuedCommand.arguments);
+				}
+				
+				this.queuedCommands.remove(finalKey);
+			});
+		}
+	}
+	
+	/**
+	 * <b><font color="red">Used internally, use at your own risk</font></b>
+	 * <br><br>
+	 * Execute a command
+	 * <br><br>
+	 * Exceptions caused by the command is not thrown by this method, they are handled
+	 * the same way as the command being executed normally.
+	 * 
+	 * @param command the command to execute
+	 * @param event the context
+	 * @param timeStarted the time as {@link System#nanoTime()} when this started parsing
+	 * @param arguments the arguments to execute the provided command with
+	 */
+	public void executeCommand(@Nonnull ICommand command, @Nonnull CommandEvent event, long timeStarted, @Nonnull Object... arguments) {
+		Checks.notNull(command, "command");
+		Checks.notNull(event, "event");
+		Checks.notNull(arguments, "arguments");
+		
 		ICommand actualCommand;
 		if(command instanceof DummyCommand) {
 			actualCommand = ((DummyCommand) command).getActualCommand();
@@ -1487,17 +1567,17 @@ public class CommandListener implements EventListener {
 				if(!predicate.test(event, actualCommand)) {
 					return;
 				}
-			}catch(Exception e) {
+			}catch(Throwable e) {
 				for(CommandEventListener listener : this.commandEventListeners) {
 					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 					try {
 						listener.onCommandExecutionException(command, event, e);
-					}catch(Exception e1) {
-						e1.printStackTrace();
+					}catch(Throwable e1) {
+						LOG.error("One of the CommandEventListeners had an uncaught exception", e1);
 					}
 				}
 				
-				new CommandExecutionException(event, e).printStackTrace();
+				LOG.error("Attempted to execute command (" + event.getCommand().getCommandTrigger() + ") with arguments " + Arrays.deepToString(event.getArguments()) + " but failed", e);
 				
 				/* Better to return if a pre-execute check fails than to continue to the command */
 				return;
@@ -1526,8 +1606,8 @@ public class CommandListener implements EventListener {
 				/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 				try {
 					listener.onCommandExecuted(command, event);
-				}catch(Exception e) {
-					e.printStackTrace();
+				}catch(Throwable e) {
+					LOG.error("One of the CommandEventListeners had an uncaught exception", e);
 				}
 			}
 		}catch(Throwable e) {
@@ -1541,7 +1621,7 @@ public class CommandListener implements EventListener {
 			}
 			
 			if(e instanceof PermissionException) {
-				System.err.println("Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
+				LOG.warn("Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
 					", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
 					", error message (" + e.getMessage() + ")");
 				
@@ -1549,8 +1629,8 @@ public class CommandListener implements EventListener {
 					/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 					try {
 						listener.onCommandMissingPermissions(command, event, (PermissionException) e);
-					}catch(Exception e1) {
-						e1.printStackTrace();
+					}catch(Throwable e1) {
+						LOG.error("One of the CommandEventListeners had an uncaught exception", e1);
 					}
 				}
 				
@@ -1565,16 +1645,16 @@ public class CommandListener implements EventListener {
 				/* Wrapped in a try catch because we don't want the execution of this to fail just because we couldn't rely on an event handler not to throw an exception */
 				try {
 					listener.onCommandExecutionException(command, event, e);
-				}catch(Exception e1) {
-					e1.printStackTrace();
+				}catch(Throwable e1) {
+					LOG.error("One of the CommandEventListeners had an uncaught exception", e1);
 				}
 			}
 			
-			new CommandExecutionException(event, e).printStackTrace();
+			LOG.error("Attempted to execute command (" + event.getCommand().getCommandTrigger() + ") with arguments " + Arrays.deepToString(event.getArguments()) + " but failed", e);
 			
 			return;
 		}
 		
-		System.out.println("Executed command (" + event.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
+		LOG.info("Executed command (" + event.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
 	}
 }

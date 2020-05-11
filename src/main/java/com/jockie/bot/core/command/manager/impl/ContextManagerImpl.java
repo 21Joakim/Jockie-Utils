@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.manager.IContextManager;
@@ -24,60 +25,59 @@ import net.dv8tion.jda.internal.entities.MemberImpl;
 import net.dv8tion.jda.internal.entities.PrivateChannelImpl;
 import net.dv8tion.jda.internal.entities.TextChannelImpl;
 import net.dv8tion.jda.internal.entities.UserImpl;
+import net.dv8tion.jda.internal.utils.Checks;
 
 public class ContextManagerImpl implements IContextManager {
 	
 	public ContextManagerImpl() {
-		/* FIXME: Unsure of how to implement this with this new system
-		Class<?> command = event.getCommand().getClass();
-		if(type.isAssignableFrom(command)) {
-			return event.getCommand();
-		}
-		*/
+		this.registerDefaultContext();
+	}
+	
+	public void registerDefaultContext() {
+		this.registerContext(CommandEvent.class, (event, type) -> event)
+			.setEnforcedContext(CommandEvent.class, true);
 		
-		this.registerContext(CommandEvent.class, (event, type) -> {
-			return event;
-		})._setEnforcedContext(CommandEvent.class, true);
+		this.registerContext(CommandListener.class, (event, type) -> event.getCommandListener());
 		
-		this.registerContext(CommandListener.class, (event, type) -> {
-			return event.getCommandListener();
-		});
+		this.registerContext(ChannelType.class, (event, type) -> event.getChannelType());
 		
-		this.registerContext(ChannelType.class, (event, type) -> {
-			return event.getChannelType();
-		});
+		this.registerContext(JDAImpl.class, (event, type) -> (JDAImpl) event.getJDA())
+			.setHandleInheritance(JDAImpl.class, true);
 		
-		this.registerContext(JDAImpl.class, (event, type) -> {
-			return (JDAImpl) event.getJDA();
-		}).setHandleInheritance(JDAImpl.class, true);
+		this.registerContext(UserImpl.class, (event, type) -> (UserImpl) event.getAuthor())
+			.setHandleInheritance(UserImpl.class, true);
 		
-		this.registerContext(UserImpl.class, (event, type) -> {
-			return (UserImpl) event.getAuthor();
-		}).setHandleInheritance(UserImpl.class, true);
+		this.registerContext(MessageChannel.class, (event, type) -> event.getChannel())
+			.setHandleInheritance(MessageChannel.class, true);
 		
-		this.registerContext(MessageChannel.class, (event, type) -> {
-			return event.getChannel();
-		}).setHandleInheritance(MessageChannel.class, true);
+		this.registerContext(Message.class, (event, type) -> event.getMessage())
+			.setHandleInheritance(Message.class, true);
 		
-		this.registerContext(Message.class, (event, type) -> {
-			return event.getMessage();
-		}).setHandleInheritance(Message.class, true);
+		this.registerContext(GuildImpl.class, (event, type) -> (GuildImpl) event.getGuild())
+			.setHandleInheritance(GuildImpl.class, true);
 		
-		this.registerContext(GuildImpl.class, (event, type) -> {
-			return (GuildImpl) event.getGuild();
-		}).setHandleInheritance(GuildImpl.class, true);
+		this.registerContext(TextChannelImpl.class, (event, type) -> (TextChannelImpl) event.getTextChannel())
+			.setHandleInheritance(TextChannelImpl.class, true);
 		
-		this.registerContext(TextChannelImpl.class, (event, type) -> {
-			return (TextChannelImpl) event.getTextChannel();
-		}).setHandleInheritance(TextChannelImpl.class, true);
+		this.registerContext(MemberImpl.class, (event, type) -> (MemberImpl) event.getMember())
+			.setHandleInheritance(MemberImpl.class, true);
 		
-		this.registerContext(MemberImpl.class, (event, type) -> {
-			return (MemberImpl) event.getMember();
-		}).setHandleInheritance(MemberImpl.class, true);
-		
-		this.registerContext(PrivateChannelImpl.class, (event, type) -> {
-			return (PrivateChannelImpl) event.getPrivateChannel();
-		}).setHandleInheritance(PrivateChannelImpl.class, true);
+		this.registerContext(PrivateChannelImpl.class, (event, type) -> (PrivateChannelImpl) event.getPrivateChannel())
+			.setHandleInheritance(PrivateChannelImpl.class, true);
+	}
+	
+	public void unregisterDefaultContext() {
+		this.unregisterContext(CommandEvent.class);
+		this.unregisterContext(CommandListener.class);
+		this.unregisterContext(ChannelType.class);
+		this.unregisterContext(JDAImpl.class);
+		this.unregisterContext(UserImpl.class);
+		this.unregisterContext(MessageChannel.class);
+		this.unregisterContext(Message.class);
+		this.unregisterContext(GuildImpl.class);
+		this.unregisterContext(TextChannelImpl.class);
+		this.unregisterContext(MemberImpl.class);
+		this.unregisterContext(PrivateChannelImpl.class);
 	}
 	
 	private Map<Type, ContextProvider<?>> contextProviders = new HashMap<>();
@@ -90,13 +90,30 @@ public class ContextManagerImpl implements IContextManager {
 		return (ContextProvider<T>) this.contextProviders.get(type);
 	}
 	
+	private static final ContextProvider<ICommand> COMMAND_CONTEXT_PROVIDER = new ContextProvider<>(ICommand.class);
+	
+	static {
+		COMMAND_CONTEXT_PROVIDER.setContextFunction((event, parameter, type) -> event.getCommand());
+	}
+	
+	/* TODO: This probably isn't the best solution to this */
+	@SuppressWarnings("unchecked")
+	private <T> ContextProvider<T> getContextProvider(CommandEvent event, Type type) {
+		if(type instanceof Class) {
+			if(CommandUtility.isInstanceOf(event.getCommand().getClass(), (Class<?>) type)) {
+				return (ContextProvider<T>) COMMAND_CONTEXT_PROVIDER;
+			}
+		}
+		
+		return this.getContextProvider(type);
+	}
+	
 	private ContextProvider<?> getInheritenceProvider(Type type) {
 		if(!(type instanceof Class<?>)) {
 			return null;
 		}
 		
 		Class<?> firstType = (Class<?>) type;
-		
 		for(ContextProvider<?> inheritenceProvider : this.handleInheritance) {
 			Class<?> secondType = (Class<?>) inheritenceProvider.getType();
 			
@@ -110,9 +127,8 @@ public class ContextManagerImpl implements IContextManager {
 	
 	@SuppressWarnings("unchecked")
 	private <T> T getContext(CommandEvent event, ContextProvider<T> provider, Type type, Parameter parameter) {
-		if(type == null && parameter == null) {
-			throw new IllegalStateException("Both Type and Parameter is null");
-		}
+		Checks.notNull(event, "event");
+		Checks.check(type != null || parameter != null, "Both type and paramter may not be null");
 		
 		if(type == null) {
 			type = parameter.getParameterizedType();
@@ -120,7 +136,7 @@ public class ContextManagerImpl implements IContextManager {
 		
 		boolean initialProvider = provider != null;
 		if(!initialProvider) {
-			provider = this.getContextProvider(type);
+			provider = this.getContextProvider(event, type);
 		}
 		
 		if(provider != null) {
@@ -150,6 +166,10 @@ public class ContextManagerImpl implements IContextManager {
 			}
 			
 			provider = (ContextProvider<T>) this.getInheritenceProvider(type);
+			if(provider == null) {
+				return null;
+			}
+			
 			this.inheritanceCache.put(type, provider.getType());
 			
 			if(provider != null) {
@@ -165,10 +185,14 @@ public class ContextManagerImpl implements IContextManager {
 	}
 	
 	public <T> T getContext(CommandEvent event, Parameter parameter) {
+		Checks.notNull(parameter, "parameter");
+		
 		return this.getContext(event, null, parameter.getParameterizedType(), parameter);
 	}
 	
 	public boolean isEnforcedContext(Type type) {
+		Checks.notNull(type, "type");
+		
 		ContextProvider<?> provider = this.getContextProvider(type);
 		if(provider != null) {
 			return provider.isEnforced();
@@ -177,7 +201,7 @@ public class ContextManagerImpl implements IContextManager {
 		return false;
 	}
 	
-	private ContextManagerImpl _setEnforcedContext(Type type, boolean enforced) {
+	public ContextManagerImpl setEnforcedContext(Type type, boolean enforced) {
 		ContextProvider<?> provider = this.getContextProvider(type);
 		if(provider == null) {
 			throw new IllegalArgumentException(type.getTypeName() + " is not a registered context");
@@ -188,11 +212,9 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public ContextManagerImpl setEnforcedContext(Type type, boolean enforced) {
-		throw new UnsupportedOperationException();
-	}
-	
 	public boolean isHandleInheritance(Type type) {
+		Checks.notNull(type, "type");
+		
 		ContextProvider<?> provider = this.getContextProvider(type);
 		if(provider != null) {
 			return provider.isHandleInheritence();
@@ -202,6 +224,8 @@ public class ContextManagerImpl implements IContextManager {
 	}
 	
 	public ContextManagerImpl setHandleInheritance(Type type, boolean handle) {
+		Checks.notNull(type, "type");
+		
 		if(!(type instanceof Class)) {
 			throw new UnsupportedOperationException("Only classes can handle inheritence currently");
 		}
@@ -230,12 +254,17 @@ public class ContextManagerImpl implements IContextManager {
 	}
 	
 	public ContextManagerImpl unregisterContext(Type type) {
+		Checks.notNull(type, "type");
+		
 		this.handleInheritance.remove(this.contextProviders.remove(type));
 		
 		return this;
 	}
 	
 	public <T> ContextManagerImpl registerContext(Type type, TriFunction<CommandEvent, Parameter, Type, T> function) {
+		Checks.notNull(type, "type");
+		Checks.notNull(function, "function");
+		
 		ContextProvider<T> provider = this.getContextProvider(type);
 		if(provider != null) {
 			provider.setContextFunction(function);
@@ -254,6 +283,9 @@ public class ContextManagerImpl implements IContextManager {
 	}
 	
 	public <T> ContextManagerImpl registerContext(Type type, BiFunction<CommandEvent, Type, T> function) {
+		Checks.notNull(type, "type");
+		Checks.notNull(function, "function");
+		
 		ContextProvider<T> provider = this.getContextProvider(type);
 		if(provider != null) {
 			provider.setContextFunction(function);

@@ -4,10 +4,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.category.ICategory;
@@ -17,6 +22,7 @@ import com.jockie.bot.core.cooldown.ICooldown.Scope;
 import com.jockie.bot.core.option.IOption;
 
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.internal.utils.Checks;
 
 public abstract class AbstractCommand implements ICommand {
 	
@@ -31,7 +37,9 @@ public abstract class AbstractCommand implements ICommand {
 	protected List<IArgument<?>> arguments = Collections.emptyList();
 	protected List<IOption<?>> options = Collections.emptyList();
 	
-	protected InvalidOptionPolicy invalidOptionPolicy = InvalidOptionPolicy.INCLUDE;
+	protected UnknownOptionPolicy invalidOptionPolicy = UnknownOptionPolicy.INCLUDE;
+	
+	protected DuplicateOptionPolicy duplicateOptionPolicy = DuplicateOptionPolicy.USE_LAST;
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
@@ -68,24 +76,30 @@ public abstract class AbstractCommand implements ICommand {
 	
 	protected boolean passive = false;
 	
+	protected Map<String, Object> properties = new HashMap<>();
+	
 	public AbstractCommand(String command) {
 		this.command = command;
 	}
 	
 	public AbstractCommand() {}
 	
+	@Override
 	public String getCommand() {
 		return this.command;
 	}
 	
+	@Override
 	public String getShortDescription() {
 		return this.shortDescription;
 	}
 	
+	@Override
 	public String getDescription() {
 		return this.description;
 	}
 	
+	@Override
 	public String getArgumentInfo() {
 		if(this.argumentInfo == null || this.argumentInfo.length() == 0) {
 			return ICommand.super.getArgumentInfo();
@@ -94,82 +108,107 @@ public abstract class AbstractCommand implements ICommand {
 		return this.argumentInfo;
 	}
 	
+	@Override
 	public List<String> getAliases() {
 		return Collections.unmodifiableList(this.aliases);
 	}
 	
+	@Override
 	public List<IArgument<?>> getArguments() {
 		return Collections.unmodifiableList(this.arguments);
 	}
 	
+	@Override
 	public List<IOption<?>> getOptions() {
 		return Collections.unmodifiableList(this.options);
 	}
 	
-	public InvalidOptionPolicy getInvalidOptionPolicy() {
+	@Override
+	public UnknownOptionPolicy getUnknownOptionPolicy() {
 		return this.invalidOptionPolicy;
 	}
 	
+	@Override
+	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
+		return this.duplicateOptionPolicy;
+	}
+	
+	@Override
 	public ContentOverflowPolicy getContentOverflowPolicy() {
 		return this.overflowPolicy;
 	}
 	
+	@Override
 	public EnumSet<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.allowedArgumentParsingTypes;
 	}
 	
+	@Override
 	public ArgumentTrimType getArgumentTrimType() {
 		return this.argumentTrimType;
 	}
 	
+	@Override
 	public Set<Permission> getBotDiscordPermissions() {
 		return Collections.unmodifiableSet(this.botDiscordPermissions);
 	}
 	
+	@Override
 	public Set<Permission> getAuthorDiscordPermissions() {
 		return Collections.unmodifiableSet(this.authorDiscordPermissions);
 	}
 	
+	@Override
 	public boolean isGuildTriggerable() {
 		return this.guildTriggerable;
 	}
 	
+	@Override
 	public boolean isPrivateTriggerable() {
 		return this.privateTriggerable;
 	}
 	
+	@Override
 	public boolean isCaseSensitive() {
 		return this.caseSensitive;
 	}
 	
+	@Override
 	public boolean isBotTriggerable() {
 		return this.botTriggerable;
 	}
 	
+	@Override
 	public boolean isDeveloperCommand() {
 		return this.developerCommand;
 	}
 	
+	@Override
 	public boolean isHidden() {
 		return this.hidden;
 	}
 	
+	@Override
 	public boolean isNSFW() {
 		return this.nsfw;
 	}
 	
+	@Override
 	public long getCooldownDuration() {
 		return this.cooldownDuration;
 	}
 	
+	@Override
 	public ICooldown.Scope getCooldownScope() {
 		return this.cooldownScope;
 	}
 	
+	@Override
 	public boolean isExecuteAsync() {
 		return this.executeAsync;
 	}
 	
+	@Override
 	public Object getAsyncOrderingKey(CommandEvent event) {
 		if(this.asyncOrderingKey != null) {
 			return this.asyncOrderingKey.apply(event);
@@ -178,41 +217,59 @@ public abstract class AbstractCommand implements ICommand {
 		return null;
 	}
 	
+	@Override
 	public ICommand getParent() {
 		return this.parent;
 	}
 	
+	@Override
 	public ICategory getCategory() {
 		return this.category;
 	}
 	
+	@Override
 	public boolean isPassive() {
 		return this.passive;
 	}
 	
+	@Override
 	public List<ICommand> getSubCommands() {
 		return this.subCommands;
 	}
 	
-	public AbstractCommand setCommand(String command) {
+	@SuppressWarnings("unchecked")
+	@Override
+	@Nullable
+	public <T> T getProperty(@Nonnull String name, @Nullable T defaultValue) {
+		Checks.notNull(name, "name");
+		
+		return (T) this.properties.getOrDefault(name, defaultValue);
+	}
+	
+	@Nonnull
+	public AbstractCommand setCommand(@Nullable String command) {
+		/* TODO: Can this be null? What happens if it is */
 		this.command = command;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setDeveloper(boolean developerCommand) {
 		this.developerCommand = developerCommand;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setBotTriggerable(boolean botTriggerable) {
 		this.botTriggerable = botTriggerable;
 		
 		return this;
 	}
 	
-	public AbstractCommand setBotDiscordPermissions(Permission... permissions) {
+	@Nonnull
+	public AbstractCommand setBotDiscordPermissions(@Nonnull Permission... permissions) {
 		this.botDiscordPermissions.clear();
 		
 		for(Permission type : permissions) {
@@ -222,7 +279,8 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
-	public AbstractCommand setAuthorDiscordPermissions(Permission... permissions) {
+	@Nonnull
+	public AbstractCommand setAuthorDiscordPermissions(@Nonnull Permission... permissions) {
 		this.authorDiscordPermissions.clear();
 		
 		for(Permission type : permissions) {
@@ -232,25 +290,31 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
-	public AbstractCommand setDescription(String description) {
+	@Nonnull
+	public AbstractCommand setDescription(@Nullable String description) {
 		this.description = description;
 		
 		return this;
 	}
 	
-	public AbstractCommand setShortDescription(String shortDescription) {
+	@Nonnull
+	public AbstractCommand setShortDescription(@Nullable String shortDescription) {
 		this.shortDescription = shortDescription;
 		
 		return this;
 	}
 	
-	public AbstractCommand setArgumentInfo(String argumentInfo) {
+	@Nonnull
+	public AbstractCommand setArgumentInfo(@Nullable String argumentInfo) {
 		this.argumentInfo = argumentInfo;
 		
 		return this;
 	}
 	
-	public AbstractCommand setAliases(String... aliases) {
+	@Nonnull
+	public AbstractCommand setAliases(@Nonnull String... aliases) {
+		Checks.noneNull(aliases, "aliases");
+		
 		/* 
 		 * From the longest alias to the shortest so that if the command for instance has two aliases one being "hello" 
 		 * and the other being "hello there" it would recognize that the command is "hello there" instead of it thinking that
@@ -263,31 +327,48 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
-	public AbstractCommand setArguments(IArgument<?>... arguments) {
+	@Nonnull
+	public AbstractCommand setArguments(@Nonnull IArgument<?>... arguments) {
+		Checks.noneNull(arguments, "arguments");
 		this.arguments = List.of(arguments);
 		
 		return this;
 	}
 	
-	public AbstractCommand setOptions(IOption<?>... options) {
+	@Nonnull
+	public AbstractCommand setOptions(@Nonnull IOption<?>... options) {
+		Checks.noneNull(options, "options");
 		this.options = List.of(options);
 		
 		return this;
 	}
 	
-	public AbstractCommand setInvalidOptionPolicy(InvalidOptionPolicy optionPolicy) {
-		this.invalidOptionPolicy = optionPolicy;
+	@Nonnull
+	public AbstractCommand setInvalidOptionPolicy(@Nonnull UnknownOptionPolicy invalidOptionPolicy) {
+		Checks.notNull(invalidOptionPolicy, "invalidOptionPolicy");
+		this.invalidOptionPolicy = invalidOptionPolicy;
 		
 		return this;
 	}
 	
-	public AbstractCommand setContentOverflowPolicy(ContentOverflowPolicy overflowPolicy) {
-		this.overflowPolicy = overflowPolicy;
+	@Nonnull
+	public AbstractCommand setDuplicateOptionPolicy(@Nonnull DuplicateOptionPolicy duplicateOptionPolicy) {
+		Checks.notNull(duplicateOptionPolicy, "duplicateOptionPolicy");
+		this.duplicateOptionPolicy = duplicateOptionPolicy;
 		
 		return this;
 	}
 	
-	public AbstractCommand setAllowedArgumentParsingTypes(ArgumentParsingType... argumentParsingTypes) {
+	@Nonnull
+	public AbstractCommand setContentOverflowPolicy(@Nonnull ContentOverflowPolicy contentOverflowPolicy) {
+		Checks.notNull(contentOverflowPolicy, "contentOverflowPolicy");
+		this.overflowPolicy = contentOverflowPolicy;
+		
+		return this;
+	}
+	
+	@Nonnull
+	public AbstractCommand setAllowedArgumentParsingTypes(@Nonnull ArgumentParsingType... argumentParsingTypes) {
 		this.allowedArgumentParsingTypes.clear();
 		
 		for(ArgumentParsingType type : argumentParsingTypes) {
@@ -297,36 +378,43 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
-	public AbstractCommand setArgumentTrimType(ArgumentTrimType trimType) {
-		this.argumentTrimType = trimType;
+	@Nonnull
+	public AbstractCommand setArgumentTrimType(@Nonnull ArgumentTrimType argumentTrimType) {
+		Checks.notNull(argumentTrimType, "argumentTrimType");
+		this.argumentTrimType = argumentTrimType;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setGuildTriggerable(boolean triggerable) {
 		this.guildTriggerable = triggerable;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setPrivateTriggerable(boolean triggerable) {
 		this.privateTriggerable = triggerable;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setCaseSensitive(boolean caseSensitive) {
 		this.caseSensitive = caseSensitive;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setHidden(boolean hidden) {
 		this.hidden = hidden;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setNSFW(boolean nsfw) {
 		this.nsfw = nsfw;
 		
@@ -340,6 +428,7 @@ public abstract class AbstractCommand implements ICommand {
 	 * 
 	 * @see #getCooldownDuration()
 	 */
+	@Nonnull
 	public AbstractCommand setCooldownDuration(long duration) {
 		this.cooldownDuration = duration;
 		
@@ -354,45 +443,54 @@ public abstract class AbstractCommand implements ICommand {
 	 * 
 	 * @see #getCooldownDuration()
 	 */
-	public AbstractCommand setCooldownDuration(long duration, TimeUnit unit) {
+	@Nonnull
+	public AbstractCommand setCooldownDuration(long duration, @Nonnull TimeUnit unit) {
 		return this.setCooldownDuration(unit.toMillis(duration));
 	}
 	
-	public AbstractCommand setCooldownScope(Scope scope) {
+	@Nonnull
+	public AbstractCommand setCooldownScope(@Nonnull Scope scope) {
+		Checks.notNull(scope, "scope");
 		this.cooldownScope = scope;
 		
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setExecuteAsync(boolean executeAsync) {
 		this.executeAsync = executeAsync;
 		
 		return this;
 	}
 	
-	public AbstractCommand setAsyncOrderingKey(Function<CommandEvent, Object> function) {
+	@Nonnull
+	public AbstractCommand setAsyncOrderingKey(@Nullable Function<CommandEvent, Object> function) {
 		this.asyncOrderingKey = function;
 		
 		return this;
 	}
 	
-	public AbstractCommand setAsyncOrderingKey(Object key) {
+	@Nonnull
+	public AbstractCommand setAsyncOrderingKey(@Nullable Object key) {
 		return this.setAsyncOrderingKey(($) -> key);
 	}
 	
-	public AbstractCommand setParent(ICommand parent) {
+	@Nonnull
+	public AbstractCommand setParent(@Nullable ICommand parent) {
 		this.parent = parent;
 		
 		return this;
 	}
 	
-	public AbstractCommand setCategory(ICategory category) {
+	/* TODO: The whole category implementation is weird and should be re-considered */
+	@Nonnull
+	public AbstractCommand setCategory(@Nullable ICategory category) {
 		ICategory old = this.category;
 		
 		this.category = category;
 		
 		if(old != null) {
-			this.category.removeCommand(this);
+			old.removeCommand(this);
 		}
 		
 		if(this.category != null) {
@@ -402,18 +500,29 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
+	@Nonnull
 	public AbstractCommand setPassive(boolean passive) {
 		this.passive = passive;
 		
 		return this;
 	}
 	
-	public AbstractCommand addSubCommand(ICommand command) {
+	@Nonnull
+	public AbstractCommand addSubCommand(@Nonnull ICommand command) {
+		Checks.notNull(command, "command");
 		this.subCommands.add(command);
 		
 		if(command instanceof AbstractCommand) {
 			((AbstractCommand) command).setParent(this);
 		}
+		
+		return this;
+	}
+	
+	@Nonnull
+	public <T> AbstractCommand setProperty(@Nonnull String name, T value) {
+		Checks.notNull(name, "name");
+		this.properties.put(name, value);
 		
 		return this;
 	}

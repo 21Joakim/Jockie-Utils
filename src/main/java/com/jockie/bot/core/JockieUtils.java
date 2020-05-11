@@ -8,7 +8,7 @@ public class JockieUtils {
 	
 	/* No fancy version system */
 	public static final String VERSION_MAJOR = "1";
-	public static final String VERSION_MINOR = "37";
+	public static final String VERSION_MINOR = "38";
 	
 	public static final String VERSION = String.format("%s.%s", VERSION_MAJOR, VERSION_MINOR);
 	

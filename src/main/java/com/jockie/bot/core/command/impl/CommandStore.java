@@ -18,6 +18,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
@@ -26,16 +28,19 @@ import com.jockie.bot.core.command.IMethodCommand;
 import com.jockie.bot.core.command.Ignore;
 import com.jockie.bot.core.command.Initialize;
 import com.jockie.bot.core.command.SubCommand;
-import com.jockie.bot.core.command.exception.load.CommandLoadException;
 import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
 import com.jockie.bot.core.module.IModule;
 import com.jockie.bot.core.module.Module;
 import com.jockie.bot.core.utility.CommandUtility;
 
+import net.dv8tion.jda.internal.utils.JDALogger;
+
 /**
  * This contains a list of registered commands, works as a sort of container
  */
 public class CommandStore {
+	
+	public static final Logger LOG = JDALogger.getLog(CommandStore.class);
 	
 	/**
 	 * Load commands from the provided package and its sub-packages, equivalent to {@link #loadFrom(String)}
@@ -72,12 +77,34 @@ public class CommandStore {
 		}
 	}
 	
+	private static String getCommandLoadErrorMessage(Method method, Class<?> clazz, ICommand command) {
+		String message = "Failed to load";
+		
+		if(method != null && clazz != null) {
+			message += " method command " + clazz.getName() + "#" + method.getName();
+		}else if(clazz != null) {
+			if(clazz.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(clazz, IModule.class)) {
+				message += " module " + clazz.getName();
+			}else{
+				message += " command " + clazz.getName();
+			}
+		}
+		
+		if(command != null) {
+			message += " (" + command.getCommand() + ")";
+		}
+		
+		return message;
+	}
+	
 	/**
 	 * Load a module and get all the loaded commands
 	 * 
 	 * @param module the module to load
 	 * 
 	 * @return a list of commands loaded from the module
+	 * 
+	 * @throws Throwable if the module for any reason fails to load
 	 */
 	
 	/* 
@@ -122,8 +149,8 @@ public class CommandStore {
 							result = (IMethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
 						}
 					}
-				}catch(Exception e) {
-					e.printStackTrace();
+				}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					LOG.error("Failed to create method command", e);
 				}
 				
 				if(result == null) {
@@ -174,7 +201,7 @@ public class CommandStore {
 				moduleCommands.put(commandClass.getSimpleName(), command);
 				moduleCommandsNamed.put(command.getCommand(), command);
 			}catch(Throwable e) {
-				e.printStackTrace();
+				LOG.error("Failed to instantiate command", e);
 			}
 		}
 		
@@ -192,14 +219,14 @@ public class CommandStore {
 			
 			String[] path = subCommand.value();
 			if(path.length == 0) {
-				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
+				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
 				
 				continue;
 			}
 				
 			ICommand parent = CommandUtility.getSubCommandRecursive(moduleCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
 			if(parent == null) {
-				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
+				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
 				
 				continue;
 			}
@@ -208,7 +235,7 @@ public class CommandStore {
 			if(parent instanceof AbstractCommand) {
 				((AbstractCommand) parent).addSubCommand(command);
 			}else{
-				System.err.println("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
+				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
 			}
 		}
 		
@@ -242,7 +269,7 @@ public class CommandStore {
 								method.invoke(module, command);
 							}
 						}catch(Throwable e) {
-							new CommandLoadException(command, e).printStackTrace();
+							LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
 							
 							/*
 							 * Remove the command from the list of added commands,
@@ -290,7 +317,7 @@ public class CommandStore {
 					try {
 						onCommandLoadMethod.invoke(module, command);
 					}catch(Throwable e) {
-						new CommandLoadException(command, e).printStackTrace();
+						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
 						
 						moduleCommands.remove(key);
 						
@@ -362,18 +389,18 @@ public class CommandStore {
 					try {
 						commands.add((ICommand) loadedClass.getConstructor().newInstance());
 					}catch(Throwable e) {
-						new CommandLoadException(loadedClass, e.getCause()).printStackTrace();
+						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
 					}
 				}else if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(loadedClass, IModule.class)) {
 					try {
 						commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
 					}catch(Throwable e) {
-						new CommandLoadException(loadedClass, e.getCause()).printStackTrace();
+						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
 					}
 				}
 			}
 		}catch(Exception e) {
-			e.printStackTrace();
+			LOG.warn("Failed to load commands from package " + packagePath, e);
 		}
 		
 		return this.addCommands(commands);
@@ -404,7 +431,7 @@ public class CommandStore {
 				try {
 					this.commands.addAll(CommandStore.loadModule(object));
 				}catch(Throwable e) {
-					new CommandLoadException(object.getClass(), e).printStackTrace();
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, object.getClass(), null), e);
 				}
 			}
 			
@@ -414,7 +441,7 @@ public class CommandStore {
 					try {
 						this.commands.add((ICommand) clazz.getConstructor().newInstance());
 					}catch(Throwable e) {
-						new CommandLoadException(clazz, e).printStackTrace();
+						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
 					}
 					
 					continue;
@@ -422,14 +449,14 @@ public class CommandStore {
 					try {
 						this.commands.addAll(CommandStore.loadModule(clazz.getConstructor().newInstance()));
 					}catch(Throwable e) {
-						new CommandLoadException(clazz, e).printStackTrace();
+						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
 					}
 					
 					continue;
 				}
 			}
 			
-			System.err.println(object.getClass() + " is not a command or command container (or a class of either)");
+			LOG.warn(object.getClass() + " is not a command or command container (or a class of either)");
 		}
 		
 		return this;

@@ -18,7 +18,6 @@ public class InvalidArgumentCountException extends ParseException {
 		super("Invalid argument count, requires " + arguments.length + " but got " + parsedArguments.length);
 		
 		this.arguments = arguments;
-		
 		this.parsedArguments = parsedArguments;
 	}
 	

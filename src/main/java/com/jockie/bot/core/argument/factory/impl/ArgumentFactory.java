@@ -1,5 +1,8 @@
 package com.jockie.bot.core.argument.factory.impl;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.argument.factory.IArgumentFactory;
 
 /*
@@ -11,11 +14,19 @@ public class ArgumentFactory {
 	
 	private ArgumentFactory() {};
 	
+	/**
+	 * The default argument factory, {@link ArgumentFactoryImpl}
+	 */
 	public static final ArgumentFactoryImpl DEFAULT = new ArgumentFactoryImpl();
 	
 	private static IArgumentFactory defaultArgumentFactory = DEFAULT;
 	
-	public static void setDefault(IArgumentFactory factory) {
+	/**
+	 * Set the default argument factory
+	 * 
+	 * @param factory the factory to set the default to, if null {@link #DEFAULT}
+	 */
+	public static void setDefault(@Nullable IArgumentFactory factory) {
 		if(factory != null) {
 			ArgumentFactory.defaultArgumentFactory = factory;
 		}else{
@@ -23,6 +34,11 @@ public class ArgumentFactory {
 		}
 	}
 	
+	/**
+	 * @return the default argument factory, if this has not been set
+	 * it will be {@link #DEFAULT}
+	 */
+	@Nonnull
 	public static IArgumentFactory getDefault() {
 		return ArgumentFactory.defaultArgumentFactory;
 	}

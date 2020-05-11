@@ -1,5 +1,8 @@
 package com.jockie.bot.core.command.manager.impl;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.manager.IContextManager;
 
 /**
@@ -26,11 +29,19 @@ public class ContextManagerFactory {
 	
 	private ContextManagerFactory() {};
 	
+	/**
+	 * The default context manager, {@link ContextManagerImpl}
+	 */
 	public static final ContextManagerImpl DEFAULT = new ContextManagerImpl();
 	
 	private static IContextManager defaultContextManager = DEFAULT;
 	
-	public static void setDefault(IContextManager manager) {
+	/**
+	 * Set the default context manager
+	 * 
+	 * @param manager the manager to set the default to, if null {@link #DEFAULT}
+	 */
+	public static void setDefault(@Nullable IContextManager manager) {
 		if(manager != null) {
 			ContextManagerFactory.defaultContextManager = manager;
 		}else{
@@ -38,6 +49,11 @@ public class ContextManagerFactory {
 		}
 	}
 	
+	/**
+	 * @return the default context manager, if this has not been set
+	 * it will be {@link #DEFAULT}
+	 */
+	@Nonnull
 	public static IContextManager getDefault() {
 		return ContextManagerFactory.defaultContextManager;
 	}

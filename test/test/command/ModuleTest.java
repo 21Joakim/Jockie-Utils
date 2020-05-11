@@ -1,16 +1,26 @@
 package test.command;
 
+import java.lang.reflect.Method;
+
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
+import com.jockie.bot.core.command.IMethodCommand;
+import com.jockie.bot.core.command.factory.impl.MethodCommandFactory;
 import com.jockie.bot.core.module.Module;
+import com.jockie.bot.core.module.impl.ModuleImpl;
 
 import test.annotation.TestRun;
 
 @Module
-public class ModuleTest {
+public class ModuleTest extends ModuleImpl {
+	
+	@Override
+	public IMethodCommand createCommand(Method method, String name) {
+		return MethodCommandFactory.getDefault().create(method, method.getName(), this);
+	}
 	
 	@Command
 	@TestRun(success=false)

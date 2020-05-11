@@ -6,7 +6,6 @@ import java.io.FileInputStream;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.impl.CommandStore;
 
-import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.JDABuilder;
 import test.command.CommandRunTests;
 
@@ -23,7 +22,7 @@ public class Tests {
 			.addDevelopers(190551803669118976L)
 			.setDefaultPrefixes("!");
 		
-		new JDABuilder(AccountType.BOT).setToken(token)
+		JDABuilder.createDefault(token)
 			.addEventListeners(listener)
 			.build()
 			.awaitReady();

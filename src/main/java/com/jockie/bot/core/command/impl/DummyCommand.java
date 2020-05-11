@@ -9,17 +9,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.category.ICategory;
+import com.jockie.bot.core.command.CommandTrigger;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.factory.IComponentFactory;
 import com.jockie.bot.core.command.factory.impl.ComponentFactory;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
+import com.jockie.bot.core.utility.CommandUtility;
 
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
+import net.dv8tion.jda.internal.utils.Checks;
 
 /**
  * The DummyCommand is a Command which replicates any ICommand but with different arguments, 
@@ -76,7 +80,10 @@ public class DummyCommand implements ICommand {
 	 * @param arguments the arguments which this DummyCommand should have, 
 	 * these are different from the command's arguments.
 	 */
-	public DummyCommand(ICommand command, IArgument<?>... arguments) {
+	public DummyCommand(@Nonnull ICommand command, @Nonnull IArgument<?>... arguments) {
+		Checks.notNull(command, "command");
+		Checks.notNull(arguments, "arguments");
+		
 		this.command = command;
 		
 		List<IArgument<?>> commandArguments = command.getArguments();
@@ -85,9 +92,7 @@ public class DummyCommand implements ICommand {
 		ARGUMENTS:
 		for(int i = 0; i < commandArguments.size(); i++) {
 			IArgument<?> argument = commandArguments.get(i);
-			if(!argument.hasDefault()) {
-				requiredArguments.add(argument);
-			}else{
+			if(argument.hasDefault()) {
 				for(int j = 0; j < arguments.length; j++) {
 					if(arguments[j].equals(argument)) {
 						this.optionalArguments.put(i, argument);
@@ -95,14 +100,15 @@ public class DummyCommand implements ICommand {
 						continue ARGUMENTS;
 					}
 				}
-				
-				requiredArguments.add(argument);
 			}
+			
+			requiredArguments.add(argument);
 		}
 		
 		this.arguments = requiredArguments;
 	}
 	
+	@Override
 	public void execute(CommandEvent event, Object... arguments) throws Throwable {
 		Object[] args = new Object[this.command.getArguments().size()];
 		
@@ -113,24 +119,7 @@ public class DummyCommand implements ICommand {
 				/* TODO: Not entirely sure if this is the right place to handle this */
 				if(args[i] == null) {
 					Class<?> type = this.optionalArguments.get(i).getType();
-					
-					if(type.equals(boolean.class)) {
-						args[i] = false;
-					}else if(type.equals(byte.class)) {
-						args[i] = (byte) 0;
-					}else if(type.equals(short.class)) {
-						args[i] = (short) 0;
-					}else if(type.equals(int.class)) {
-						args[i] = 0;
-					}else if(type.equals(long.class)) {
-						args[i] = 0L;
-					}else if(type.equals(float.class)) {
-						args[i] = 0.0F;
-					}else if(type.equals(double.class)) {
-						args[i] = 0.0D;
-					}else if(type.equals(char.class)) {
-						args[i] = '\u0000';
-					}
+					args[i] = CommandUtility.getDefaultValue(type);
 				}
 			}else{
 				args[i] = arguments[offset++];
@@ -147,132 +136,174 @@ public class DummyCommand implements ICommand {
 		return this.command;
 	}
 	
-	public boolean verify(Message message, CommandListener commandListener) {
-		return this.command.verify(message, commandListener);
+	@Override
+	public boolean isAccessible(Message message, CommandListener commandListener) {
+		return this.command.isAccessible(message, commandListener);
 	}
 	
+	@Override
 	public List<String> getAliases() {
 		return this.command.getAliases();
 	}
 	
+	@Override
 	public long getCooldownDuration() {
 		return this.command.getCooldownDuration();
 	}
 	
+	@Override
 	public ICooldown.Scope getCooldownScope() {
 		return this.command.getCooldownScope();
 	}
 	
+	@Override
 	public boolean isExecuteAsync() {
 		return this.command.isExecuteAsync();
 	}
 	
+	@Override
 	public boolean isBotTriggerable() {
 		return this.command.isBotTriggerable();
 	}
 	
+	@Override
 	public boolean isCaseSensitive() {
 		return this.command.isCaseSensitive();
 	}
 	
+	@Override
 	public boolean isDeveloperCommand() {
 		return this.command.isDeveloperCommand();
 	}
 	
+	@Override
 	public boolean isGuildTriggerable() {
 		return this.command.isGuildTriggerable();
 	}
 	
+	@Override
 	public boolean isPrivateTriggerable() {
 		return this.command.isPrivateTriggerable();
 	}
 	
+	@Override
 	public boolean isHidden() {
 		return this.command.isHidden();
 	}
 	
 	/** A DummyCommand should never be passive */
+	@Override
 	public boolean isPassive() {
 		return false;
 	}
 	
+	@Override
 	public String getDescription() {
 		return this.command.getDescription();
 	}
 	
+	@Override
 	public String getShortDescription() {
 		return this.command.getShortDescription();
 	}
 	
+	@Override
 	public String getArgumentInfo() {
 		return this.command.getArgumentInfo();
 	}
 	
+	@Override
 	public Set<Permission> getAuthorDiscordPermissions() {
 		return this.command.getAuthorDiscordPermissions();
 	}
 	
+	@Override
 	public Set<Permission> getBotDiscordPermissions() {
 		return this.command.getBotDiscordPermissions();
 	}
 	
+	@Override
 	public String getCommand() {
 		return this.command.getCommand();
 	}
 	
+	@Override
 	public ICommand getParent() {
 		return this.command.getParent();
 	}
 	
+	@Override
 	public List<IArgument<?>> getArguments() {
 		return Collections.unmodifiableList(this.arguments);
 	}
 	
+	@Override
 	public List<ICommand> getSubCommands() {
 		return Collections.emptyList();
 	}
 	
-	public List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
+	@Override
+	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
 		return Collections.emptyList();
 	}
 	
+	@Override
 	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		return Collections.emptyList();
 	}
 	
+	@Override
 	public String getCommandTrigger() {
 		return this.command.getCommandTrigger();
 	}
 	
+	@Override
 	public List<IOption<?>> getOptions() {
 		return this.command.getOptions();
 	}
 	
-	public InvalidOptionPolicy getInvalidOptionPolicy() {
-		return this.command.getInvalidOptionPolicy();
+	@Override
+	public UnknownOptionPolicy getUnknownOptionPolicy() {
+		return this.command.getUnknownOptionPolicy();
 	}
 	
+	@Override
+	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
+		return this.command.getDuplicateOptionPolicy();
+	}
+	
+	@Override
 	public ContentOverflowPolicy getContentOverflowPolicy() {
 		return this.command.getContentOverflowPolicy();
 	}
 	
+	@Override
 	public Set<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.command.getAllowedArgumentParsingTypes();
 	}
 	
+	@Override
 	public ArgumentTrimType getArgumentTrimType() {
 		return this.command.getArgumentTrimType();
 	}
 	
+	@Override
 	public ICategory getCategory() {
 		return this.command.getCategory();
 	}
 	
+	@Override
 	public boolean isNSFW() {
 		return this.command.isNSFW();
 	}
 	
+	@Override
 	public Object getAsyncOrderingKey(CommandEvent event) {
 		return this.command.getAsyncOrderingKey(event);
+	}
+	
+	@Override
+	public <T> T getProperty(String name, T defaultValue) {
+		return this.command.getProperty(name, defaultValue);
 	}
 }

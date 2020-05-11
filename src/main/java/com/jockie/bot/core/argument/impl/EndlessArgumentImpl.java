@@ -1,5 +1,7 @@
 package com.jockie.bot.core.argument.impl;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.parser.IArgumentParser;
@@ -8,7 +10,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 	
 	public static class Builder<Type> extends IEndlessArgument.Builder<Type, IEndlessArgument<Type>, Builder<Type>> {
 		
-		public Builder(Class<Type> componentType) {
+		public Builder(@Nonnull Class<Type> componentType) {
 			super(componentType);
 			
 			if(componentType.isPrimitive()) {
@@ -18,19 +20,27 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 			this.parser = EndlessArgumentParser.getInstance();
 		}
 		
-		/* I am not sure when you would want to have a quoted endless argument therefore this will be disabled for now */
+		/**
+		 * @throws UnsupportedOperationException
+		 */
 		public Builder<Type> setAcceptQuote(boolean quote) {
-			throw new IllegalArgumentException("Endless arguments can not be quoted");
+			/* I am not sure when you would want to have a quoted endless argument therefore this will be disabled for now */
+			throw new UnsupportedOperationException("Endless arguments can not be quoted");
 		}
 		
+		/**
+		 * @throws UnsupportedOperationException
+		 */
 		public Builder<Type> setParser(IArgumentParser<Type[]> parser) {
 			throw new UnsupportedOperationException();
 		}
 		
+		@Nonnull
 		public Builder<Type> self() {
 			return this;
 		}
 		
+		@Nonnull
 		public IEndlessArgument<Type> build() {
 			return new EndlessArgumentImpl<>(this);
 		}

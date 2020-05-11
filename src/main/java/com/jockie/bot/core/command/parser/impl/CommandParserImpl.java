@@ -1,5 +1,6 @@
 package com.jockie.bot.core.command.parser.impl;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -7,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
@@ -17,6 +21,7 @@ import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.exception.parser.ArgumentParseException;
 import com.jockie.bot.core.command.exception.parser.ContentOverflowException;
+import com.jockie.bot.core.command.exception.parser.DuplicateOptionException;
 import com.jockie.bot.core.command.exception.parser.InvalidArgumentCountException;
 import com.jockie.bot.core.command.exception.parser.MissingRequiredArgumentException;
 import com.jockie.bot.core.command.exception.parser.OutOfContentException;
@@ -30,6 +35,7 @@ import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.utility.StringUtility;
 
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.internal.utils.Checks;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class CommandParserImpl implements ICommandParser {
@@ -74,7 +80,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
-	public CommandParserImpl setQuoteCharacters(Set<Pair<Character, Character>> characters) {
+	@Nonnull
+	public CommandParserImpl setQuoteCharacters(@Nonnull Collection<Pair<Character, Character>> characters) {
+		Checks.noneNull(characters, "characters");
+		
 		this.quoteCharacters = new LinkedHashSet<>(characters);
 		
 		return this;
@@ -85,6 +94,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandParserImpl addQuoteCharacter(char character) {
 		return this.addQuoteCharacter(character, character);
 	}
@@ -95,6 +105,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandParserImpl addQuoteCharacter(char start, char end) {
 		return this.addQuoteCharacter(Pair.of(start, end));
 	}
@@ -104,7 +115,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
-	public CommandParserImpl addQuoteCharacter(Pair<Character, Character> character) {
+	@Nonnull
+	public CommandParserImpl addQuoteCharacter(@Nonnull Pair<Character, Character> character) {
+		Checks.notNull(character, "character");
+		
 		this.quoteCharacters.add(character);
 		
 		return this;
@@ -115,7 +129,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
-	public CommandParserImpl addQuoteCharacters(Collection<Pair<Character, Character>> characters) {
+	@Nonnull
+	public CommandParserImpl addQuoteCharacters(@Nonnull Collection<Pair<Character, Character>> characters) {
+		Checks.noneNull(characters, "characters");
+		
 		this.quoteCharacters.addAll(characters);
 		
 		return this;
@@ -126,6 +143,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandParserImpl removeQuoteCharacter(char character) {
 		this.quoteCharacters.remove(Pair.of(character, character));
 		
@@ -138,6 +156,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
+	@Nonnull
 	public CommandParserImpl removeQuoteCharacter(char start, char end) {
 		this.quoteCharacters.remove(Pair.of(start, end));
 		
@@ -149,7 +168,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
-	public CommandParserImpl removeQuoteCharacter(Pair<Character, Character> character) {
+	@Nonnull
+	public CommandParserImpl removeQuoteCharacter(@Nonnull Pair<Character, Character> character) {
+		Checks.notNull(character, "character");
+		
 		this.quoteCharacters.remove(character);
 		
 		return this;
@@ -160,7 +182,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
-	public CommandParserImpl removeQuoteCharacters(Collection<Pair<Character, Character>> characters) {
+	@Nonnull
+	public CommandParserImpl removeQuoteCharacters(@Nonnull Collection<Pair<Character, Character>> characters) {
+		Checks.notNull(characters, "characters");
+		
 		this.quoteCharacters.removeAll(characters);
 		
 		return this;
@@ -169,10 +194,184 @@ public class CommandParserImpl implements ICommandParser {
 	/**
 	 * @return the characters which are allowed to be used as quotes
 	 */
+	@Nonnull
 	public Set<Pair<Character, Character>> getQuoteCharacters() {
 		return Collections.unmodifiableSet(this.quoteCharacters);
 	}
 	
+	/**
+	 * @return a map of all the options which can be used by the author of the message
+	 */
+	@Nonnull
+	protected Map<String, IOption<?>> getValidOptions(@Nonnull CommandListener listener, @Nonnull ICommand command, @Nonnull Message message) {
+		boolean developer = listener.isDeveloper(message.getAuthor());
+		
+		Map<String, IOption<?>> validOptions = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		for(IOption<?> option : command.getOptions()) {
+			if(option.isDeveloper() && !developer) {
+				continue;
+			}
+			
+			validOptions.put(option.getName(), option);
+			for(String alias : option.getAliases()) {
+				validOptions.put(alias, option);
+			}
+		}
+		
+		return validOptions;
+	}
+	
+	/**
+	 * @return a map of all the parsed options and the their values
+	 */
+	@SuppressWarnings("unchecked")
+	@Nonnull
+	protected Map<String, Object> parseOptions(@Nonnull CommandListener listener, @Nonnull ICommand command, @Nonnull Message message, @Nonnull String messageContent, @Nonnull StringBuilder builder) throws ParseException {
+		Map<String, IOption<?>> validOptions = this.getValidOptions(listener, command, message);
+		Map<String, Object> options = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		
+		for(int i = 0; i < messageContent.length(); i++) {
+			if(messageContent.length() - i <= 3) {
+				for(; i < messageContent.length(); i++) {
+					builder.append(messageContent.charAt(i)); 
+				}
+				
+				break;
+			}
+			
+			if(!messageContent.startsWith(" --", i) || messageContent.charAt(i + 3) == ' ') {
+				builder.append(messageContent.charAt(i));
+				
+				continue;
+			}
+			
+			String content = messageContent.substring(i + 3);
+			
+			String option = null;
+			String stringValue = null;
+			
+			int spaceIndex = content.indexOf(' ');
+			int equalIndex = content.indexOf('=');
+			int length = 2;
+			
+			if(equalIndex != -1 && (spaceIndex == -1 || equalIndex < spaceIndex)) {
+				String optionContent = content.substring(0, equalIndex);
+				String valueContent = content.substring(equalIndex + 1, content.length());
+				
+				String temp = null;
+				for(Pair<Character, Character> quotes : this.quoteCharacters) {
+					temp = StringUtility.parseWrapped(valueContent, quotes.getLeft(), quotes.getRight());
+					if(temp != null) {
+						length += equalIndex + 1 + temp.length();
+						
+						option = optionContent;
+						stringValue = StringUtility.unwrap(temp, quotes.getLeft(), quotes.getRight());
+						
+						break;
+					}
+				}
+			}
+			
+			if(option == null) {
+				content = content.substring(0, spaceIndex != -1 ? spaceIndex : content.length());
+				length += content.length();
+				
+				equalIndex = content.indexOf('=');
+				
+				if(equalIndex != -1) {
+					stringValue = content.substring(equalIndex + 1);
+					option = content.substring(0, equalIndex);
+				}else{
+					option = content;
+				}
+			}
+			
+			IOption<?> foundOption = validOptions.get(option);
+			if(foundOption != null) {
+				Class<?> optionType = foundOption.getType();
+				
+				Object value = null;
+				if(stringValue == null || stringValue.isEmpty()) {
+					if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
+						value = true;
+					}
+				}else{
+					if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
+						value = Boolean.parseBoolean(stringValue);
+					}else{
+						value = stringValue;
+					}
+				}
+				
+				if(options.containsKey(option)) {
+					switch(command.getDuplicateOptionPolicy()) {
+						case COMBINE: {
+							Object previousValue = options.get(option);
+							
+							List<Object> values;
+							if(previousValue instanceof List) {
+								values = (List<Object>) previousValue;
+							}else{
+								values = new ArrayList<>();
+								values.add(previousValue);
+							}
+							
+							values.add(value);
+							options.put(option, values);
+							
+							break;
+						}
+						case FAIL: {
+							throw new DuplicateOptionException(option, stringValue);
+						}
+						/* Do nothing since it's already the first one */
+						case USE_FIRST: {
+							break;
+						}
+						case USE_LAST: {
+							options.put(option, value);
+							
+							break;
+						}
+					}
+				}else{
+					options.put(option, value);
+				}
+				
+				i += length;
+				
+				continue;
+			}
+			
+			switch(command.getUnknownOptionPolicy()) {
+				case ADD: {
+					options.put(option, stringValue);
+					
+					i += length;
+					
+					continue;
+				}
+				case IGNORE: {
+					i += length;
+					
+					continue;
+				}
+				case FAIL: {
+					/* The specified option does not exist */
+					throw new UnknownOptionException(content);
+				}
+				case INCLUDE: {
+					break;
+				}
+			}
+			
+			builder.append(messageContent.charAt(i));
+		}
+		
+		return options;
+	}
+	
+	@Nullable
 	public CommandEvent parse(CommandListener listener, ICommand command, Message message, String prefix, String trigger, String contentToParse, long timeStarted) throws ParseException {
 		ParseContext context = new ParseContext(listener, this, command, message, prefix, trigger, contentToParse, timeStarted);
 		
@@ -185,110 +384,10 @@ public class CommandParserImpl implements ICommandParser {
 		Object[] parsedArguments = new Object[arguments.size()];
 		String[] parsedArgumentsAsString = new String[parsedArguments.length];
 		
-		Map<String, IOption<?>> validOptions = this.getValidOptions(listener, command, message);
-		
 		/* Pre-processing */
 		StringBuilder builder = new StringBuilder();
 		
-		Map<String, Object> options = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		for(int i = 0; i < messageContent.length(); i++) {
-			if(messageContent.length() - i <= 3) {
-				for(; i < messageContent.length(); i++) {
-					builder.append(messageContent.charAt(i)); 
-				}
-				
-				break;
-			}
-			
-			if(messageContent.startsWith(" --", i) && messageContent.charAt(i + 3) != ' ') {
-				String content = messageContent.substring(i + 3);
-				
-				String option = null;
-				String stringValue = null;
-				
-				int spaceIndex = content.indexOf(' ');
-				int equalIndex = content.indexOf('=');
-				int length = 2;
-				
-				if(equalIndex != -1 && (spaceIndex == -1 || equalIndex < spaceIndex)) {
-					String optionContent = content.substring(0, equalIndex);
-					String valueContent = content.substring(equalIndex + 1, content.length());
-					
-					String temp = null;
-					for(Pair<Character, Character> quotes : this.quoteCharacters) {
-						temp = StringUtility.parseWrapped(valueContent, quotes.getLeft(), quotes.getRight());
-						if(temp != null) {
-							length += equalIndex + 1 + temp.length();
-							
-							option = optionContent;
-							stringValue = StringUtility.unwrap(temp, quotes.getLeft(), quotes.getRight());
-							
-							break;
-						}
-					}
-				}
-				
-				if(option == null) {
-					content = content.substring(0, spaceIndex != -1 ? spaceIndex : content.length());
-					length += content.length();
-					
-					equalIndex = content.indexOf('=');
-					
-					if(equalIndex != -1) {
-						stringValue = content.substring(equalIndex + 1);
-						option = content.substring(0, equalIndex);
-					}else{
-						option = content;
-					}
-				}
-				
-				IOption<?> foundOption = validOptions.get(option);
-				if(foundOption != null) {
-					Class<?> optionType = foundOption.getType();
-					
-					if(stringValue == null || stringValue.isEmpty()) {
-						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
-							options.put(option, true);
-						}
-					}else{
-						Object value ;
-						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
-							value = Boolean.parseBoolean(stringValue);
-						}else{
-							value = stringValue;
-						}
-						
-						options.put(option, value);
-					}
-					
-					i += length;
-					
-					continue;
-				}
-				
-				switch(command.getInvalidOptionPolicy()) {
-					case ADD: {
-						options.put(option, stringValue);
-						
-						i += length;
-						
-						continue;
-					}
-					case IGNORE: {
-						i += length;
-						
-						continue;
-					}
-					case FAIL: {
-						/* The specified option does not exist */
-						throw new UnknownOptionException(content);
-					}
-					case INCLUDE: {}
-				}
-			}
-			
-			builder.append(messageContent.charAt(i));
-		}
+		Map<String, Object> options = this.parseOptions(listener, command, message, messageContent, builder);
 		
 		messageContent = builder.toString();
 		/* End pre-processing */
@@ -298,43 +397,58 @@ public class CommandParserImpl implements ICommandParser {
 		{
 			Set<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
 			
+			NAMED:
 			if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
-				if(messageContent.length() > 0) {
-					/* Handle command as key-value */
-					Map<String, String> map = StringUtility.asMap(messageContent);
-					
-					if(map != null) {
-						for(int i = 0; i < arguments.size(); i++) {
-							IArgument<?> argument = arguments.get(i);
-							if(map.containsKey(argument.getName())) {
-								String value = map.get(argument.getName());
-								
-								ParsedArgument<?> parsedArgument = argument.parse(context, value);
-								if(parsedArgument.isValid() && (parsedArgument.getContentLeft() == null || parsedArgument.getContentLeft().isEmpty())) {
-									parsedArguments[argumentCount] = parsedArgument.getObject();
-									parsedArgumentsAsString[argumentCount] = value;
-									
-									argumentCount += 1;
-								}else{
-									/* The content does not make for a valid argument */
-									throw new ArgumentParseException(argument, value);
-								}
-								
-								map.remove(argument.getName());
-							}else{
-								/* Missing argument */
-								throw new MissingRequiredArgumentException(argument);
-							}
-						}
-						
-						/* If it does not contain any invalid keys */
-						if(map.size() == 0) {
-							parsingType = ArgumentParsingType.NAMED;
-							
-							break ARGUMENT_PARSING;
-						}
-					}
+				if(messageContent.isEmpty()) {
+					break NAMED;
 				}
+				
+				/* Handle command as key-value */
+				Map<String, String> map = StringUtility.asMap(messageContent);
+				if(map == null) {
+					break NAMED;
+				}
+				
+				for(int i = 0; i < arguments.size(); i++) {
+					IArgument<?> argument = arguments.get(i);
+					
+					/* Missing argument */
+					if(!map.containsKey(argument.getName())) {
+						throw new MissingRequiredArgumentException(argument);
+					}
+					
+					String value = map.get(argument.getName());
+					
+					ParsedArgument<?> parsedArgument = argument.parse(context, value);
+					if(parsedArgument.isValid() && (parsedArgument.getContentLeft() == null || parsedArgument.getContentLeft().isEmpty())) {
+						parsedArguments[argumentCount] = parsedArgument.getObject();
+						parsedArgumentsAsString[argumentCount] = value;
+						
+						argumentCount += 1;
+					}else{
+						/* The content does not make for a valid argument */
+						throw new ArgumentParseException(argument, value);
+					}
+					
+					map.remove(argument.getName());
+				}
+				
+				/* If it does not contain any invalid keys */
+				if(map.size() == 0) {
+					parsingType = ArgumentParsingType.NAMED;
+					
+					break ARGUMENT_PARSING;
+				}
+				
+				/* 
+				 * Reset the state, I assume it is possible
+				 * for any of these values to have been changed
+				 * in which case not resetting it would cause
+				 * problems for the next parsing type.
+				 */
+				argumentCount = 0;
+				parsedArguments = new Object[arguments.size()];
+				parsedArgumentsAsString = new String[parsedArguments.length];
 			}
 			
 			if(argumentParsingTypes.contains(ArgumentParsingType.POSITIONAL)) {
@@ -385,7 +499,6 @@ public class CommandParserImpl implements ICommandParser {
 								content = StringUtility.parseWrapped(messageContent, '[', ']');
 								if(content != null) {
 									messageContent = messageContent.substring(content.length());
-									
 									content = StringUtility.unwrap(content, '[', ']');
 									
 									if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
@@ -460,27 +573,7 @@ public class CommandParserImpl implements ICommandParser {
 			return null;
 		}
 		
-		return new CommandEvent(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
-	}
-	
-	/**
-	 * @return a map of all the options which can be used by the author of the message 
-	 */
-	protected Map<String, IOption<?>> getValidOptions(CommandListener listener, ICommand command, Message message) {
-		boolean developer = listener.isDeveloper(message.getAuthor());
-		
-		Map<String, IOption<?>> validOptions = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		for(IOption<?> option : command.getOptions()) {
-			if(option.isDeveloper() && !developer) {
-				continue;
-			}
-			
-			validOptions.put(option.getName(), option);
-			for(String alias : option.getAliases()) {
-				validOptions.put(alias, option);
-			}
-		}
-		
-		return validOptions;
+		return listener.getCommandEventFactory()
+			.create(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
 	}
 }

@@ -9,7 +9,8 @@ import java.util.concurrent.TimeUnit;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
-import com.jockie.bot.core.command.ICommand.InvalidOptionPolicy;
+import com.jockie.bot.core.command.ICommand.DuplicateOptionPolicy;
+import com.jockie.bot.core.command.ICommand.UnknownOptionPolicy;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 
@@ -121,9 +122,14 @@ public @interface Command {
 	public ContentOverflowPolicy contentOverflowPolicy() default ContentOverflowPolicy.FAIL;
 	
 	/**
-	 * @see ICommand#getInvalidOptionPolicy()
+	 * @see ICommand#getUnknownOptionPolicy()
 	 */
-	public InvalidOptionPolicy invalidOptionPolicy() default InvalidOptionPolicy.INCLUDE;
+	public UnknownOptionPolicy invalidOptionPolicy() default UnknownOptionPolicy.INCLUDE;
+	
+	/**
+	 * @see ICommand#getDuplicateOptionPolicy()
+	 */
+	public DuplicateOptionPolicy duplicateOptionPolicy() default DuplicateOptionPolicy.USE_LAST;
 	
 	/**
 	 * @see ICommand#getAllowedArgumentParsingTypes()
@@ -237,9 +243,14 @@ public @interface Command {
 		public ContentOverflowPolicy contentOverflow() default ContentOverflowPolicy.FAIL;
 		
 		/**
-		 * @see ICommand#getInvalidOptionPolicy()
+		 * @see ICommand#getUnknownOptionPolicy()
 		 */
-		public InvalidOptionPolicy invalidOption() default InvalidOptionPolicy.INCLUDE;
+		public UnknownOptionPolicy invalidOption() default UnknownOptionPolicy.INCLUDE;
+		
+		/**
+		 * @see ICommand#getDuplicateOptionPolicy()
+		 */
+		public DuplicateOptionPolicy duplicateOption() default DuplicateOptionPolicy.USE_LAST;
 		
 	}
 }

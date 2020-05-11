@@ -2,8 +2,13 @@ package com.jockie.bot.core.command.factory;
 
 import java.lang.reflect.Method;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.Command;
 import com.jockie.bot.core.command.IMethodCommand;
+
+import net.dv8tion.jda.internal.utils.Checks;
 
 public interface IMethodCommandFactory<T extends IMethodCommand> {
 	
@@ -17,7 +22,10 @@ public interface IMethodCommandFactory<T extends IMethodCommand> {
 	 * 
 	 * @return a suitable name for this command method
 	 */
-	public static String getName(String defaultName, Method method) {
+	@Nonnull
+	public static String getName(@Nullable String defaultName, @Nonnull Method method) {
+		Checks.notNull(method, "method");
+		
 		Command command = method.getAnnotation(Command.class);
 		if(command != null && !command.value().isEmpty()) {
 			return command.value();
@@ -35,7 +43,8 @@ public interface IMethodCommandFactory<T extends IMethodCommand> {
 	 * 
 	 * @return the created method command
 	 */
-	public T create(Method method, String name, Object invoker);
+	@Nonnull
+	public T create(@Nonnull Method method, @Nullable String name, @Nullable Object invoker);
 	
 	/**
 	 * Create a method command
@@ -45,7 +54,8 @@ public interface IMethodCommandFactory<T extends IMethodCommand> {
 	 * 
 	 * @return the created method command
 	 */
-	public default T create(Method method, Object invoker) {
+	@Nonnull
+	public default T create(@Nonnull Method method, @Nullable Object invoker) {
 		return this.create(method, null, invoker);
 	}
 }

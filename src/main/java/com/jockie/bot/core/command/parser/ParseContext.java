@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command.parser;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.impl.CommandListener;
 
@@ -37,31 +39,37 @@ public class ParseContext {
 	}
 	
 	/** @return the {@link CommandListener} which received the message to parse */
+	@Nonnull
 	public CommandListener getCommandListener() {
 		return this.commandListener;
 	}
 	
 	/** @return the {@link ICommandParser} which is responsible for parsing the message received */
+	@Nonnull
 	public ICommandParser getCommandParser() {
 		return this.commandParser;
 	}
 	
 	/** @return the {@link ICommand} which the message is being parsed as */
+	@Nonnull
 	public ICommand getCommand() {
 		return this.command;
 	}
 	
 	/** @return the prefix which was used for this message */
+	@Nonnull
 	public String getPrefix() {
 		return this.prefix;
 	}
 	
-	/** @return the trigger used to find the {@link ICommand}, this could be the command itself or an alias*/
+	/** @return the trigger used to find the {@link ICommand}, this could be the command itself or an alias */
+	@Nonnull
 	public String getTrigger() {
 		return this.trigger;
 	}
 	
 	/** @return the content which the {@link ICommandParser} has to parse */
+	@Nonnull
 	public String getContentToParse() {
 		return this.contentToParse;
 	}
@@ -77,6 +85,7 @@ public class ParseContext {
 	}
 	
 	/** @return the {@link Message} which has to be parsed */
+	@Nonnull
 	public Message getMessage() {
 		return this.message;
 	}

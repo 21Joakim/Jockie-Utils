@@ -1,5 +1,8 @@
 package com.jockie.bot.core.command.factory.impl;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.factory.IMethodCommandFactory;
 
 /*
@@ -11,11 +14,19 @@ public class MethodCommandFactory {
 	
 	private MethodCommandFactory() {};
 	
+	/**
+	 * The default method command factory, {@link MethodCommandFactoryImpl}
+	 */
 	public static final MethodCommandFactoryImpl DEFAULT = new MethodCommandFactoryImpl();
 	
 	private static IMethodCommandFactory<?> defaultCommandFactory = DEFAULT;
 	
-	public static void setDefault(IMethodCommandFactory<?> factory) {
+	/**
+	 * Set the default method command factory
+	 * 
+	 * @param factory the factory to set the default to, if null {@link #DEFAULT}
+	 */
+	public static void setDefault(@Nullable IMethodCommandFactory<?> factory) {
 		if(factory != null) {
 			MethodCommandFactory.defaultCommandFactory = factory;
 		}else{
@@ -23,6 +34,11 @@ public class MethodCommandFactory {
 		}
 	}
 	
+	/**
+	 * @return the default method command factory, if this has not been set
+	 * it will be {@link #DEFAULT}
+	 */
+	@Nonnull
 	public static IMethodCommandFactory<?> getDefault() {
 		return MethodCommandFactory.defaultCommandFactory;
 	}

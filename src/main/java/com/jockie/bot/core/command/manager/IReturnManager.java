@@ -2,6 +2,9 @@ package com.jockie.bot.core.command.manager;
 
 import java.util.function.BiConsumer;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.impl.CommandEvent;
 
 import net.dv8tion.jda.api.entities.Guild;
@@ -16,14 +19,15 @@ public interface IReturnManager {
 	 * @return whether or not the provided object was recognized 
 	 * and handled
 	 */
-	public <T> boolean perform(CommandEvent event, T object);
+	public <T> boolean perform(@Nonnull CommandEvent event, @Nullable T object);
 	
 	/**
 	 * @param type the return type to handle
 	 * 
 	 * @return the {@link IReturnManager} instance, useful for chaining
 	 */
-	public IReturnManager unregisterHandler(Class<?> type);
+	@Nonnull
+	public IReturnManager unregisterHandler(@Nonnull Class<?> type);
 	
 	/**
 	 * @param type the return type to handle
@@ -31,7 +35,8 @@ public interface IReturnManager {
 	 * 
 	 * @return the {@link IReturnManager} instance, useful for chaining
 	 */
-	public <T> IReturnManager registerHandler(Class<T> type, BiConsumer<CommandEvent, T> function);
+	@Nonnull
+	public <T> IReturnManager registerHandler(@Nonnull Class<T> type, @Nonnull BiConsumer<CommandEvent, T> function);
 	
 	/**
 	 * @param type the type of the handler
@@ -40,7 +45,7 @@ public interface IReturnManager {
 	 * this means that it will, for instance, handle {@link GuildImpl} if {@link Guild}
 	 * was registered
 	 */
-	public boolean isHandleInheritance(Class<?> type);
+	public boolean isHandleInheritance(@Nonnull Class<?> type);
 	
 	/**
 	 * @param type the type of the handler
@@ -50,6 +55,7 @@ public interface IReturnManager {
 	 * 
 	 * @return the {@link IReturnManager} instance, useful for chaining
 	 */
-	public IReturnManager setHandleInheritance(Class<?> type, boolean handle);
+	@Nonnull
+	public IReturnManager setHandleInheritance(@Nonnull Class<?> type, boolean handle);
 	
 }

@@ -7,6 +7,8 @@ import java.util.Set;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.ICommand;
 
+import net.dv8tion.jda.internal.utils.Checks;
+
 public class CategoryImpl implements ICategory {
 	
 	private final String name;
@@ -23,6 +25,8 @@ public class CategoryImpl implements ICategory {
 	}
 	
 	public CategoryImpl(String name, String description, ICategory parent) {
+		Checks.notNull(name, "name");
+		
 		this.name = name;
 		this.description = description;
 		this.parent = parent;
@@ -41,6 +45,8 @@ public class CategoryImpl implements ICategory {
 	}
 	
 	public ICategory addSubCategory(ICategory category) {
+		Checks.notNull(category, "category");
+		
 		if(!this.equals(category.getParent())) {
 			throw new IllegalArgumentException("The category's parent is not equal to this");
 		}
@@ -51,6 +57,8 @@ public class CategoryImpl implements ICategory {
 	}
 	
 	public ICategory removeSubCategory(ICategory category) {
+		Checks.notNull(category, "category");
+		
 		this.subCategories.remove(category);
 		
 		return this;
@@ -61,6 +69,8 @@ public class CategoryImpl implements ICategory {
 	}
 	
 	public ICategory addCommand(ICommand command) {
+		Checks.notNull(command, "command");
+		
 		if(!this.equals(command.getCategory())) {
 			throw new IllegalArgumentException("The command's category is not equal to this");
 		}
@@ -71,6 +81,8 @@ public class CategoryImpl implements ICategory {
 	}
 	
 	public ICategory removeCommand(ICommand command) {
+		Checks.notNull(command, "command");
+		
 		if(this.equals(command.getCategory())) {
 			throw new IllegalArgumentException("The command's category is still equal to this");
 		}

@@ -47,7 +47,7 @@ public class CommandRunTests extends CommandImpl {
 		message = CommandRunTests.modifyContent((AbstractMessage) message, newMessage);
 		
 		long timeElapsed = System.nanoTime();
-		CommandEvent commandEvent = listener.parse(message);
+		CommandEvent commandEvent = listener.handle(message);
 		timeElapsed = (System.nanoTime() - timeElapsed);
 		
 		boolean status;
@@ -58,11 +58,7 @@ public class CommandRunTests extends CommandImpl {
 				String result = Arrays.deepToString(commandEvent.getArguments());
 				
 				if(testRun.result().length() > 0) {
-					if(result.equals(testRun.result())) {
-						status = true;
-					}else{
-						status = false;
-					}
+					status = result.equals(testRun.result());
 				}else{
 					status = true;
 				}
@@ -109,9 +105,7 @@ public class CommandRunTests extends CommandImpl {
 			if(commandMethod.isAnnotationPresent(TestRuns.class)) {
 				testRuns = commandMethod.getAnnotation(TestRuns.class).value();
 			}else if(commandMethod.isAnnotationPresent(TestRun.class)) {
-				testRuns = new TestRun[] {
-					commandMethod.getAnnotation(TestRun.class)
-				};
+				testRuns = new TestRun[] { commandMethod.getAnnotation(TestRun.class) };
 			}else{
 				continue;
 			}

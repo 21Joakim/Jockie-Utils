@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command.manager;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.utility.function.TriConsumer;
 import com.jockie.bot.core.utility.function.TriFunction;
@@ -17,7 +19,7 @@ public interface IErrorManager {
 	 * 
 	 * @return whether or not it was handled
 	 */
-	public boolean handle(IArgument<?> argument, Message message, String content);
+	public boolean handle(@Nonnull IArgument<?> argument, @Nonnull Message message, @Nonnull String content);
 	
 	/**
 	 * Register a response for the error handler
@@ -27,7 +29,8 @@ public interface IErrorManager {
 	 * 
 	 * @return the {@link IErrorManager} instance, useful for chaining
 	 */
-	public <T> IErrorManager registerResponse(Class<T> type, TriConsumer<IArgument<T>, Message, String> consumer);
+	@Nonnull
+	public <T> IErrorManager registerResponse(@Nonnull Class<T> type, @Nonnull TriConsumer<IArgument<T>, Message, String> consumer);
 	
 	/**
 	 * Register a response for the error handler, this uses String.format on the error message
@@ -39,7 +42,8 @@ public interface IErrorManager {
 	 * 
 	 * @return the {@link IErrorManager} instance, useful for chaining
 	 */
-	public default IErrorManager registerResponse(Class<?> type, String errorMessage) {
+	@Nonnull
+	public default IErrorManager registerResponse(@Nonnull Class<?> type, @Nonnull String errorMessage) {
 		this.registerResponse(type, (argument, message, content) -> {
 			message.getChannel().sendMessage(String.format(errorMessage, content)).queue();
 		});
@@ -55,7 +59,8 @@ public interface IErrorManager {
 	 * 
 	 * @return the {@link IErrorManager} instance, useful for chaining
 	 */
-	public default <T> IErrorManager registerResponse(Class<T> type, TriFunction<IArgument<T>, Message, String, String> function) {
+	@Nonnull
+	public default <T> IErrorManager registerResponse(@Nonnull Class<T> type, @Nonnull TriFunction<IArgument<T>, Message, String, String> function) {
 		this.registerResponse(type, (argument, message, content) -> {
 			message.getChannel().sendMessage(function.apply(argument, message, content)).queue();
 		});
@@ -70,7 +75,8 @@ public interface IErrorManager {
 	 * this means that it will, for instance, handle {@link GuildImpl} if {@link Guild}
 	 * was registered
 	 */
-	public boolean isHandleInheritance(Class<?> type);
+	@Nonnull
+	public boolean isHandleInheritance(@Nonnull Class<?> type);
 	
 	/**
 	 * @param type the type of the handler
@@ -80,6 +86,7 @@ public interface IErrorManager {
 	 * 
 	 * @return the {@link IErrorManager} instance, useful for chaining
 	 */
-	public IErrorManager setHandleInheritance(Class<?> type, boolean handle);
+	@Nonnull
+	public IErrorManager setHandleInheritance(@Nonnull Class<?> type, boolean handle);
 	
 }

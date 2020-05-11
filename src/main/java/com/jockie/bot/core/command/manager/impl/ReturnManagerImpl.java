@@ -14,6 +14,7 @@ import com.jockie.bot.core.utility.CommandUtility;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.internal.utils.Checks;
 
 public class ReturnManagerImpl implements IReturnManager {
 	
@@ -46,6 +47,8 @@ public class ReturnManagerImpl implements IReturnManager {
 	}
 	
 	protected ReturnHandler<?> getInheritanceHandler(Class<?> type) {
+		Checks.notNull(type, "type");
+		
 		for(ReturnHandler<?> inheritenceProvider : this.handleInheritance) {
 			Class<?> secondType = inheritenceProvider.getType();
 			
@@ -59,6 +62,8 @@ public class ReturnManagerImpl implements IReturnManager {
 	
 	@SuppressWarnings("unchecked")
 	public <T> boolean perform(CommandEvent event, T object) {
+		Checks.notNull(event, "event");
+		
 		Class<?> type = object.getClass();
 		
 		ReturnHandler<T> handler = this.getReturnHandler(type);
@@ -93,12 +98,17 @@ public class ReturnManagerImpl implements IReturnManager {
 	}
 	
 	public ReturnManagerImpl unregisterHandler(Class<?> type) {
+		Checks.notNull(type, "type");
+		
 		this.handleInheritance.remove(this.returnHandlers.remove(type));
 		
 		return this;
 	}
 	
 	public <T> ReturnManagerImpl registerHandler(Class<T> type, BiConsumer<CommandEvent, T> function) {
+		Checks.notNull(type, "type");
+		Checks.notNull(function, "function");
+		
 		ReturnHandler<T> handler = this.getReturnHandler(type);
 		if(handler != null) {
 			handler.setReturnHandler(function);
@@ -111,6 +121,8 @@ public class ReturnManagerImpl implements IReturnManager {
 	}
 	
 	public boolean isHandleInheritance(Class<?> type) {
+		Checks.notNull(type, "type");
+		
 		ReturnHandler<?> handler = this.returnHandlers.get(type);
 		if(handler != null) {
 			return handler.isHandleInheritence();
@@ -119,7 +131,9 @@ public class ReturnManagerImpl implements IReturnManager {
 		return false;
 	}
 	
-	public ReturnManagerImpl setHandleInheritance(Class<?> type, boolean handle) {		
+	public ReturnManagerImpl setHandleInheritance(Class<?> type, boolean handle) {
+		Checks.notNull(type, "type");
+		
 		ReturnHandler<?> handler = this.returnHandlers.get(type);
 		if(handler == null) {
 			throw new IllegalArgumentException(type.getTypeName() + " is not a registered context");

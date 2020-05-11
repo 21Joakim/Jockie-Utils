@@ -49,7 +49,7 @@ public class CommandInviteInfo extends CommandImpl {
 			builder.addField("Uses", invite.getUses() + "", true);
 			builder.addBlankField(true);
 			builder.addField("Creator", invite.getInviter().getName() + "#" + invite.getInviter().getDiscriminator(), true);
-			builder.addField("Created", Main.FORMATTER.format(invite.getCreationTime()), true);
+			builder.addField("Created", Main.FORMATTER.format(invite.getTimeCreated()), true);
 			builder.addBlankField(true);
 			
 			event.reply(builder.build()).queue();

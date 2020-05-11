@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.category.ICategory;
@@ -12,24 +15,39 @@ import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.cooldown.ICooldown;
 import com.jockie.bot.core.option.IOption;
+import com.jockie.bot.core.property.IPropertyContainer;
 
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
+import net.dv8tion.jda.internal.utils.Checks;
 
-public interface ICommand {
+public interface ICommand extends IPropertyContainer {
 	
 	/**
 	 * This is used to determine how the {@link ICommandParser} should handle a command when an unknown option is provided
 	 */
-	public static enum InvalidOptionPolicy {
+	public static enum UnknownOptionPolicy {
 		/** Adds the option to the map of provided options which can then be accessed through {@link CommandEvent#getOptions()}  */
 		ADD,
 		/** Includes the option content as an argument instead of an option */
 		INCLUDE,
 		/** Ignores (removes) the option from the message */
 		IGNORE,
+		/** Fails the command */
+		FAIL;
+	}
+	
+	/**
+	 * This is used to determine how the {@link ICommandParser} should handle a command when a duplicate option is provided
+	 */
+	public static enum DuplicateOptionPolicy {
+		/** Uses the first defined option and ignores the rest */
+		USE_FIRST,
+		/** Uses the last defined option and ignores the rest */
+		USE_LAST,
+		/** Combines all the options in to a list */
+		COMBINE,
 		/** Fails the command */
 		FAIL;
 	}
@@ -78,6 +96,7 @@ public interface ICommand {
 	/**
 	 * @return the command which the command listener should look for
 	 */
+	@Nonnull
 	public String getCommand();
 	
 	/**
@@ -93,6 +112,7 @@ public interface ICommand {
 	/**
 	 * @return the command's arguments.
 	 */
+	@Nonnull
 	public List<IArgument<?>> getArguments();
 	
 	/**
@@ -103,51 +123,67 @@ public interface ICommand {
 	/**
 	 * @return a short description of what the command does, preferable use would be a help command
 	 */
+	@Nullable
 	public String getShortDescription();
 	
 	/**
 	 * @return a description of what this command does
 	 */
+	@Nullable
 	public String getDescription();
 	
 	/**
 	 * @return all the possible aliases for this command
 	 */
+	@Nonnull
 	public List<String> getAliases();
 	
 	/**
 	 * @return all options for this command
 	 */
+	@Nonnull
 	public List<IOption<?>> getOptions();
 	
 	/**
-	 * @return a {@link InvalidOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
+	 * @return a {@link UnknownOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when an unknown option is provided
 	 */
-	public InvalidOptionPolicy getInvalidOptionPolicy();
+	@Nonnull
+	public UnknownOptionPolicy getUnknownOptionPolicy();
+	
+	/**
+	 * @return a {@link DuplicateOptionPolicy} which is used to determine how the {@link CommandListener} should handle a command when a duplicate option is provided
+	 */
+	@Nonnull
+	public DuplicateOptionPolicy getDuplicateOptionPolicy();
 	
 	/**
 	 * @return a {@link ContentOverflowPolicy} which is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take
 	 */
+	@Nonnull
 	public ContentOverflowPolicy getContentOverflowPolicy();
 	
 	/**
 	 * @return an array of {@link ArgumentParsingType}s which is used to determine how the arguments are allowed to be defined
 	 */
+	@Nonnull
 	public Set<ArgumentParsingType> getAllowedArgumentParsingTypes();
 	
 	/**
 	 * @return the argument trim type, this is used to determine how spaces in arguments are handled
 	 */
+	@Nonnull
 	public ArgumentTrimType getArgumentTrimType();
 	
 	/**
 	 * @return the discord permissions required for this command to function correctly.
 	 */
+	@Nonnull
 	public Set<Permission> getBotDiscordPermissions();
 	
 	/**
 	 * @return the discord permissions the author is required to have to trigger this command
 	 */
+	@Nonnull
 	public Set<Permission> getAuthorDiscordPermissions();
 	
 	/**
@@ -182,6 +218,7 @@ public interface ICommand {
 	 * @return the scope of which the cooldown should be applied to, for instance if {@link ICooldown.Scope#USER_GUILD}
 	 * is used it will be applied for a user per a guild basis.
 	 */
+	@Nonnull
 	public ICooldown.Scope getCooldownScope();
 	
 	/**
@@ -192,14 +229,16 @@ public interface ICommand {
 	/**
 	 * @param event the context
 	 * 
-	 * @return a possibly-null object that will determine what order asynchronous commands should be executed in
+	 * @return an object that will determine what order asynchronous commands should be executed in
 	 */
-	public Object getAsyncOrderingKey(CommandEvent event);
+	@Nullable
+	public Object getAsyncOrderingKey(@Nonnull CommandEvent event);
 	
 	/**
 	 * @return the parent of this command, a parent is used to get the full trigger for this command, 
 	 * for instance if the parent's command trigger was "mute" and this command's trigger was "all" the whole trigger would be "mute all"
 	 */
+	@Nullable
 	public ICommand getParent();
 	
 	/**
@@ -211,6 +250,10 @@ public interface ICommand {
 		return this.getParent() != null;
 	}
 	
+	/**
+	 * @return the category of this command
+	 */
+	@Nullable
 	public ICategory getCategory();
 	
 	/**
@@ -226,19 +269,23 @@ public interface ICommand {
 	/**
 	 * @return all sub-commands for this command
 	 */
+	@Nonnull
 	public List<ICommand> getSubCommands();
 	
 	/**
-	 * Should only be used by the class that implements this and the class that verifies the commands
+	 * Checks whether this command can be executed in the context provided, this
+	 * is checked before a command is parsed and should include checks such as
+	 * {@link CommandListener#isDeveloper(long)}
 	 * 
-	 * @param message the context of what to verify
-	 * @param commandListener the context of what {@link CommandListener} handled the request
+	 * @param message the context
+	 * @param commandListener which {@link CommandListener} handled the request
 	 * 
-	 * @return a boolean that will prove if the event has the correct properties for the command to be valid
+	 * @return whether or not the command can be executed in the provided context
 	 */
-	
-	/* Should this be renamed to something else, such as isAccessible? Since it checks whether the user has access to the command or not, maybe canAccess? */
-	public default boolean verify(Message message, CommandListener commandListener) {
+	public default boolean isAccessible(@Nonnull Message message, @Nonnull CommandListener commandListener) {
+		Checks.notNull(message, "message");
+		Checks.notNull(commandListener, "commandListener");
+		
 		if(message.getAuthor().getIdLong() == message.getJDA().getSelfUser().getIdLong()) {
 			return false;
 		}
@@ -270,7 +317,19 @@ public interface ICommand {
 	 * 
 	 * @throws Throwable if the command in any way fails
 	 */
-	public void execute(CommandEvent event, Object... arguments) throws Throwable;
+	public void execute(@Nonnull CommandEvent event, @Nonnull Object... arguments) throws Throwable;
+	
+	/**
+	 * @param message the context
+	 * 
+	 * @return all commands which are related to this command, sub-commands and dummy commands as well as all the aliases, with the appropriate triggers
+	 * 
+	 * @see ICommand#getAllCommandsRecursiveWithTriggers(Message, String)
+	 */
+	@Nonnull
+	public default List<CommandTrigger> getAllCommandsRecursiveWithTriggers(@Nonnull Message message) {
+		return this.getAllCommandsRecursiveWithTriggers(message, "");
+	}
 	
 	/**
 	 * @param message the context
@@ -287,14 +346,18 @@ public interface ICommand {
 	 * commands for everything from the command itself to deeply embedded sub-commands. I am sure there is a better more 
 	 * user-friendly way of having this or doing away with it completely, after all it is 99% an internal method.
 	 */
-	public default List<Pair<String, ICommand>> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
-		List<Pair<String, ICommand>> commands = new ArrayList<>();
+	@Nonnull
+	public default List<CommandTrigger> getAllCommandsRecursiveWithTriggers(@Nonnull Message message, @Nonnull String prefix) {
+		Checks.notNull(message, "message");
+		Checks.notNull(prefix, "prefix");
 		
-		commands.add(Pair.of((prefix + " " + this.getCommand()).trim(), this));
+		List<CommandTrigger> commands = new ArrayList<>();
+		
+		commands.add(new CommandTrigger((prefix + " " + this.getCommand()).trim(), this));
 		
 		List<String> aliases = this.getAliases();
 		for(String alias : aliases) {
-			commands.add(Pair.of((prefix + " " + alias).trim(), this));
+			commands.add(new CommandTrigger((prefix + " " + alias).trim(), this));
 		}
 		
 		for(ICommand command : this.getSubCommands()) {
@@ -313,7 +376,7 @@ public interface ICommand {
 	 * 
 	 * @return all commands which are related to this command, sub-commands and optional dummy commands
 	 */
-	
+	@Nonnull
 	/* Including a default implementation in case people wants to make their own ICommand implementation */
 	/* Not sure if the includeDummyCommands variable should exist or not, it is more or less an internal thing and is not really supposed to be used */
 	public default List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
@@ -332,6 +395,7 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getAllCommandsRecursive(boolean)
 	 */
+	@Nonnull
 	public default List<ICommand> getAllCommandsRecursive() {
 		return this.getAllCommandsRecursive(false);
 	}
@@ -341,18 +405,23 @@ public interface ICommand {
 	 * 
 	 * @return the information about all the arguments of the provided command
 	 */
-	public static String getArgumentInfo(ICommand command) {
+	/* TODO: Reconsider this to allow custom implementations */
+	@Nonnull
+	public static String getArgumentInfo(@Nonnull ICommand command) {
+		Checks.notNull(command, "command");
+		
 		StringBuilder builder = new StringBuilder();
 		
 		List<IArgument<?>> arguments = command.getArguments();
 		for(int i = 0; i < arguments.size(); i++) {
 			IArgument<?> argument = arguments.get(i);
 			
-			if(argument.getName() != null) {
-				builder.append("<").append(argument.getName()).append(">");
-			}else{
-				builder.append("<argument ").append(i + 1).append(">");
+			String name = argument.getName();
+			if(name == null) {
+				name = "argument " + (i + 1);
 			}
+			
+			builder.append("<").append(name).append(">");
 			
 			if(argument instanceof IEndlessArgument) {
 				IEndlessArgument<?> endlessArgument = (IEndlessArgument<?>) argument;
@@ -364,7 +433,7 @@ public interface ICommand {
 			}
 			
 			if(!argument.hasDefault()) {
-				builder.append("*");			
+				builder.append("*");
 			}
 			
 			if(i < arguments.size() - 1) {
@@ -380,6 +449,7 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getArgumentInfo()
 	 */
+	@Nonnull
 	public default String getArgumentInfo() {
 		return ICommand.getArgumentInfo(this);
 	}
@@ -391,7 +461,11 @@ public interface ICommand {
 	 * 
 	 * @return full usage information for the provided command, this includes the prefix, command and {@link #getArgumentInfo()}
 	 */
-	public static String getUsage(ICommand command, String prefix) {
+	@Nonnull
+	public static String getUsage(@Nonnull ICommand command, @Nonnull String prefix) {
+		Checks.notNull(command, "command");
+		Checks.notNull(prefix, "prefix");
+		
 		StringBuilder builder = new StringBuilder();
 		
 		builder.append(prefix)
@@ -409,7 +483,8 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getUsage(ICommand, String)
 	 */
-	public static String getUsage(ICommand command) {
+	@Nonnull
+	public static String getUsage(@Nonnull ICommand command) {
 		return ICommand.getUsage(command, "");
 	}
 	
@@ -420,7 +495,8 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getUsage(ICommand, String)
 	 */
-	public default String getUsage(String prefix) {
+	@Nonnull
+	public default String getUsage(@Nonnull String prefix) {
 		return ICommand.getUsage(this, prefix);
 	}
 	
@@ -429,6 +505,7 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getUsage(ICommand, String)
 	 */
+	@Nonnull
 	public default String getUsage() {
 		return ICommand.getUsage(this);
 	}
@@ -438,7 +515,10 @@ public interface ICommand {
 	 * 
 	 * @return the actual trigger for the provided command which is created by recursively getting the parents of this command
 	 */
-	public static String getCommandTrigger(ICommand command) {
+	@Nonnull
+	public static String getCommandTrigger(@Nonnull ICommand command) {
+		Checks.notNull(command, "command");
+		
 		String trigger = command.getCommand();
 		
 		ICommand parent = command;
@@ -452,6 +532,7 @@ public interface ICommand {
 	/**
 	 * @return the actual trigger for this command which is created by recursively getting the parents of this command
 	 */
+	@Nonnull
 	public default String getCommandTrigger() {
 		return ICommand.getCommandTrigger(this);
 	}
@@ -463,7 +544,10 @@ public interface ICommand {
 	 * 
 	 * @return the top parent of the provided command or the command itself if it has no parent
 	 */
-	public static ICommand getTopParent(ICommand command) {
+	@Nonnull
+	public static ICommand getTopParent(@Nonnull ICommand command) {
+		Checks.notNull(command, "command");
+		
 		if(command.hasParent()) {
 			ICommand parent = command.getParent();
 			while(parent.hasParent()) {
@@ -481,6 +565,7 @@ public interface ICommand {
 	 * 
 	 * @see ICommand#getTopParent(ICommand)
 	 */
+	@Nonnull
 	public default ICommand getTopParent() {
 		return ICommand.getTopParent(this);
 	}

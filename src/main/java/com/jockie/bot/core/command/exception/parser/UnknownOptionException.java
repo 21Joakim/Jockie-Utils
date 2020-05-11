@@ -7,18 +7,18 @@ public class UnknownOptionException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
 	
-	private final String optionString;
+	private final String optionKey;
 	
-	public UnknownOptionException(String optionString) {
-		super(optionString + " is not a valid option");
+	public UnknownOptionException(String optionKey) {
+		super("Option " + optionKey + " is not a valid option");
 		
-		this.optionString = optionString;
+		this.optionKey = optionKey;
 	}
 	
 	/**
 	 * @return the name of the given unknown option
 	 */
-	public String getOptionString() {
-		return this.optionString;
+	public String getOptionKey() {
+		return this.optionKey;
 	}
 }
