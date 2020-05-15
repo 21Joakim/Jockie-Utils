@@ -1,6 +1,6 @@
 apply plugin: 'java'
 
-version '1.38'
+version '1.39'
 
 sourceCompatibility = 1.9
 
@@ -12,7 +12,7 @@ dependencies {
 	compile 'com.google.guava:guava:25.0-jre'
 	compile 'org.json:json:20180813'
 	
-	compile 'net.dv8tion:JDA:4.1.1_147'
+	compile 'net.dv8tion:JDA:4.1.1_150'
 }
 
 compileJava {

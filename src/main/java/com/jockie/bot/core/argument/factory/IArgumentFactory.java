@@ -32,6 +32,22 @@ public interface IArgumentFactory {
 	public <T> IArgumentFactory registerParser(@Nonnull Class<T> type, @Nonnull IArgumentParser<T> parser);
 	
 	/**
+	 * @param type the type of the parser to unregister
+	 * 
+	 * @return the {@link IArgumentFactory} instance, useful for chaining
+	 */
+	@Nonnull
+	public IArgumentFactory unregisterParser(@Nullable Class<?> type);
+	
+	/**
+	 * @param type the type to get the parser from
+	 * 
+	 * @return the registered parser or null if there is none for the provided type
+	 */
+	@Nullable
+	public <T> IArgumentParser<T> getParser(@Nonnull Class<T> type);
+	
+	/**
 	 * Register a parser which will be used before the argument parser for the provided type, this can be used to
 	 * modify the input any given way.
 	 * 
@@ -49,7 +65,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory removeParserBefore(@Nullable Class<T> type, @Nullable IArgumentBeforeParser<T> parser);
+	public IArgumentFactory removeParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -77,7 +93,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory removeParserAfter(@Nullable Class<T> type, @Nullable IArgumentAfterParser<T> parser);
+	public IArgumentFactory removeParserAfter(@Nullable Class<?> type, @Nullable IArgumentAfterParser<?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -107,7 +123,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory removeGenericParserBefore(@Nullable Class<T> type, @Nullable IArgumentBeforeParser<T> parser);
+	public IArgumentFactory removeGenericParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -116,22 +132,6 @@ public interface IArgumentFactory {
 	 */
 	@Nonnull
 	public <T> List<IArgumentBeforeParser<T>> getGenericParsersBefore(@Nullable Class<T> type);
-	
-	/**
-	 * @param type the type of the parser to unregister
-	 * 
-	 * @return the {@link IArgumentFactory} instance, useful for chaining
-	 */
-	@Nonnull
-	public IArgumentFactory unregisterParser(@Nullable Class<?> type);
-	
-	/**
-	 * @param type the type to get the parser from
-	 * 
-	 * @return the registered parser or null if there is none for the provided type
-	 */
-	@Nullable
-	public <T> IArgumentParser<T> getParser(@Nonnull Class<T> type);
 	
 	/**
 	 * <b>Note:</b> That there is no safe-guard against returning the wrong type
@@ -153,7 +153,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory unregisterGenericParser(@Nullable Class<T> type);
+	public IArgumentFactory unregisterGenericParser(@Nullable Class<?> type);
 	
 	/**
 	 * @param type the generic type which the parser is registered for

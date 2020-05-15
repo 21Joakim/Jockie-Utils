@@ -69,8 +69,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	protected Set<Function<Parameter, Builder<?, ?, ?>>> builderFunctions = new LinkedHashSet<>();
 	
-	protected Map<Class<?>, Set<BuilderConfigureFunction>> builderConfigureFunctions = new HashMap<>();
-	protected Map<Class<?>, Set<BuilderConfigureFunction>> genericBuilderConfigureFunctions = new HashMap<>();
+	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> builderConfigureFunctions = new HashMap<>();
+	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> genericBuilderConfigureFunctions = new HashMap<>();
 	
 	protected ArgumentFactoryImpl() {
 		this.registerEssentialParsers();
@@ -508,7 +508,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return Pair.of(false, builder);
 	}
 	
-	protected Pair<Boolean, Builder<?, ?, ?>> configureBuilder(Parameter parameter, Class<?> type, Builder<?, ?, ?> builder, Set<BuilderConfigureFunction> configureFunctions) {
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	protected Pair<Boolean, Builder<?, ?, ?>> configureBuilder(Parameter parameter, Class<?> type, Builder<?, ?, ?> builder, Set<BuilderConfigureFunction<?>> configureFunctions) {
 		if(configureFunctions == null) {
 			return Pair.of(false, builder);
 		}
@@ -540,7 +541,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public IArgument<?> createArgument(Parameter parameter) {
 		Class<?> type = this.convertType(parameter.getType());
 		
@@ -584,35 +585,22 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 			}
 			
 			this.applyArgumentAnnotation(builder, parameter);
-			
-			if(isOptional) {
-				builder.setDefaultAsNull();
-			}
-			
-			Error error = parameter.getAnnotation(Error.class);
-			if(error != null) {
-				builder.setErrorMessage(error.value());
-			}
-			
-			return this.configureBuilder(parameter, type, builder).build();
 		}else{
-			Class<?> componentType = null;
-			if(type.isArray()) {
-				componentType = type.getComponentType();
-			}
-			
-			IArgumentParser<?> parser;
-			if(componentType != null) {
-				parser = this.getParser(componentType);
-				
-				if(parser == null) {
-					throw new IllegalArgumentException("There are no default arguments for the component " + componentType.toString());
-				}
-			}else{
+			Class<?> componentType = type.getComponentType();
+			if(componentType == null) {
 				throw new IllegalArgumentException("There are no default arguments for " + type.toString());
 			}
 			
-			builder = new ArgumentImpl.Builder(type)
+			IArgumentParser<?> parser = this.getParser(componentType);
+			if(parser == null) {
+				parser = this.getGenericParser(componentType);
+			}
+			
+			if(parser == null) {
+				throw new IllegalArgumentException("There are no default arguments for the component " + componentType.toString());
+			}
+			
+			builder = new ArgumentImpl.Builder(componentType)
 				.setParser(parser);
 			
 			if(parameter.isNamePresent()) {
@@ -634,13 +622,19 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 					.setEndless(endless.endless());
 			}
 			
-			Error error = parameter.getAnnotation(Error.class);
-			if(error != null) {
-				builder.setErrorMessage(error.value());
-			}
-			
-			return this.configureBuilder(parameter, type, endlessBuilder).build();
+			builder = endlessBuilder;
 		}
+		
+		if(isOptional) {
+			builder.setDefaultAsNull();
+		}
+		
+		Error error = parameter.getAnnotation(Error.class);
+		if(error != null) {
+			builder.setErrorMessage(error.value());
+		}
+		
+		return this.configureBuilder(parameter, type, builder).build();
 	}
 	
 	@Override
@@ -656,7 +650,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl unregisterGenericParser(@Nullable Class<T> type) {
+	public ArgumentFactoryImpl unregisterGenericParser(@Nullable Class<?> type) {
 		this.genericParsers.remove(this.convertType(type));
 		
 		return this;
@@ -873,7 +867,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Nonnull
-	public ArgumentFactoryImpl addBuilderConfigureFunction(@Nonnull Class<?> type, @Nonnull BuilderConfigureFunction configureFunction) {
+	public <T> ArgumentFactoryImpl addBuilderConfigureFunction(@Nonnull Class<T> type, @Nonnull BuilderConfigureFunction<T> configureFunction) {
 		Checks.notNull(type, "type");
 		Checks.notNull(configureFunction, "configureFunction");
 		
@@ -883,7 +877,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Nonnull
-	public ArgumentFactoryImpl removeBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction configureFunction) {
+	public ArgumentFactoryImpl removeBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
 		if(this.builderConfigureFunctions.containsKey(type)) {
@@ -893,19 +887,22 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Nonnull
-	public List<BuilderConfigureFunction> getBuilderConfigureFunctions(@Nullable Class<?> type) {
+	public <T> List<BuilderConfigureFunction<T>> getBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.builderConfigureFunctions.containsKey(type)) {
-			return new ArrayList<>(this.builderConfigureFunctions.get(type));
+			return this.builderConfigureFunctions.get(type).stream()
+				.map(builder -> (BuilderConfigureFunction<T>) builder)
+				.collect(Collectors.toList());
 		}
 		
 		return Collections.emptyList();
 	}
 	
 	@Nonnull
-	public ArgumentFactoryImpl addGenericBuilderConfigureFunction(@Nonnull Class<?> type, @Nonnull BuilderConfigureFunction configureFunction) {
+	public <T> ArgumentFactoryImpl addGenericBuilderConfigureFunction(@Nonnull Class<T> type, @Nonnull BuilderConfigureFunction<T> configureFunction) {
 		Checks.notNull(type, "type");
 		Checks.notNull(configureFunction, "configureFunction");
 		
@@ -915,7 +912,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Nonnull
-	public ArgumentFactoryImpl removeGenericBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction configureFunction) {
+	public ArgumentFactoryImpl removeGenericBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
 		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
@@ -925,12 +922,15 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Nonnull
-	public List<BuilderConfigureFunction> getGenericBuilderConfigureFunctions(@Nullable Class<?> type) {
+	public <T> List<BuilderConfigureFunction<T>> getGenericBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
-			return new ArrayList<>(this.genericBuilderConfigureFunctions.get(type));
+			return this.genericBuilderConfigureFunctions.get(type).stream()
+				.map(builder -> (BuilderConfigureFunction<T>) builder)
+				.collect(Collectors.toList());
 		}
 		
 		return Collections.emptyList();
@@ -948,7 +948,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl removeParserBefore(@Nullable Class<T> type, @Nullable IArgumentBeforeParser<T> parser) {
+	public ArgumentFactoryImpl removeParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
 		if(this.beforeParsers.containsKey(type)) {
@@ -984,7 +984,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl removeGenericParserBefore(@Nullable Class<T> type, @Nullable IArgumentBeforeParser<T> parser) {
+	public ArgumentFactoryImpl removeGenericParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
 		if(this.genericBeforeParsers.containsKey(type)) {
@@ -1020,7 +1020,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl removeParserAfter(@Nullable Class<T> type, @Nullable IArgumentAfterParser<T> parser) {
+	public ArgumentFactoryImpl removeParserAfter(@Nullable Class<?> type, @Nullable IArgumentAfterParser<?> parser) {
 		type = this.convertType(type);
 		
 		if(this.afterParsers.containsKey(type)) {

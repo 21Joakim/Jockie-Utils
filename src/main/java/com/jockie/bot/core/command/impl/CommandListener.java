@@ -646,7 +646,7 @@ public class CommandListener implements EventListener {
 		
 		long[] longIds = new long[ids.length];
 		for(int i = 0; i < ids.length; i++) {
-			Checks.isSnowflake(ids[i]);
+			Checks.isSnowflake(ids[i], "id");
 			
 			longIds[i] = Long.parseLong(ids[i]);
 		}

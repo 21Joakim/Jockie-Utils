@@ -1,6 +1,7 @@
 package com.jockie.bot.core.command.manager;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.utility.function.TriConsumer;
@@ -31,6 +32,15 @@ public interface IErrorManager {
 	 */
 	@Nonnull
 	public <T> IErrorManager registerResponse(@Nonnull Class<T> type, @Nonnull TriConsumer<IArgument<T>, Message, String> consumer);
+	
+	/**
+	 * Unregister a previously registered error response
+	 * 
+	 * @param type the type to remove a response for
+	 * 
+	 * @return the {@link IErrorManager} instance, useful for chaining
+	 */
+	public IErrorManager unregisterResponse(@Nullable Class<?> type);
 	
 	/**
 	 * Register a response for the error handler, this uses String.format on the error message

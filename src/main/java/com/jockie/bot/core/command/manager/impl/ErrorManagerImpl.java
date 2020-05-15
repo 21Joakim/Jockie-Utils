@@ -70,6 +70,14 @@ public class ErrorManagerImpl implements IErrorManager {
 		return this;
 	}
 	
+	@Override
+	public ErrorManagerImpl unregisterResponse(Class<?> type) {
+		this.consumers.remove(type);
+		this.inheritanceCache.remove(type);
+		
+		return this;
+	}
+	
 	protected Class<?> getInheritanceType(Class<?> type) {
 		Checks.notNull(type, "type");
 		

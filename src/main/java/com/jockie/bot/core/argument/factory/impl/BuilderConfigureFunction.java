@@ -5,7 +5,7 @@ import java.lang.reflect.Parameter;
 import com.jockie.bot.core.argument.IArgument;
 
 @FunctionalInterface
-public interface BuilderConfigureFunction {
+public interface BuilderConfigureFunction<Type> {
 	
 	/**
 	 * @return whether or not the builder should continue
@@ -25,5 +25,5 @@ public interface BuilderConfigureFunction {
 	 * @return the builder after it has been configured, this could be the provided builder
 	 * or a completely new one
 	 */
-	public IArgument.Builder<?, ?, ?> configure(Parameter parameter, IArgument.Builder<?, ?, ?> builder);
+	public IArgument.Builder<Type, ?, ?> configure(Parameter parameter, IArgument.Builder<Type, ?, ?> builder);
 }
