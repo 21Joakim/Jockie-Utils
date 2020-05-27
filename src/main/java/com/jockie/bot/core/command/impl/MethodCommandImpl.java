@@ -8,8 +8,10 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -49,7 +51,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 	protected Method method;
 	protected Object invoker;
 	
-	private List<DummyCommand> dummyCommands = Collections.emptyList();
+	protected List<DummyCommand> dummyCommands = Collections.emptyList();
 	
 	public MethodCommandImpl(String name) {
 		super(name);
@@ -238,6 +240,108 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 	}
 	
+	private static Set<Parameter> getContextParameters(IContextManager contextManager, Parameter[] parameters) {
+		Set<Parameter> contextParameters = new HashSet<>();
+		for(Parameter parameter : parameters) {
+			if(contextManager.isEnforcedContext(parameter.getParameterizedType())) {
+				contextParameters.add(parameter);
+			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
+				contextParameters.add(parameter);
+			}
+		}
+		
+		return contextParameters;
+	}
+	
+	private static Object getContextArgument(CommandEvent event, IContextManager contextManager, List<IOption<?>> options, Parameter parameter) {
+		Option annotation = parameter.getAnnotation(Option.class);
+		if(annotation == null) {
+			Object context = contextManager.getContext(event, parameter);
+			if(context == null) {
+				throw new IllegalStateException("There is no context available for " + parameter.getType());
+			}
+			
+			return context;
+		}
+		
+		IOption<?> option = options.stream()
+			.filter(opt -> opt.getName().equals(annotation.value()))
+			.findFirst()
+			.orElse(null);
+		
+		if(option == null) {
+			throw new IllegalStateException("The option, " + annotation.value() + ", specified in the annotation does not exist in the command");
+		}
+		
+		Object value = event.getOption(annotation.value());
+		if(value == null) {
+			for(String alias : annotation.aliases()) {
+				value = event.getOption(alias);
+			}
+		}
+		
+		if(value == null) {
+			Class<?> type = option.getType();
+			if(type.equals(Boolean.class) || type.equals(boolean.class)) {
+				return false;
+			}
+		}
+		
+		return value;
+	}
+	
+	private static void handleExecutionFailure(CommandEvent event, Object[] arguments, Method method,Throwable throwable) throws Throwable {
+		if(throwable instanceof IllegalArgumentException) {
+			StringBuilder information = new StringBuilder();
+			information.append("Argument type mismatch for command \"" + event.getCommandTrigger() + "\"\n");
+			
+			information.append("	Arguments provided:\n");
+			for(Object argument : arguments) {
+				if(argument != null) {
+					information.append("		" + argument.getClass().getName() + "\n");
+				}else{
+					information.append("		null\n");
+				}
+			}
+			
+			information.append("	Arguments expected:\n");
+			for(Class<?> type : method.getParameterTypes()) {
+				information.append("		" + type.getName() + "\n");
+			}
+			
+			information.append("	Argument values: " + Arrays.deepToString(arguments));
+			
+			throw new IllegalStateException(information.toString());
+		}
+		
+		if(throwable instanceof InvocationTargetException) {
+			Throwable cause = throwable.getCause();
+			if(cause == null) {
+				return;
+			}
+			
+			if(event.getCommandListener().isFilterStackTrace()) {
+				List<StackTraceElement> elements = List.of(cause.getStackTrace());
+				
+				int index = -1;
+				for(int i = 0; i < elements.size(); i++) {
+					StackTraceElement element = elements.get(i);
+					if(element.getClassName().equals(method.getDeclaringClass().getName()) && element.getMethodName().equals(method.getName())) {
+						index = i;
+					}
+				}
+				
+				if(index != -1) {
+					cause.setStackTrace(elements.subList(0, index + 1).toArray(new StackTraceElement[0]));
+				}
+			}
+			
+			throw cause;
+		}
+		
+		throw throwable;
+	}
+	
 	/**
 	 * Execute a command from the provided method
 	 * 
@@ -262,80 +366,28 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		Parameter[] parameters = commandMethod.getParameters();
 		Type[] genericTypes = commandMethod.getGenericParameterTypes();
 		
-		List<Integer> contextIndexes = new ArrayList<>();
-		for(int i = 0; i < parameters.length; i++) {
-			Parameter parameter = parameters[i];
-			
-			if(contextManager.isEnforcedContext(parameter.getParameterizedType())) {
-				contextIndexes.add(i);
-			}else if(parameter.isAnnotationPresent(Context.class) || parameter.isAnnotationPresent(Option.class)) {
-				contextIndexes.add(i);
-			}
-		}
-		
-		Object[] arguments = new Object[args.length + contextIndexes.size()];
+		Set<Parameter> contextParameters = MethodCommandImpl.getContextParameters(contextManager, parameters);
+		Object[] arguments = new Object[args.length + contextParameters.size()];
 		
 		List<IOption<?>> options = command.getOptions();
 		
 		for(int i = 0, i2 = 0; i < arguments.length; i++) {
 			Parameter parameter = parameters[i];
-			Class<?> type = parameter.getType();
-			
-			if(contextIndexes.contains(i)) {
-				if(parameter.isAnnotationPresent(Option.class)) {
-					Option optionAnnotation = parameter.getAnnotation(Option.class);
-					IOption<?> option = null;
-					
-					for(IOption<?> opt : options) {
-						if(opt.getName().equals(optionAnnotation.value())) {
-							option = opt;
-						}
-					}
-					
-					if(option == null) {
-						throw new IllegalStateException("The option, " + optionAnnotation.value() + ", specified in the annotation does not exist in the command");
-					}
-					
-					Object value = event.getOption(optionAnnotation.value());
-					if(value == null) {
-						for(String alias : optionAnnotation.aliases()) {
-							value = event.getOption(alias);
-						}
-					}
-					
-					if(value == null) {
-						Class<?> optionType = option.getType();
-						if(optionType.equals(boolean.class) || optionType.equals(Boolean.class)) {
-							arguments[i] = false;
-							
-							continue;
-						}
-					}
-					
-					arguments[i] = value;
-					
-					continue;
-				}else{
-					Object context = contextManager.getContext(event, parameter);
-					if(context != null) {
-						arguments[i] = context;
-						
-						continue;
-					}else{
-						throw new IllegalStateException("There is no context available for " + parameter.getType());
-					}
-				}
+			if(contextParameters.contains(parameter)) {
+				arguments[i] = MethodCommandImpl.getContextArgument(event, contextManager, options, parameter);
+				
+				continue;
 			}
 			
 			Object argument = args[i2++];
 			
+			/* TODO: Move this to some sort of implementation which will allow anyone to extend upon this idea */
+			Class<?> type = parameter.getType();
 			if(type.isAssignableFrom(Optional.class)) {
 				Type parameterType = genericTypes[i];
 				
 				try {
-					ParameterizedType parameterizedType = (ParameterizedType) parameterType;
-					
-					Type[] typeArguments = parameterizedType.getActualTypeArguments();
+					Type[] typeArguments = ((ParameterizedType) parameterType).getActualTypeArguments();
 					if(typeArguments.length > 0) {
 						arguments[i] = Optional.ofNullable(argument);
 					}
@@ -363,52 +415,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				}
 			}
 		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			if(e instanceof IllegalArgumentException) {
-				StringBuilder information = new StringBuilder();
-				
-				information.append("Argument type mismatch for command \"" + event.getCommandTrigger() + "\"\n");
-				
-				information.append("	Arguments provided:\n");
-				for(Object argument : arguments) {
-					if(argument != null) {
-						information.append("		" + argument.getClass().getName() + "\n");
-					}else{
-						information.append("		null\n");
-					}
-				}
-				
-				information.append("	Arguments expected:\n");
-				for(Class<?> clazz : commandMethod.getParameterTypes()) {
-					information.append("		" + clazz.getName() + "\n");
-				}
-				
-				information.append("	Argument values: " + Arrays.deepToString(arguments));
-				
-				throw new IllegalStateException(information.toString());
-			}else if(e instanceof InvocationTargetException) {
-				Throwable cause = e.getCause();
-				if(cause != null) {
-					if(event.getCommandListener().isFilterStackTrace()) {
-						List<StackTraceElement> elements = List.of(cause.getStackTrace());
-						
-						int index = -1;
-						for(int i = 0; i < elements.size(); i++) {
-							StackTraceElement element = elements.get(i);
-							if(element.getClassName().equals(commandMethod.getDeclaringClass().getName()) && element.getMethodName().equals(commandMethod.getName())) {
-								index = i;
-							}
-						}
-						
-						if(index != -1) {
-							cause.setStackTrace(elements.subList(0, index + 1).toArray(new StackTraceElement[0]));
-						}
-					}
-					
-					throw cause;
-				}
-			}else{
-				throw e;
-			}
+			MethodCommandImpl.handleExecutionFailure(event, arguments, commandMethod, e);
 		}
 	}
 	
@@ -424,33 +431,37 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 	@Nonnull
 	public static List<DummyCommand> generateDummyCommands(@Nonnull ICommand command) {
 		List<DummyCommand> dummyCommands = new ArrayList<>();
+		if(command instanceof DummyCommand) {
+			return dummyCommands;
+		}
 		
-		if(!(command instanceof DummyCommand)) {
-			List<IArgument<?>> arguments = command.getArguments();
-			List<IArgument<?>> dummyArguments = new ArrayList<>();
-			if(arguments.size() > 0) {
-				for(int i = 0; i < arguments.size(); i++) {
-					IArgument<?> argument = arguments.get(i);
-					if(argument.hasDefault()) {
-						dummyArguments.add(argument);
-					}
-				}
-				
-				if(dummyArguments.size() > 0) {
-					List<IArgument<?>> args = new ArrayList<>();
-					for(int i = 1, max = 1 << dummyArguments.size(); i < max; ++i) {
-						for(int j = 0, k = 1; j < dummyArguments.size(); ++j, k <<= 1) {
-							if((k & i) != 0) {
-								args.add(dummyArguments.get(j));
-							}
-						}
-						
-						dummyCommands.add(new DummyCommand(command, args.toArray(new IArgument[0])));
-						
-						args.clear();
-					}
+		List<IArgument<?>> arguments = command.getArguments();
+		if(arguments.isEmpty()) {
+			return dummyCommands;
+		}
+		
+		List<IArgument<?>> optionalArguments = new ArrayList<>();
+		for(int i = 0; i < arguments.size(); i++) {
+			IArgument<?> argument = arguments.get(i);
+			if(argument.hasDefault()) {
+				optionalArguments.add(argument);
+			}
+		}
+		
+		if(optionalArguments.isEmpty()) {
+			return dummyCommands;
+		}
+		
+		List<IArgument<?>> dummyArguments = new ArrayList<>();
+		for(int i = 1, max = 1 << optionalArguments.size(); i < max; ++i) {
+			for(int j = 0, k = 1; j < optionalArguments.size(); ++j, k <<= 1) {
+				if((k & i) != 0) {
+					dummyArguments.add(optionalArguments.get(j));
 				}
 			}
+			
+			dummyCommands.add(new DummyCommand(command, dummyArguments.toArray(new IArgument[0])));
+			dummyArguments.clear();
 		}
 		
 		return dummyCommands;

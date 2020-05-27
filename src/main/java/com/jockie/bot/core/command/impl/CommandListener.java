@@ -361,9 +361,11 @@ public class CommandListener implements EventListener {
 	protected Set<Predicate<Message>> preParseChecks = new LinkedHashSet<>();
 	protected Set<BiPredicate<CommandEvent, ICommand>> preExecuteChecks = new LinkedHashSet<>();
 	
-	protected List<String> defaultPrefixes = List.of("!");
+	protected List<String> defaultPrefixes = Collections.emptyList();
 	
 	protected Function<Message, List<String>> prefixFunction;
+	
+	protected boolean caseSensitivePrefixes = true;
 	
 	protected boolean allowMentionPrefix = true;
 	
@@ -594,6 +596,25 @@ public class CommandListener implements EventListener {
 	 */
 	public boolean isAllowMentionPrefix() {
 		return this.allowMentionPrefix;
+	}
+	
+	/**
+	 * @param caseSensitive whether or not prefixes should be case-sensitive
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	@Nonnull
+	public CommandListener setCaseSensitivePrefixes(boolean caseSensitive) {
+		this.caseSensitivePrefixes = caseSensitive;
+		
+		return this;
+	}
+	
+	/**
+	 * @return whether or not prefixes are case-sensitive
+	 */
+	public boolean isCaseSensitivePrefixes() {
+		return this.caseSensitivePrefixes;
 	}
 	
 	/**
@@ -1009,8 +1030,8 @@ public class CommandListener implements EventListener {
 	 * @see #setMessageParseFailureFunction(TriConsumer)
 	 */
 	@Nullable
-	public TriConsumer<Message, String, List<ICommand>> getMessageParseFailureFunction() {
-		return this.helpFunction;
+	public TriConsumer<Message, String, List<Failure>> getMessageParseFailureFunction() {
+		return this.messageParseFailureFunction;
 	}
 	
 	/**
@@ -1315,7 +1336,15 @@ public class CommandListener implements EventListener {
 			}
 		}
 		
+		if(!this.caseSensitivePrefixes) {
+			contentRaw = contentRaw.toLowerCase();
+		}
+		
 		for(String prefix : this.getPrefixes(message)) {
+			if(!this.caseSensitivePrefixes) {
+				prefix = prefix.toLowerCase();
+			}
+			
 			if(contentRaw.startsWith(prefix)) {
 				return prefix;
 			}

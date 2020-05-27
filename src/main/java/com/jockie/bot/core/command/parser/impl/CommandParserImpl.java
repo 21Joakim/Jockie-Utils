@@ -404,7 +404,7 @@ public class CommandParserImpl implements ICommandParser {
 				}
 				
 				/* Handle command as key-value */
-				Map<String, String> map = StringUtility.asMap(messageContent);
+				Map<String, String> map = StringUtility.asMap(messageContent, this.quoteCharacters);
 				if(map == null) {
 					break NAMED;
 				}

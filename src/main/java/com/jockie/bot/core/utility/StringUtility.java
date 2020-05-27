@@ -1,5 +1,7 @@
 package com.jockie.bot.core.utility;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -7,6 +9,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import net.dv8tion.jda.internal.utils.Checks;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class StringUtility {
 	
@@ -176,8 +179,23 @@ public class StringUtility {
 	 * 
 	 * @return the map containing the parsed values
 	 */
-	@Nullable
 	public static Map<String, String> asMap(@Nonnull String string) {
+		return StringUtility.asMap(string, List.of(Pair.of('"', '"')));
+	}
+	
+	/**
+	 * Method used to convert a String to a map, for instance 
+	 * <br><b>color=#00FFFF name="a cyan role" permissions=8</b>
+	 * <br>would be parsed to a map with all the values, like this
+	 * <br><b>{color="#00FFFF", name="a cyan role", permissions="8"}</b>
+	 * 
+	 * @param string the String to parse
+	 * @param quoteCharacters the quote characters to handle
+	 * 
+	 * @return the map containing the parsed values
+	 */
+	@Nullable
+	public static Map<String, String> asMap(@Nonnull String string, Collection<Pair<Character, Character>> quoteCharacters) {
 		Checks.notNull(string, "string");
 		
 		Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -196,22 +214,36 @@ public class StringUtility {
 			/* Trim to ignore any spaces between the = and the start of the value */
 			string = string.trim();
 			
-			String value = StringUtility.parseWrapped(string, '"');
-			if(value != null) {
-				string = string.substring(value.length());
-				value = StringUtility.unwrap(value, '"');
-			}else{
-				value = string.substring(0, (index = string.indexOf(" ")) != -1 ? index : string.length());
-				string = string.substring(value.length());
+			String quotedKey = null;
+			for(Pair<Character, Character> quotes : quoteCharacters) {
+				quotedKey = StringUtility.parseWrapped(key, quotes.getLeft(), quotes.getRight());
+				if(quotedKey != null) {
+					quotedKey = StringUtility.unwrap(quotedKey, quotes.getLeft(), quotes.getRight());
+					
+					break;
+				}
 			}
 			
-			String quotedKey = StringUtility.parseWrapped(key, '"');
-			if(quotedKey != null) {
-				key = StringUtility.unwrap(quotedKey, '"');
-			}else{
-				if(key.contains(" ")) {
-					return null;
+			String value = null;
+			for(Pair<Character, Character> quotes : quoteCharacters) {
+				value = StringUtility.parseWrapped(string, quotes.getLeft(), quotes.getRight());
+				if(value != null) {
+					string = string.substring(value.length());
+					value = StringUtility.unwrap(value, quotes.getLeft(), quotes.getRight());
+					
+					break;
 				}
+			}
+			
+			if(quotedKey != null) {
+				key = quotedKey;
+			}else if(key.contains(" ")) {
+				return null;
+			}
+			
+			if(value == null) {
+				value = string.substring(0, (index = string.indexOf(" ")) != -1 ? index : string.length());
+				string = string.substring(value.length());
 			}
 			
 			map.put(key, value);

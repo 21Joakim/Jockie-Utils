@@ -45,7 +45,7 @@ public interface IArgumentFactory {
 	 * @return the registered parser or null if there is none for the provided type
 	 */
 	@Nullable
-	public <T> IArgumentParser<T> getParser(@Nonnull Class<T> type);
+	public <T> IArgumentParser<T> getParser(@Nullable Class<T> type);
 	
 	/**
 	 * Register a parser which will be used before the argument parser for the provided type, this can be used to
@@ -161,6 +161,6 @@ public interface IArgumentFactory {
 	 * @return the generic parser registered for the provided type
 	 */
 	@Nullable
-	public <T> IGenericArgumentParser<T> getGenericParser(@Nonnull Class<T> type);
+	public <T> IGenericArgumentParser<T> getGenericParser(@Nullable Class<T> type);
 	
 }

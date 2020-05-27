@@ -496,8 +496,10 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	protected Pair<Boolean, Builder<?, ?, ?>> configureBuilderGeneric(Parameter parameter, Class<?> type, Builder<?, ?, ?> builder) {
+		type = this.convertType(type);
+		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
-			Pair<Boolean, Builder<?, ?, ?>> pair = this.configureBuilder(parameter, superClass, builder, this.genericBuilderConfigureFunctions.get(superClass));
+			Pair<Boolean, Builder<?, ?, ?>> pair = this.configureBuilder(parameter, builder, this.genericBuilderConfigureFunctions.get(superClass));
 			if(pair.getLeft()) {
 				return pair;
 			}
@@ -509,7 +511,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	protected Pair<Boolean, Builder<?, ?, ?>> configureBuilder(Parameter parameter, Class<?> type, Builder<?, ?, ?> builder, Set<BuilderConfigureFunction<?>> configureFunctions) {
+	protected Pair<Boolean, Builder<?, ?, ?>> configureBuilder(Parameter parameter, Builder<?, ?, ?> builder, Set<BuilderConfigureFunction<?>> configureFunctions) {
 		if(configureFunctions == null) {
 			return Pair.of(false, builder);
 		}
@@ -532,18 +534,20 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	/* Should generic be configured first? */
 	protected Builder<?, ?, ?> configureBuilder(Parameter parameter, Class<?> type, Builder<?, ?, ?> builder) {
+		type = this.convertType(type);
+		
 		Pair<Boolean, Builder<?, ?, ?>> pair = this.configureBuilderGeneric(parameter, type, builder);
 		if(pair.getLeft()) {
 			return pair.getRight();
 		}
 		
-		return this.configureBuilder(parameter, type, builder, this.builderConfigureFunctions.get(type)).getRight();
+		return this.configureBuilder(parameter, builder, this.builderConfigureFunctions.get(type)).getRight();
 	}
 	
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public IArgument<?> createArgument(Parameter parameter) {
-		Class<?> type = this.convertType(parameter.getType());
+		Class<?> type = parameter.getType();
 		
 		boolean isOptional = false;
 		if(type.isAssignableFrom(Optional.class)) {
@@ -558,7 +562,6 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		Builder builder = null;
 		for(Function<Parameter, Builder<?, ?, ?>> function : this.builderFunctions) {
 			builder = function.apply(parameter);
-			
 			if(builder != null) {
 				break;
 			}
@@ -675,14 +678,82 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
+	protected Map<Class<?>, IGenericArgumentParser<?>> genericParserCache = new HashMap<>();
+	
 	@Override
 	@SuppressWarnings("unchecked")
+	/* See the comments in #getParser for more information */
 	public <T> IGenericArgumentParser<T> getGenericParser(Class<T> type) {
+		type = this.convertType(type);
+		if(type == null) {
+			return null;
+		}
+		
+		if(this.genericParserCache.containsKey(type)) {
+			return (IGenericArgumentParser<T>) this.genericParserCache.get(type);
+		}
+		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
-			IGenericArgumentParser<?> genericParser = this.genericParsers.get(superClass);
-			if(genericParser != null) {
-				return (IGenericArgumentParser<T>) genericParser;
+			IGenericArgumentParser<T> parser = (IGenericArgumentParser<T>) this.genericParsers.get(superClass);
+			if(parser == null) {
+				continue;
 			}
+			
+			Set<IArgumentBeforeParser<T>> beforeParsers;
+			if(!parser.isHandleAll()) {
+				beforeParsers = this.getBeforeParsers(type);
+			}else{
+				beforeParsers = Collections.emptySet();
+			}
+			
+			Set<IArgumentAfterParser<T>> afterParsers = this.getAfterParsers(type);
+			if(beforeParsers.isEmpty() && afterParsers.isEmpty()) {
+				return (IGenericArgumentParser<T>) parser;
+			}
+			
+			IGenericArgumentParser<T> newParser = new IGenericArgumentParser<>() {
+				@Override
+				public ParsedArgument<T> parse(ParseContext context, Class<T> type, IArgument<T> argument, String content) {
+					for(IArgumentBeforeParser<T> parser : beforeParsers) {
+						ParsedArgument<String> parsed = parser.parse(context, argument, content);
+						if(!parsed.isValid()) {
+							return new ParsedArgument<T>(false, null);
+						}
+						
+						content = parsed.getObject();
+					}
+					
+					ParsedArgument<T> parsed = parser.parse(context, type, argument, content);
+					if(!parsed.isValid()) {
+						return parsed;
+					}
+					
+					T object = parsed.getObject();
+					for(IArgumentAfterParser<T> parser : afterParsers) {
+						parsed = parser.parse(context, argument, object);
+						if(!parsed.isValid()) {
+							return parsed;
+						}
+						
+						object = parsed.getObject();
+					}
+					
+					return new ParsedArgument<T>(true, object, parsed.getContentLeft());
+				}
+				
+				@Override
+				public int getPriority() {
+					return parser.getPriority();
+				}
+				
+				@Override
+				public boolean isHandleAll() {
+					return parser.isHandleAll();
+				}
+			};
+			
+			this.genericParserCache.put(type, newParser);
+			return newParser;
 		}
 		
 		return null;
@@ -692,6 +763,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	protected <T> Set<IArgumentBeforeParser<T>> getBeforeParsers(Class<T> type) {
+		type = this.convertType(type);
+		
 		Set<IArgumentBeforeParser<T>> beforeParsers = new LinkedHashSet<>();
 		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
@@ -717,6 +790,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	protected <T> Set<IArgumentAfterParser<T>> getAfterParsers(Class<T> type) {
+		type = this.convertType(type);
+		
 		Set<IArgumentAfterParser<T>> afterParsers = new LinkedHashSet<>();
 		Set<IArgumentAfterParser<?>> parsers = this.afterParsers.get(type);
 		if(parsers != null) {
@@ -731,8 +806,6 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> IArgumentParser<T> getParser(Class<T> type) {
-		Checks.notNull(type, "type");
-		
 		type = this.convertType(type);
 		
 		if(!this.parsers.containsKey(type)) {
