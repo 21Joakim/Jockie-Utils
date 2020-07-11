@@ -10,6 +10,8 @@ import javax.annotation.Nullable;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.category.ICategory;
+import com.jockie.bot.core.command.exception.parser.ContentOverflowException;
+import com.jockie.bot.core.command.exception.parser.OptionParseException;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.parser.ICommandParser;
@@ -48,7 +50,19 @@ public interface ICommand extends IPropertyContainer {
 		USE_LAST,
 		/** Combines all the options in to a list */
 		COMBINE,
-		/** Fails the command */
+		/** Fails the command with a {@link DuplicateOptionPolicy} */
+		FAIL;
+	}
+	
+	/**
+	 * This is used to determine how the {@link ICommandParser} should handle a command when an option fails to parse correctly
+	 */
+	public static enum OptionParsingFailurePolicy {
+		/** Ignores (removes) the options from the message, the option will not be set */
+		IGNORE,
+		/** Includes the option content as an argument instead of an option */
+		INCLUDE,
+		/** Fails the command with a {@link OptionParseException} */
 		FAIL;
 	}
 	
@@ -56,7 +70,9 @@ public interface ICommand extends IPropertyContainer {
 	 * This is used to determine how the {@link ICommandParser} should handle a command when a message has more content than the command can take
 	 */
 	public static enum ContentOverflowPolicy {
+		/** Ignores the rest of the content, this content can be acccessed through {@link CommandEvent#getContentOverflow()} */
 		IGNORE,
+		/** Fails the command with a {@link ContentOverflowException} */
 		FAIL;
 	}
 	
@@ -155,6 +171,12 @@ public interface ICommand extends IPropertyContainer {
 	 */
 	@Nonnull
 	public DuplicateOptionPolicy getDuplicateOptionPolicy();
+	
+	/**
+	 * @return a {@link OptionParsingFailurePolicy} which is used to determine how the {@link ICommandParser} should handle a command when an option fails to parse correctly
+	 */
+	@Nonnull
+	public OptionParsingFailurePolicy getOptionParsingFailurePolicy();
 	
 	/**
 	 * @return a {@link ContentOverflowPolicy} which is used to determine how the {@link CommandListener} should handle a command when a message has more content than the command can take

@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command.exception.parser;
 
+import com.jockie.bot.core.command.parser.ParseContext;
+
 /*
  * This Exception indicates that there was an unknown option given in the command
  */
@@ -9,8 +11,8 @@ public class UnknownOptionException extends ParseException {
 	
 	private final String optionKey;
 	
-	public UnknownOptionException(String optionKey) {
-		super("Option " + optionKey + " is not a valid option");
+	public UnknownOptionException(ParseContext context, String optionKey) {
+		super(context, "Option: " + optionKey + " is not a valid option");
 		
 		this.optionKey = optionKey;
 	}

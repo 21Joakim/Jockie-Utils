@@ -1,6 +1,5 @@
 package com.jockie.bot.core.command.impl;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -133,7 +132,7 @@ public class CommandStore {
 		Method onCommandLoadMethod = CommandUtility.findCommandLoadMethod(methods);
 		Method onModuleLoad = CommandUtility.findModuleLoadMethod(methods);
 		
-		BiFunction<Method, Object, ? extends IMethodCommand> createFunction;
+		BiFunction<Method, Object, ? extends IMethodCommand> createFunction = DEFAULT_CREATE_FUNCTION;
 		if(createCommand != null) {
 			createFunction = (method, container) -> {
 				IMethodCommand result = null;
@@ -159,12 +158,10 @@ public class CommandStore {
 				
 				return result;
 			};
-		}else{
-			createFunction = DEFAULT_CREATE_FUNCTION;
 		}
 		
-		Map<String, ICommand> moduleCommands = new HashMap<>();
-		Map<String, ICommand> moduleCommandsNamed = new HashMap<>();
+		Map<String, List<ICommand>> moduleCommands = new HashMap<>();
+		Map<String, List<ICommand>> moduleCommandsNamed = new HashMap<>();
 		
 		/* Load method based commands */
 		for(Method method : CommandUtility.getCommandMethods(methods)) {
@@ -173,10 +170,8 @@ public class CommandStore {
 			}
 			
 			IMethodCommand command = createFunction.apply(method, module);
-			
-			/* TODO: This would fail if there are multiple commands with the same name */
-			moduleCommands.put(method.getName(), command);
-			moduleCommandsNamed.put(command.getCommand(), command);
+			moduleCommands.computeIfAbsent(method.getName(), (key) -> new ArrayList<>(1)).add(command);
+			moduleCommandsNamed.computeIfAbsent(command.getCommand(), (key) -> new ArrayList<>(1)).add(command);
 		}
 		
 		/* Load class based commands */
@@ -188,18 +183,13 @@ public class CommandStore {
 			try {
 				ICommand command;
 				if(Modifier.isStatic(commandClass.getModifiers())) {
-					Constructor<ICommand> constructor = commandClass.getDeclaredConstructor();
-					
-					command = constructor.newInstance();
+					command = commandClass.getDeclaredConstructor().newInstance();
 				}else{
-					Constructor<ICommand> constructor = commandClass.getDeclaredConstructor(moduleClass);
-					
-					command = constructor.newInstance(module);
+					command = commandClass.getDeclaredConstructor(moduleClass).newInstance(module);
 				}
 				
-				/* TODO: This would fail if there are multiple commands with the same name */
-				moduleCommands.put(commandClass.getSimpleName(), command);
-				moduleCommandsNamed.put(command.getCommand(), command);
+				moduleCommands.computeIfAbsent(commandClass.getSimpleName(), (key) -> new ArrayList<>(1)).add(command);
+				moduleCommandsNamed.computeIfAbsent(command.getCommand(), (key) -> new ArrayList<>(1)).add(command);
 			}catch(Throwable e) {
 				LOG.error("Failed to instantiate command", e);
 			}
@@ -223,106 +213,142 @@ public class CommandStore {
 				
 				continue;
 			}
+			
+			List<ICommand> possibleCommands = moduleCommandsNamed.get(path[0]);
+			String[] relevantPath = Arrays.copyOfRange(path, 1, path.length);
+			
+			List<ICommand> possibleParents = new ArrayList<>(1);
+			for(int i = 0; i < possibleCommands.size(); i++) {
+				ICommand parent = CommandUtility.getSubCommandRecursive(possibleCommands.get(i), relevantPath);
+				if(parent == null) {
+					continue;
+				}
 				
-			ICommand parent = CommandUtility.getSubCommandRecursive(moduleCommandsNamed.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
-			if(parent == null) {
+				possibleParents.add(parent);
+			}
+			 
+			if(possibleParents.isEmpty()) {
 				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
 				
 				continue;
 			}
 			
-			/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
-			if(parent instanceof AbstractCommand) {
-				((AbstractCommand) parent).addSubCommand(command);
-			}else{
-				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
+			if(possibleParents.size() > 1) {
+				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") has an ambiguous command path");
+				
+				continue;
 			}
+			
+			ICommand parent = possibleParents.get(0);
+			
+			/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
+			if(!(parent instanceof AbstractCommand)) {
+				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
+				
+				continue;
+			}
+			
+			((AbstractCommand) parent).addSubCommand(command);
 		}
 		
 		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
 		for(Method method : methods) {
-			if(method.isAnnotationPresent(Initialize.class)) {
-				Class<?> type = method.getParameters()[0].getType();
-				Initialize initialize = method.getAnnotation(Initialize.class);
+			if(!method.isAnnotationPresent(Initialize.class)) {
+				continue;
+			}
+			
+			Class<?> type = method.getParameters()[0].getType();
+			Initialize initialize = method.getAnnotation(Initialize.class);
+			
+			Consumer<ICommand> initializer = (command) -> {
+				if(!type.isInstance(command)) {
+					return;
+				}
 				
-				Consumer<ICommand> initializer = (command) -> {
-					if(type.isInstance(command)) {
-						/*
-						 * The command's trigger could possibly change because things like 
-						 * AbstractCommand#setCommand(String) and therefore we are saving 
-						 * the key before to be able to remove it in case something goes wrong
-						 */
-						String key = command.getCommand();
+				/*
+				 * The command's trigger could possibly change because things like 
+				 * AbstractCommand#setCommand(String) and therefore we are saving 
+				 * the key before to be able to remove it in case something goes wrong
+				 */
+				String key = command.getCommand();
+				
+				try {
+					if(!initialize.subCommands()) {
+						method.invoke(module, command);
 						
-						try {
-							if(initialize.subCommands()) {
-								if(initialize.recursive()) {
-									CommandStore.invokeRecursive(command, module, method);
-								}else{
-									method.invoke(module, command);
-									
-									for(ICommand subCommand : command.getSubCommands()) {
-										method.invoke(module, subCommand);
-									}
-								}
-							}else{
-								method.invoke(module, command);
-							}
-						}catch(Throwable e) {
-							LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
-							
-							/*
-							 * Remove the command from the list of added commands,
-							 * this is to prevent any unexpected behaviour due to it failing 
-							 * the initialization. If the command fails initialization something
-							 * needs to be fixed and it should not be added.
-							 * 
-							 * TODO: Should this remove the entire command or just remove the sub-command?
-							 * This also includes sub-command, if any of the sub-commands of the command
-							 * fail to initialize then the whole command is ignored, this may not be 
-							 * expected behaviour but it's to prevent any unexpected behaviour in the command.
-							 */
-							moduleCommands.remove(key);
+						return;
+					}
+					
+					if(initialize.recursive()) {
+						CommandStore.invokeRecursive(command, module, method);
+					}else{
+						method.invoke(module, command);
+						
+						for(ICommand subCommand : command.getSubCommands()) {
+							method.invoke(module, subCommand);
 						}
 					}
-				};
-				
-				if(initialize.all()) {
-					for(ICommand command : new ArrayList<>(moduleCommands.values())) {
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
+					
+					/*
+					 * Remove the command from the list of added commands,
+					 * this is to prevent any unexpected behaviour due to it failing 
+					 * the initialization. If the command fails initialization something
+					 * needs to be fixed and it should not be added.
+					 * 
+					 * TODO: Should this remove the entire command or just remove the sub-command?
+					 * This also includes sub-command, if any of the sub-commands of the command
+					 * fail to initialize then the whole command is ignored, this may not be 
+					 * expected behaviour but it's to prevent any unexpected behaviour in the command.
+					 */
+					moduleCommands.remove(key);
+				}
+			};
+			
+			if(initialize.all()) {
+				for(List<ICommand> moduleCommandValues : moduleCommands.values()) {
+					for(ICommand command : moduleCommandValues) {
 						initializer.accept(command);
 					}
-				}else if(initialize.value().length == 0) {
-					if(moduleCommands.containsKey(method.getName())) {
-						initializer.accept(moduleCommands.get(method.getName()));
+				}
+			}else if(initialize.value().length == 0) {
+				if(moduleCommands.containsKey(method.getName())) {
+					for(ICommand command : moduleCommands.get(method.getName())) {
+						initializer.accept(command);
 					}
-				}else{
-					for(String value : initialize.value()) {
-						if(moduleCommands.containsKey(value)) {
-							initializer.accept(moduleCommands.get(value));
+				}
+			}else{
+				for(String value : initialize.value()) {
+					if(moduleCommands.containsKey(value)) {
+						for(ICommand command : moduleCommands.get(method.getName())) {
+							initializer.accept(command);
 						}
 					}
 				}
 			}
 		}
 		
-		commands.addAll(moduleCommands.values());
+		for(List<ICommand> moduleCommandValues : moduleCommands.values()) {
+			commands.addAll(moduleCommandValues);
+		}
 		
 		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
 		if(onCommandLoadMethod != null) {
 			for(ICommand command : commands) {
 				Class<?> type = onCommandLoadMethod.getParameters()[0].getType();
-				if(type.isInstance(command)) {
-					String key = command.getCommand();
+				if(!type.isInstance(command)) {
+					continue;
+				}
+				
+				String key = command.getCommand();
+				
+				try {
+					onCommandLoadMethod.invoke(module, command);
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
 					
-					try {
-						onCommandLoadMethod.invoke(module, command);
-					}catch(Throwable e) {
-						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
-						
-						moduleCommands.remove(key);
-						
-						continue;
-					}
+					moduleCommands.remove(key);
 				}
 			}
 		}
@@ -399,7 +425,7 @@ public class CommandStore {
 					}
 				}
 			}
-		}catch(Exception e) {
+		}catch(Throwable e) {
 			LOG.warn("Failed to load commands from package " + packagePath, e);
 		}
 		

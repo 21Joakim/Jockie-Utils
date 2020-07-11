@@ -7,10 +7,10 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.parser.IArgumentAfterParser;
-import com.jockie.bot.core.argument.parser.IArgumentBeforeParser;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
-import com.jockie.bot.core.argument.parser.IGenericArgumentParser;
+import com.jockie.bot.core.parser.IAfterParser;
+import com.jockie.bot.core.parser.IBeforeParser;
+import com.jockie.bot.core.parser.IGenericParser;
+import com.jockie.bot.core.parser.IParser;
 
 public interface IArgumentFactory {
 	
@@ -29,7 +29,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory registerParser(@Nonnull Class<T> type, @Nonnull IArgumentParser<T> parser);
+	public <T> IArgumentFactory registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to unregister
@@ -45,7 +45,7 @@ public interface IArgumentFactory {
 	 * @return the registered parser or null if there is none for the provided type
 	 */
 	@Nullable
-	public <T> IArgumentParser<T> getParser(@Nullable Class<T> type);
+	public <T> IParser<T, IArgument<T>> getParser(@Nullable Class<T> type);
 	
 	/**
 	 * Register a parser which will be used before the argument parser for the provided type, this can be used to
@@ -56,7 +56,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IArgumentBeforeParser<T> parser);
+	public <T> IArgumentFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -65,7 +65,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public IArgumentFactory removeParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser);
+	public IArgumentFactory removeParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -73,7 +73,7 @@ public interface IArgumentFactory {
 	 * @return the registered parsers before the provided type or an empty list
 	 */
 	@Nonnull
-	public <T> List<IArgumentBeforeParser<T>> getParsersBefore(@Nullable Class<T> type);
+	public <T> List<IBeforeParser<T>> getParsersBefore(@Nullable Class<T> type);
 	
 	/**
 	 * Register a parser which will be used after the argument parser for the provided type, this can be used to
@@ -84,7 +84,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IArgumentAfterParser<T> parser);
+	public <T> IArgumentFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -93,7 +93,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public IArgumentFactory removeParserAfter(@Nullable Class<?> type, @Nullable IArgumentAfterParser<?> parser);
+	public IArgumentFactory removeParserAfter(@Nullable Class<?> type, @Nullable IAfterParser<?, ?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -101,7 +101,7 @@ public interface IArgumentFactory {
 	 * @return the registered parsers after the provided type or an empty list
 	 */
 	@Nonnull
-	public <T> List<IArgumentAfterParser<T>> getParsersAfter(@Nullable Class<T> type);
+	public <T> List<IAfterParser<T, IArgument<T>>> getParsersAfter(@Nullable Class<T> type);
 	
 	/**
 	 * Register a generic parser which will be used before the argument parser for any class extending the provided type, 
@@ -114,7 +114,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IArgumentBeforeParser<T> parser);
+	public <T> IArgumentFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to remove
@@ -123,7 +123,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public IArgumentFactory removeGenericParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser);
+	public IArgumentFactory removeGenericParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser);
 	
 	/**
 	 * @param type the type of the parser
@@ -131,7 +131,7 @@ public interface IArgumentFactory {
 	 * @return the registered generic parsers before the provided type or an empty list
 	 */
 	@Nonnull
-	public <T> List<IArgumentBeforeParser<T>> getGenericParsersBefore(@Nullable Class<T> type);
+	public <T> List<IBeforeParser<T>> getGenericParsersBefore(@Nullable Class<T> type);
 	
 	/**
 	 * <b>Note:</b> That there is no safe-guard against returning the wrong type
@@ -145,7 +145,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericArgumentParser<T> parser);
+	public <T> IArgumentFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to unregister
@@ -161,6 +161,6 @@ public interface IArgumentFactory {
 	 * @return the generic parser registered for the provided type
 	 */
 	@Nullable
-	public <T> IGenericArgumentParser<T> getGenericParser(@Nullable Class<T> type);
+	public <T> IGenericParser<T, IArgument<T>> getGenericParser(@Nullable Class<T> type);
 	
 }

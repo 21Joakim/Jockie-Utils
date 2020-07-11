@@ -4,7 +4,7 @@ import javax.annotation.Nonnull;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
+import com.jockie.bot.core.parser.IParser;
 
 public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements IEndlessArgument<Type> {
 	
@@ -31,7 +31,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		/**
 		 * @throws UnsupportedOperationException
 		 */
-		public Builder<Type> setParser(IArgumentParser<Type[]> parser) {
+		public Builder<Type> setParser(IParser<Type[], IArgument<Type[]>> parser) {
 			throw new UnsupportedOperationException();
 		}
 		

@@ -1,5 +1,11 @@
 package com.jockie.bot.core.command.exception.parser;
 
+import com.jockie.bot.core.command.parser.ParseContext;
+
+/*
+ * This Exception indicates an option which was already
+ * provided was given again
+ */
 public class DuplicateOptionException extends ParseException {
 	
 	private static final long serialVersionUID = 1L;
@@ -9,8 +15,8 @@ public class DuplicateOptionException extends ParseException {
 	/* TODO: Is this relevant? */
 	private final String optionValue;
 	
-	public DuplicateOptionException(String optionKey, String optionValue) {
-		super("Option " + optionKey + " has already been defined");
+	public DuplicateOptionException(ParseContext context, String optionKey, String optionValue) {
+		super(context, "Option: " + optionKey + " has already been defined");
 		
 		this.optionKey = optionKey;
 		this.optionValue = optionValue;

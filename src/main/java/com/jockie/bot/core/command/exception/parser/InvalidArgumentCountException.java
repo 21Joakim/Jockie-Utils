@@ -1,6 +1,7 @@
 package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
+import com.jockie.bot.core.command.parser.ParseContext;
 
 /**
  * This Exception indicates that less arguments were parsed 
@@ -14,8 +15,8 @@ public class InvalidArgumentCountException extends ParseException {
 	
 	private final Object[] parsedArguments;
 	
-	public InvalidArgumentCountException(IArgument<?>[] arguments, Object[] parsedArguments) {
-		super("Invalid argument count, requires " + arguments.length + " but got " + parsedArguments.length);
+	public InvalidArgumentCountException(ParseContext context, IArgument<?>[] arguments, Object[] parsedArguments) {
+		super(context, "Invalid argument count, requires: " + arguments.length + " but got: " + parsedArguments.length);
 		
 		this.arguments = arguments;
 		this.parsedArguments = parsedArguments;

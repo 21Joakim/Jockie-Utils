@@ -1,9 +1,10 @@
 package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
+import com.jockie.bot.core.command.parser.ParseContext;
 
 /**
- * This Exception indicates that the value provided to the 
+ * This Exception indicates that the value provided for the
  * argument could not be parsed correctly
  */
 public class ArgumentParseException extends ParseException {
@@ -13,12 +14,12 @@ public class ArgumentParseException extends ParseException {
 	private final IArgument<?> argument;
 	private final String value;
 	
-	public ArgumentParseException(IArgument<?> argument, String value) {
-		this(argument, value, value + " is not valid for argument " + argument.getName());
+	public ArgumentParseException(ParseContext context, IArgument<?> argument, String value) {
+		this(context, argument, value, "Argument: " + argument.getName() + " could not parse the provided value: " + value);
 	}
 	
-	public ArgumentParseException(IArgument<?> argument, String value, String message) {
-		super(message);
+	public ArgumentParseException(ParseContext context, IArgument<?> argument, String value, String message) {
+		super(context, message);
 		
 		this.argument = argument;
 		this.value = value;

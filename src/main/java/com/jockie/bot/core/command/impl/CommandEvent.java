@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
@@ -215,7 +214,7 @@ public class CommandEvent implements IPropertyContainer {
 		return this.arguments;
 	}
 	
-	/** @return the arguments before they were processed, this contains the exact values that were given to the argument parsers ({@link IArgumentParser}) */
+	/** @return the arguments before they were processed, this contains the exact values that were given to the argument parsers */
 	public String[] getRawArguments() {
 		return this.rawArguments;
 	}

@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 
 import com.jockie.bot.core.argument.factory.impl.ArgumentFactory;
 import com.jockie.bot.core.argument.factory.impl.ArgumentFactoryImpl;
-import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
@@ -24,6 +23,7 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
 import com.jockie.bot.core.command.impl.CommandStore;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
+import com.jockie.bot.core.parser.ParsedResult;
 
 import example.core.argument.number.Max;
 import example.core.argument.number.Min;
@@ -47,10 +47,10 @@ public class Main {
 		argumentFactory.registerParser(Color.class, (event, argument, value) -> {
 			Matcher matcher = hexPattern.matcher(value);
 			if(matcher.matches()) {
-				return new ParsedArgument<>(true, Color.decode("#" + matcher.group(2)));
+				return new ParsedResult<>(true, Color.decode("#" + matcher.group(2)));
 			}
 			
-			return new ParsedArgument<>(false, null);
+			return new ParsedResult<>(false, null);
 		});
 		
 		/* Register the class URL so that it can be used as an argument */
@@ -60,9 +60,9 @@ public class Main {
 				 * Preferably you would add an extra check to not allow for local files (server files) to be used,
 				 * such as file:///C:/Users/Joakim/Desktop/my%20nudes.png 
 				 */
-				return new ParsedArgument<>(true, new URL(value));
+				return new ParsedResult<>(true, new URL(value));
 			}catch(MalformedURLException e) {
-				return new ParsedArgument<>(false, null);
+				return new ParsedResult<>(false, null);
 			}
 		});
 	}
@@ -71,10 +71,10 @@ public class Main {
 		argumentFactory.addGenericParserBefore(Object.class, (context, argument, value) -> {
 			Pattern pattern = argument.getProperty("pattern");
 			if(pattern != null && !pattern.matcher(value).matches()) {
-				return new ParsedArgument<>(false, value);
+				return new ParsedResult<>(false, value);
 			}
 			
-			return new ParsedArgument<>(true, value);
+			return new ParsedResult<>(true, value);
 		});
 		
 		/* 
@@ -103,7 +103,7 @@ public class Main {
 				value = Math.max(min, value);
 			}
 			
-			return new ParsedArgument<>(value);
+			return new ParsedResult<>(value);
 		});
 		
 		/* 

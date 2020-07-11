@@ -9,16 +9,17 @@ import java.util.function.Function;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.jockie.bot.core.argument.parser.IArgumentParser;
-import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.parser.ParseContext;
+import com.jockie.bot.core.parser.IParsableComponent;
+import com.jockie.bot.core.parser.IParser;
+import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.property.IPropertyContainer;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.internal.utils.Checks;
 
-public interface IArgument<Type> extends IPropertyContainer {
+public interface IArgument<Type> extends IPropertyContainer, IParsableComponent<Type, IArgument<Type>> {
 	
 	/**
 	 * @return the type of the argument
@@ -78,7 +79,7 @@ public interface IArgument<Type> extends IPropertyContainer {
 	 * @return the parser used to to parse the content provided by the command parser
 	 */
 	@Nonnull
-	public IArgumentParser<Type> getParser();
+	public IParser<Type, IArgument<Type>> getParser();
 	
 	/**
 	 * A default method using this argument's parser ({@link #getParser()})
@@ -90,7 +91,7 @@ public interface IArgument<Type> extends IPropertyContainer {
 	 * @return the parsed argument
 	 */
 	@Nonnull
-	public default ParsedArgument<Type> parse(@Nonnull ParseContext context, @Nonnull String content) {
+	public default ParsedResult<Type> parse(@Nonnull ParseContext context, @Nonnull String content) {
 		return this.getParser().parse(context, this, content);
 	}
 	
@@ -106,12 +107,13 @@ public interface IArgument<Type> extends IPropertyContainer {
 		
 		protected Function<CommandEvent, Type> defaultValueFunction;
 		
-		protected IArgumentParser<Type> parser;
+		protected IParser<Type, IArgument<Type>> parser;
 		
 		protected Map<String, Object> properties = new HashMap<>();
 		
 		protected Builder(@Nonnull Class<Type> type) {
 			Checks.notNull(type, "type");
+			
 			this.type = type;
 		}
 		
@@ -195,7 +197,7 @@ public interface IArgument<Type> extends IPropertyContainer {
 		}
 		
 		@Nonnull
-		public BuilderType setParser(@Nullable IArgumentParser<Type> parser) {
+		public BuilderType setParser(@Nullable IParser<Type, IArgument<Type>> parser) {
 			this.parser = parser;
 			
 			return this.self();
@@ -243,7 +245,7 @@ public interface IArgument<Type> extends IPropertyContainer {
 		}
 		
 		@Nullable
-		public IArgumentParser<Type> getParser() {
+		public IParser<Type, IArgument<Type>> getParser() {
 			return this.parser;
 		}
 		

@@ -24,8 +24,8 @@ import com.jockie.bot.core.option.IOption;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.internal.utils.Checks;
 
-public abstract class AbstractCommand implements ICommand {
 	
+public abstract class AbstractCommand implements ICommand {
 	protected String command;
 	
 	protected String description, shortDescription;
@@ -37,9 +37,11 @@ public abstract class AbstractCommand implements ICommand {
 	protected List<IArgument<?>> arguments = Collections.emptyList();
 	protected List<IOption<?>> options = Collections.emptyList();
 	
-	protected UnknownOptionPolicy invalidOptionPolicy = UnknownOptionPolicy.INCLUDE;
+	protected UnknownOptionPolicy unknownOptionPolicy = UnknownOptionPolicy.INCLUDE;
 	
 	protected DuplicateOptionPolicy duplicateOptionPolicy = DuplicateOptionPolicy.USE_LAST;
+	
+	protected OptionParsingFailurePolicy optionParsingFailurePolicy = OptionParsingFailurePolicy.IGNORE;
 	
 	protected ContentOverflowPolicy overflowPolicy = ContentOverflowPolicy.FAIL;
 	
@@ -125,12 +127,17 @@ public abstract class AbstractCommand implements ICommand {
 	
 	@Override
 	public UnknownOptionPolicy getUnknownOptionPolicy() {
-		return this.invalidOptionPolicy;
+		return this.unknownOptionPolicy;
 	}
 	
 	@Override
 	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
 		return this.duplicateOptionPolicy;
+	}
+
+	@Override
+	public OptionParsingFailurePolicy getOptionParsingFailurePolicy() {
+		return this.optionParsingFailurePolicy;
 	}
 	
 	@Override
@@ -344,9 +351,9 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Nonnull
-	public AbstractCommand setInvalidOptionPolicy(@Nonnull UnknownOptionPolicy invalidOptionPolicy) {
-		Checks.notNull(invalidOptionPolicy, "invalidOptionPolicy");
-		this.invalidOptionPolicy = invalidOptionPolicy;
+	public AbstractCommand setUnknownOptionPolicy(@Nonnull UnknownOptionPolicy unknownOptionPolicy) {
+		Checks.notNull(unknownOptionPolicy, "unknownOptionPolicy");
+		this.unknownOptionPolicy = unknownOptionPolicy;
 		
 		return this;
 	}
@@ -355,6 +362,14 @@ public abstract class AbstractCommand implements ICommand {
 	public AbstractCommand setDuplicateOptionPolicy(@Nonnull DuplicateOptionPolicy duplicateOptionPolicy) {
 		Checks.notNull(duplicateOptionPolicy, "duplicateOptionPolicy");
 		this.duplicateOptionPolicy = duplicateOptionPolicy;
+		
+		return this;
+	}
+	
+	@Nonnull
+	public AbstractCommand setOptionParsingFailureType(@Nonnull OptionParsingFailurePolicy optionParsingFailurePolicy) {
+		Checks.notNull(optionParsingFailurePolicy, "optionParsingFailurePolicy");
+		this.optionParsingFailurePolicy = optionParsingFailurePolicy;
 		
 		return this;
 	}

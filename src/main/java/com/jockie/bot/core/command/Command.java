@@ -10,6 +10,7 @@ import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
 import com.jockie.bot.core.command.ICommand.DuplicateOptionPolicy;
+import com.jockie.bot.core.command.ICommand.OptionParsingFailurePolicy;
 import com.jockie.bot.core.command.ICommand.UnknownOptionPolicy;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
@@ -124,12 +125,17 @@ public @interface Command {
 	/**
 	 * @see ICommand#getUnknownOptionPolicy()
 	 */
-	public UnknownOptionPolicy invalidOptionPolicy() default UnknownOptionPolicy.INCLUDE;
+	public UnknownOptionPolicy unknownOptionPolicy() default UnknownOptionPolicy.INCLUDE;
 	
 	/**
 	 * @see ICommand#getDuplicateOptionPolicy()
 	 */
 	public DuplicateOptionPolicy duplicateOptionPolicy() default DuplicateOptionPolicy.USE_LAST;
+	
+	/**
+	 * @see ICommand#getOptionParsingFailurePolicy()
+	 */
+	public OptionParsingFailurePolicy optionParsingFailurePolicy() default OptionParsingFailurePolicy.IGNORE;
 	
 	/**
 	 * @see ICommand#getAllowedArgumentParsingTypes()
@@ -245,12 +251,17 @@ public @interface Command {
 		/**
 		 * @see ICommand#getUnknownOptionPolicy()
 		 */
-		public UnknownOptionPolicy invalidOption() default UnknownOptionPolicy.INCLUDE;
+		public UnknownOptionPolicy unknownOption() default UnknownOptionPolicy.INCLUDE;
 		
 		/**
 		 * @see ICommand#getDuplicateOptionPolicy()
 		 */
 		public DuplicateOptionPolicy duplicateOption() default DuplicateOptionPolicy.USE_LAST;
+		
+		/**
+		 * @see ICommand#getOptionParsingFailurePolicy()
+		 */
+		public OptionParsingFailurePolicy optionParsingFailure() default OptionParsingFailurePolicy.IGNORE;
 		
 	}
 }

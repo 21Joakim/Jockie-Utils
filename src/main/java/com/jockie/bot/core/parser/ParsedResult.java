@@ -1,8 +1,8 @@
-package com.jockie.bot.core.argument.parser;
+package com.jockie.bot.core.parser;
 
 import javax.annotation.Nullable;
 
-public class ParsedArgument<Type> {
+public class ParsedResult<Type> {
 	
 	private boolean valid;
 	
@@ -10,23 +10,23 @@ public class ParsedArgument<Type> {
 	
 	private String contentLeft;
 	
-	public ParsedArgument() {
+	public ParsedResult() {
 		this(false, null);
 	}
 	
-	public ParsedArgument(Type object) {
+	public ParsedResult(Type object) {
 		this(object, null);
 	}
 	
-	public ParsedArgument(Type object, String contentLeft) {
+	public ParsedResult(Type object, String contentLeft) {
 		this(object != null, object, contentLeft);
 	}
 	
-	public ParsedArgument(boolean valid, Type object) {
+	public ParsedResult(boolean valid, Type object) {
 		this(valid, object, null);
 	}
 	
-	public ParsedArgument(boolean valid, Type object, String contentLeft) {
+	public ParsedResult(boolean valid, Type object, String contentLeft) {
 		this.valid = valid;
 		this.object = object;
 		this.contentLeft = contentLeft;
@@ -53,7 +53,7 @@ public class ParsedArgument<Type> {
 	 * The content which is left after the argument has been
 	 * parsed, this content will be returned back to be parsed.
 	 * <br><br>
-	 * For this to be used {@link IArgumentParser#isHandleAll()} needs
+	 * For this to be used {@link IParser#isHandleAll()} needs
 	 * to return <b>true</b>!
 	 * 
 	 * @return the content which was left after the argument was parsed

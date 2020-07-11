@@ -9,8 +9,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
 import com.jockie.bot.core.command.impl.CommandEvent;
+import com.jockie.bot.core.parser.IParser;
 
 import net.dv8tion.jda.api.entities.Message;
 
@@ -41,7 +41,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	
 	private final BiConsumer<Message, String> errorConsumer;
 	
-	private final IArgumentParser<Type> parser;
+	private final IParser<Type, IArgument<Type>> parser;
 	
 	private final Map<String, Object> properties;
 	
@@ -102,7 +102,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	}
 	
 	@Override
-	public IArgumentParser<Type> getParser() {
+	public IParser<Type, IArgument<Type>> getParser() {
 		return this.parser;
 	}
 

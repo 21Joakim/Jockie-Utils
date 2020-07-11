@@ -4,16 +4,16 @@ import java.lang.reflect.Array;
 import java.util.Set;
 
 import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
-import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.command.parser.impl.CommandParserImpl;
+import com.jockie.bot.core.parser.IParser;
+import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.StringUtility;
 
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 
-public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
+public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Type[]>> {
 	
 	public static final EndlessArgumentParser<Object> INSTANCE = new EndlessArgumentParser<>();
 	
@@ -26,7 +26,7 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 	
 	@SuppressWarnings("unchecked")
 	/* TODO: Probably need to look over and re-make this */
-	public ParsedArgument<Type[]> parse(ParseContext context, IArgument<Type[]> argument, String value) {
+	public ParsedResult<Type[]> parse(ParseContext context, IArgument<Type[]> argument, String value) {
 		if(!(argument instanceof EndlessArgumentImpl)) {
 			throw new UnsupportedOperationException();
 		}
@@ -59,12 +59,12 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 					 */
 					
 					/* The argument for some reason does not start with a space */
-					return new ParsedArgument<>(false, null);
+					return new ParsedResult<>(false, null);
 				}
 			}
 			
 			String content = null;
-			ParsedArgument<Type> parsedArgument;
+			ParsedResult<Type> parsedArgument;
 			if(self.getArgument().getParser().isHandleAll()) {
 				parsedArgument = self.getArgument().parse(context, content = value);
 				
@@ -109,7 +109,7 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 				
 				if(content.length() == 0 && !self.getArgument().acceptEmpty()) {
 					/* Content may not be empty */
-					return new ParsedArgument<>(false, null);
+					return new ParsedResult<>(false, null);
 				}
 				
 				parsedArgument = self.getArgument().parse(context, content);
@@ -119,18 +119,18 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 				parsedArguments[argumentCount++] = (Type) parsedArgument.getObject();
 			}else{
 				/* "argument at index " + (i + 1) + " is not valid" */
-				return new ParsedArgument<>(false, null);
+				return new ParsedResult<>(false, null);
 			}
 		}
 		
 		if(value.length() > 0) {
 			/* Content overflow, when does this happen? */
 			
-			return new ParsedArgument<>(false, null);
+			return new ParsedResult<>(false, null);
 		}
 		
 		if(argumentCount < self.getMinArguments() || ((self.getMaxArguments() > 0) ? argumentCount > self.getMaxArguments() : false)) {
-			return new ParsedArgument<>(false, null);
+			return new ParsedResult<>(false, null);
 		}
 		
 		Type[] objects = (Type[]) Array.newInstance(self.getComponentType(), argumentCount);
@@ -138,6 +138,6 @@ public class EndlessArgumentParser<Type> implements IArgumentParser<Type[]> {
 			objects[i2] = (Type) parsedArguments[i2];
 		}
 		
-		return new ParsedArgument<>(true, objects);
+		return new ParsedResult<>(true, objects);
 	}
 }

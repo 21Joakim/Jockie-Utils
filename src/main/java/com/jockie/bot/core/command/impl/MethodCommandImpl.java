@@ -177,7 +177,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		this.setPrivateTriggerable(annotation.privateTriggerable());
 		
 		this.setContentOverflowPolicy(annotation.contentOverflowPolicy());
-		this.setInvalidOptionPolicy(annotation.invalidOptionPolicy());
+		this.setUnknownOptionPolicy(annotation.unknownOptionPolicy());
 		
 		this.setAllowedArgumentParsingTypes(annotation.allowedArgumentParsingTypes());
 		this.setArgumentTrimType(annotation.argumentTrimType());
@@ -236,7 +236,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 			Policy policy = this.method.getAnnotation(Policy.class);
 			
 			this.setContentOverflowPolicy(policy.contentOverflow());
-			this.setInvalidOptionPolicy(policy.invalidOption());
+			this.setUnknownOptionPolicy(policy.unknownOption());
 		}
 	}
 	
@@ -281,6 +281,10 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 		
 		if(value == null) {
+			if(option.hasDefault()) {
+				return option.getDefault(event);
+			}
+			
 			Class<?> type = option.getType();
 			if(type.equals(Boolean.class) || type.equals(boolean.class)) {
 				return false;

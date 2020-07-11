@@ -1,22 +1,85 @@
 package com.jockie.bot.core.command.impl;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.command.CommandTrigger;
 import com.jockie.bot.core.command.ICommand;
 
+import net.dv8tion.jda.internal.utils.Checks;
+
 /* The more specific the command is (more arguments, for instance) the sooner it will be returned */
 public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 	
 	public static final CommandTriggerComparator INSTANCE = new CommandTriggerComparator();
 	
-	private CommandTriggerComparator() {}
+	public static CommandTriggerComparator getInstance() {
+		return INSTANCE;
+	}
+	
+	private Map<Class<?>, Integer> priorities = new HashMap<>();
+	
+	private CommandTriggerComparator() {
+		/* 
+		 * Because the String just accepts the content straight up
+		 * it is reasonable to make it have the max value it can have 
+		 * to make it end up as late as possible
+		 */
+		this.setPriority(String.class, Integer.MAX_VALUE);
+	}
+	
+	/**
+	 * Set the priority for a class used by an argument, this is used to determine
+	 * in what order commands with similar arguments should be parsed, this is done
+	 * to get the most accurate sort result.
+	 * <br><br>
+	 * Lower priority value means higher priority, meaning it will be preferred over
+	 * other commands with arguments that have a higher priority value.
+	 * <br><br>
+	 * <b>NOTE:</b> The neutral value is 0, if you set the priority to 0 it will be removed
+	 * from the map.
+	 * 
+	 * @param type the class to set the priority for
+	 * @param priority the priority to set for the class
+	 * 
+	 * @see #getPriority(Class)
+	 */
+	public CommandTriggerComparator setPriority(@Nonnull Class<?> type, int priority) {
+		Checks.notNull(type, "type");
+		
+		if(priority == 0) {
+			this.priorities.remove(type);
+		}else{
+			this.priorities.put(type, priority);
+		}
+		
+		return this;
+	}
+	
+	/**
+	 * This is used to determine in what order commands with similar arguments should be parsed,
+	 * this is done to get the most accurate sort result.
+	 * 
+	 * @param type the class to get the priority for
+	 * 
+	 * @return the importance of arguments of this type, types with lower priority may be handled before
+	 * ones with higher order.
+	 * 
+	 * @see #setPriority(Class, int)
+	 */
+	public int getPriority(@Nullable Class<?> type) {
+		return this.priorities.getOrDefault(type, 0);
+	}
 	
 	@Override
-	public int compare(CommandTrigger commandTrigger, CommandTrigger commandTrigger2) {
+	public int compare(@Nonnull CommandTrigger commandTrigger, @Nonnull CommandTrigger commandTrigger2) {
 		ICommand command = commandTrigger.getCommand(), command2 = commandTrigger2.getCommand();
 		
 		/* Check the trigger length, the longer the more specific so it goes first */
@@ -121,8 +184,8 @@ public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 						argument2 = arguments2.get(arguments2.size() - 1);
 					}
 					
-					int parsePriority = argument.getParser().getPriority();
-					int parsePriority2 = argument2.getParser().getPriority();
+					int parsePriority = this.getPriority(argument.getType());
+					int parsePriority2 = this.getPriority(argument2.getType());
 					
 					if(parsePriority != parsePriority2) {
 						if(parsePriority > parsePriority2) {

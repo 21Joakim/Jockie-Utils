@@ -1469,12 +1469,6 @@ public class CommandListener implements EventListener {
 				continue;
 			}
 			
-			if(command.isPassive()) {
-				possibleCommands.add(new Failure(command, new PassiveCommandException()));
-				
-				continue;
-			}
-			
 			CommandEvent commandEvent;
 			try {
 				commandEvent = this.commandParser.parse(this, command, message, prefix, trigger, contentToParse, timeStarted);

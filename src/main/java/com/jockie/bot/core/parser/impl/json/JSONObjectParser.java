@@ -1,15 +1,14 @@
-package com.jockie.bot.core.argument.parser.impl;
+package com.jockie.bot.core.parser.impl.json;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import com.jockie.bot.core.argument.IArgument;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
-import com.jockie.bot.core.argument.parser.ParsedArgument;
 import com.jockie.bot.core.command.parser.ParseContext;
+import com.jockie.bot.core.parser.IParser;
+import com.jockie.bot.core.parser.ParsedResult;
 
-public class JSONObjectParser implements IArgumentParser<JSONObject> {
+public class JSONObjectParser<Component> implements IParser<JSONObject, Component> {
 	
 	public int getIndex(JSONTokener tokener) {
 		String string = tokener.toString().substring(4);
@@ -19,7 +18,7 @@ public class JSONObjectParser implements IArgumentParser<JSONObject> {
 	}
 	
 	/* Code from org.json.JSONObject */
-	public ParsedArgument<JSONObject> parse(ParseContext context, IArgument<JSONObject> argument, String value) {
+	public ParsedResult<JSONObject> parse(ParseContext context, Component component, String value) {
 		JSONTokener tokener = new JSONTokener(value);
 		JSONObject object = new JSONObject();
 		
@@ -27,17 +26,17 @@ public class JSONObjectParser implements IArgumentParser<JSONObject> {
 		String key;
 
 		if(tokener.nextClean() != '{') {
-			return new ParsedArgument<>(false, null);
+			return new ParsedResult<>(false, null);
 		}
 		
 		for(;;) {
 			character = tokener.nextClean();
 			switch(character) {
 				case 0: {
-					return new ParsedArgument<>(false, null);
+					return new ParsedResult<>(false, null);
 				}
 				case '}': {
-					return new ParsedArgument<>(true, object, value.substring(this.getIndex(tokener)));
+					return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
 				}
 				default: {
 					tokener.back();
@@ -47,20 +46,20 @@ public class JSONObjectParser implements IArgumentParser<JSONObject> {
 			
 			character = tokener.nextClean();
 			if(character != ':') {
-				return new ParsedArgument<>(false, null);
+				return new ParsedResult<>(false, null);
 			}
 			
 			try {
 				object.putOnce(key, tokener.nextValue());
 			}catch(JSONException e) {
-				return new ParsedArgument<>(false, null);
+				return new ParsedResult<>(false, null);
 			}
 			
 			switch(tokener.nextClean()) {
 				case ';': 
 				case ',': {
 					if(tokener.nextClean() == '}') {
-						return new ParsedArgument<>(true, object, value.substring(this.getIndex(tokener)));
+						return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
 					}
 					
 					tokener.back();
@@ -68,10 +67,10 @@ public class JSONObjectParser implements IArgumentParser<JSONObject> {
 					break;
 				}
 				case '}': {
-					return new ParsedArgument<>(true, object, value.substring(this.getIndex(tokener)));
+					return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
 				}
 				default: {
-					return new ParsedArgument<>(false, null);
+					return new ParsedResult<>(false, null);
 				}
 			}
 		}

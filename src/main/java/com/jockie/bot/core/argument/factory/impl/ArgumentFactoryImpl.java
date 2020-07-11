@@ -27,19 +27,35 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.factory.IArgumentFactory;
 import com.jockie.bot.core.argument.impl.ArgumentImpl;
 import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
-import com.jockie.bot.core.argument.parser.IArgumentAfterParser;
-import com.jockie.bot.core.argument.parser.IArgumentBeforeParser;
-import com.jockie.bot.core.argument.parser.IArgumentParser;
-import com.jockie.bot.core.argument.parser.IGenericArgumentParser;
-import com.jockie.bot.core.argument.parser.ParsedArgument;
-import com.jockie.bot.core.argument.parser.impl.JSONArrayParser;
-import com.jockie.bot.core.argument.parser.impl.JSONObjectParser;
 import com.jockie.bot.core.command.parser.ParseContext;
-import com.jockie.bot.core.utility.ArgumentUtility;
+import com.jockie.bot.core.parser.IAfterParser;
+import com.jockie.bot.core.parser.IBeforeParser;
+import com.jockie.bot.core.parser.IGenericParser;
+import com.jockie.bot.core.parser.IParser;
+import com.jockie.bot.core.parser.ParsedResult;
+import com.jockie.bot.core.parser.impl.discord.CategoryParser;
+import com.jockie.bot.core.parser.impl.discord.EmoteParser;
+import com.jockie.bot.core.parser.impl.discord.GuildChannelParser;
+import com.jockie.bot.core.parser.impl.discord.GuildParser;
+import com.jockie.bot.core.parser.impl.discord.MemberParser;
+import com.jockie.bot.core.parser.impl.discord.RoleParser;
+import com.jockie.bot.core.parser.impl.discord.TextChannelParser;
+import com.jockie.bot.core.parser.impl.discord.UserParser;
+import com.jockie.bot.core.parser.impl.discord.VoiceChannelParser;
+import com.jockie.bot.core.parser.impl.essential.BooleanParser;
+import com.jockie.bot.core.parser.impl.essential.ByteParser;
+import com.jockie.bot.core.parser.impl.essential.CharacterParser;
+import com.jockie.bot.core.parser.impl.essential.DoubleParser;
+import com.jockie.bot.core.parser.impl.essential.EnumParser;
+import com.jockie.bot.core.parser.impl.essential.FloatParser;
+import com.jockie.bot.core.parser.impl.essential.IntegerParser;
+import com.jockie.bot.core.parser.impl.essential.LongParser;
+import com.jockie.bot.core.parser.impl.essential.ShortParser;
+import com.jockie.bot.core.parser.impl.essential.StringParser;
+import com.jockie.bot.core.parser.impl.json.JSONArrayParser;
+import com.jockie.bot.core.parser.impl.json.JSONObjectParser;
 import com.jockie.bot.core.utility.CommandUtility;
 
-import net.dv8tion.jda.api.AccountType;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
@@ -49,23 +65,19 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
-import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.internal.utils.Checks;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class ArgumentFactoryImpl implements IArgumentFactory {
 	
-	protected Map<Class<?>, IGenericArgumentParser<?>> genericParsers = new HashMap<>();
+	protected Map<Class<?>, IGenericParser<?, ?>> genericParsers = new HashMap<>();
 	
-	protected Map<Class<?>, IArgumentParser<?>> parsers = new HashMap<>();
-	protected Map<Class<?>, Class<?>> parserAliases = new HashMap<>();
+	protected Map<Class<?>, IParser<?, ?>> parsers = new HashMap<>();
 	
-	protected Map<Class<?>, Set<IArgumentBeforeParser<?>>> beforeParsers = new HashMap<>();
-	protected Map<Class<?>, Set<IArgumentBeforeParser<?>>> genericBeforeParsers = new HashMap<>();
+	protected Map<Class<?>, Set<IBeforeParser<?>>> beforeParsers = new HashMap<>();
+	protected Map<Class<?>, Set<IBeforeParser<?>>> genericBeforeParsers = new HashMap<>();
 	
-	protected Map<Class<?>, Set<IArgumentAfterParser<?>>> afterParsers = new HashMap<>();
-	
-	protected boolean useShardManager = true;
+	protected Map<Class<?>, Set<IAfterParser<?, ?>>> afterParsers = new HashMap<>();
 	
 	protected Set<Function<Parameter, Builder<?, ?, ?>>> builderFunctions = new LinkedHashSet<>();
 	
@@ -74,7 +86,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	protected ArgumentFactoryImpl() {
 		this.registerEssentialParsers();
-		this.registerDiscordParsers();
+		this.registerDiscordParsers(true);
 		this.registerJSONParsers();
 	}
 	
@@ -119,29 +131,6 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	/**
-	 * @param useShardManager whether or not the shard-manager (if one is present)
-	 * should be used in some of the Discord argument parsers, this includes
-	 * users and guilds
-	 * 
-	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
-	 */
-	@Nonnull
-	public ArgumentFactoryImpl setUseShardManager(boolean useShardManager) {
-		this.useShardManager = useShardManager;
-		
-		return this;
-	}
-	
-	/**
-	 * @return whether or not the shard-manager (if one is present)
-	 * should be used in some of the Discord argument parsers, this includes
-	 * users and guilds
-	 */
-	public boolean isUseShardManager() {
-		return this.useShardManager;
-	}
-	
-	/**
 	 * Register the essential argument parsers, this includes
 	 * <ul>
 	 * 	<li>Byte</li>
@@ -160,95 +149,18 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 */
 	@Nonnull
 	public ArgumentFactoryImpl registerEssentialParsers() {
-		this.registerParser(Byte.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Byte.parseByte(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
+		this.registerParser(Boolean.class, new BooleanParser<>());
+		this.registerParser(Byte.class, new ByteParser<>());
+		this.registerParser(Short.class, new ShortParser<>());
+		this.registerParser(Integer.class, new IntegerParser<>());
+		this.registerParser(Long.class, new LongParser<>());
+		this.registerParser(Float.class, new FloatParser<>());
+		this.registerParser(Double.class, new DoubleParser<>());
 		
-		this.registerParser(Short.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Short.parseShort(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
+		this.registerParser(Character.class, new CharacterParser<>());
+		this.registerParser(String.class, new StringParser<>());
 		
-		this.registerParser(Integer.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Integer.parseInt(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Long.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Long.parseLong(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Float.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Float.parseFloat(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Double.class, (context, argument, value) -> {
-			try {
-				return new ParsedArgument<>(true, Double.parseDouble(value));
-			}catch(NumberFormatException e) {
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Boolean.class, (context, argument, value) -> {
-			if(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
-				return new ParsedArgument<>(true, Boolean.parseBoolean(value));
-			}
-			
-			return new ParsedArgument<>(false, null);
-		});
-		
-		this.registerParser(Character.class, (context, argument, value) -> {
-			if(value.length() == 1) {
-				return new ParsedArgument<>(true, value.charAt(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(String.class, new IArgumentParser<>() {
-			public ParsedArgument<String> parse(ParseContext context, IArgument<String> argument, String value) {
-				return new ParsedArgument<>(true, value);
-			}
-			
-			/* 
-			 * Because the String just accepts the content straight up
-			 * it is reasonable to make it have the max value it can have 
-			 * to make it end up as late as possible
-			 */
-			public int getPriority() {
-				return Integer.MAX_VALUE;
-			}
-		});
-		
-		this.registerGenericParser(Enum.class, (context, type, argument, value) -> {
-			for(Enum<?> enumEntry : type.getEnumConstants()) {
-				String name = enumEntry.name();
-				if(name.equalsIgnoreCase(value) || name.replace("_", " ").equalsIgnoreCase(value)) {
-					return new ParsedArgument<>(true, enumEntry);
-				}
-			}
-			
-			return new ParsedArgument<>(false, null);
-		});
+		this.registerGenericParser(Enum.class, new EnumParser<>());
 		
 		return this;
 	}
@@ -270,124 +182,16 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl registerDiscordParsers() {
-		this.registerParser(Member.class, (context, argument, value) -> {
-			List<Member> members = ArgumentUtility.getMembersByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(members.size() == 1) {
-				return new ParsedArgument<>(true, members.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(TextChannel.class, (context, argument, value) -> {
-			List<TextChannel> channels = ArgumentUtility.getTextChannelsByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(channels.size() == 1) {
-				return new ParsedArgument<>(true, channels.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(VoiceChannel.class, (context, argument, value) -> {
-			List<VoiceChannel> channels = ArgumentUtility.getVoiceChannelsByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(channels.size() == 1) {
-				return new ParsedArgument<>(true, channels.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		/* Even though Category technically does implement Channel I do not want it to be a part of the Channel argument, objections? */
-		this.registerParser(GuildChannel.class, (context, argument, value) -> {
-			List<GuildChannel> channels = Collections.unmodifiableList(ArgumentUtility.getTextChannelsByIdOrName(context.getMessage().getGuild(), value, true));
-			if(channels.size() == 0) {
-				channels = Collections.unmodifiableList(ArgumentUtility.getVoiceChannelsByIdOrName(context.getMessage().getGuild(), value, true));
-			}
-			
-			if(channels.size() == 1) {
-				return new ParsedArgument<>(true, channels.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Category.class, (context, argument, value) -> {
-			List<Category> categories = ArgumentUtility.getCategoriesByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(categories.size() == 1) {
-				return new ParsedArgument<>(true, categories.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Role.class, (context, argument, value) -> {
-			List<Role> roles = ArgumentUtility.getRolesByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(roles.size() == 1) {
-				return new ParsedArgument<>(true, roles.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Emote.class, (context, argument, value) -> {
-			List<Emote> emotes = ArgumentUtility.getEmotesByIdOrName(context.getMessage().getGuild(), value, true);
-			
-			if(emotes.size() == 1) {
-				return new ParsedArgument<>(true, emotes.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(User.class, (context, argument, value) -> {
-			JDA jda = context.getMessage().getJDA();
-			
-			List<User> users = null;
-			if(this.useShardManager && jda.getAccountType().equals(AccountType.BOT)) {
-				ShardManager shardManager = jda.getShardManager();
-				if(shardManager != null) {
-					users = ArgumentUtility.getUsersByIdOrName(shardManager, value, true);
-				}
-			}
-			
-			if(users == null) {
-				users = ArgumentUtility.getUsersByIdOrName(jda, value, true);
-			}
-			
-			if(users.size() == 1) {
-				return new ParsedArgument<>(true, users.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
-		
-		this.registerParser(Guild.class, (context, argument, value) -> {
-			JDA jda = context.getMessage().getJDA();
-			
-			List<Guild> guilds = null;
-			if(this.useShardManager && jda.getAccountType().equals(AccountType.BOT)) {
-				ShardManager shardManager = jda.getShardManager();
-				if(shardManager != null) {
-					guilds = ArgumentUtility.getGuildsByIdOrName(shardManager, value, true);
-				}
-			}
-			
-			if(guilds == null) {
-				guilds = ArgumentUtility.getGuildsByIdOrName(jda, value, true);
-			}
-			
-			if(guilds.size() == 1) {
-				return new ParsedArgument<>(true, guilds.get(0));
-			}else{
-				return new ParsedArgument<>(false, null);
-			}
-		});
+	public ArgumentFactoryImpl registerDiscordParsers(boolean useShardManager) {
+		this.registerParser(Member.class, new MemberParser<>());
+		this.registerParser(TextChannel.class, new TextChannelParser<>());
+		this.registerParser(VoiceChannel.class, new VoiceChannelParser<>());
+		this.registerParser(GuildChannel.class, new GuildChannelParser<>());
+		this.registerParser(Category.class, new CategoryParser<>());
+		this.registerParser(Role.class, new RoleParser<>());
+		this.registerParser(Emote.class, new EmoteParser<>());
+		this.registerParser(User.class, new UserParser<>(useShardManager));
+		this.registerParser(Guild.class, new GuildParser<>(useShardManager));
 		
 		return this;
 	}
@@ -403,8 +207,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 */
 	@Nonnull
 	public ArgumentFactoryImpl registerJSONParsers() {
-		this.registerParser(JSONObject.class, new JSONObjectParser());
-		this.registerParser(JSONArray.class, new JSONArrayParser());
+		this.registerParser(JSONObject.class, new JSONObjectParser<>());
+		this.registerParser(JSONArray.class, new JSONArrayParser<>());
 		
 		return this;
 	}
@@ -435,7 +239,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	/**
-	 * Unregister the parsers registered through {@link ArgumentFactoryImpl#registerDiscordParsers()}
+	 * Unregister the parsers registered through {@link ArgumentFactoryImpl#registerDiscordParsers(boolean)}
 	 * <br><br>
 	 * <b>NOTE</b>:
 	 * Using this after registering any custom parsers will remove those custom parsers as well
@@ -572,7 +376,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		}
 		
 		if(builder.getParser() == null) {
-			IArgumentParser<?> parser = this.getParser(type);
+			IParser<?, ?> parser = this.getParser(type);
 			if(parser == null) {
 				parser = this.getGenericParser(type);
 			}
@@ -591,16 +395,16 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		}else{
 			Class<?> componentType = type.getComponentType();
 			if(componentType == null) {
-				throw new IllegalArgumentException("There are no default arguments for " + type.toString());
+				throw new IllegalArgumentException("There is no parser for type: " + type);
 			}
 			
-			IArgumentParser<?> parser = this.getParser(componentType);
+			IParser<?, ?> parser = this.getParser(componentType);
 			if(parser == null) {
 				parser = this.getGenericParser(componentType);
 			}
 			
 			if(parser == null) {
-				throw new IllegalArgumentException("There are no default arguments for the component " + componentType.toString());
+				throw new IllegalArgumentException("There is no parser for the component type : " + componentType);
 			}
 			
 			builder = new ArgumentImpl.Builder(componentType)
@@ -642,7 +446,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericArgumentParser<T> parser) {
+	public <T> ArgumentFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -661,7 +465,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IArgumentParser<T> parser) {
+	public <T> ArgumentFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -678,58 +482,58 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
-	protected Map<Class<?>, IGenericArgumentParser<?>> genericParserCache = new HashMap<>();
+	protected Map<Class<?>, IGenericParser<?, ?>> genericParserCache = new HashMap<>();
 	
 	@Override
 	@SuppressWarnings("unchecked")
 	/* See the comments in #getParser for more information */
-	public <T> IGenericArgumentParser<T> getGenericParser(Class<T> type) {
+	public <T> IGenericParser<T, IArgument<T>> getGenericParser(Class<T> type) {
 		type = this.convertType(type);
 		if(type == null) {
 			return null;
 		}
 		
 		if(this.genericParserCache.containsKey(type)) {
-			return (IGenericArgumentParser<T>) this.genericParserCache.get(type);
+			return (IGenericParser<T, IArgument<T>>) this.genericParserCache.get(type);
 		}
 		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
-			IGenericArgumentParser<T> parser = (IGenericArgumentParser<T>) this.genericParsers.get(superClass);
+			IGenericParser<T, IArgument<T>> parser = (IGenericParser<T, IArgument<T>>) this.genericParsers.get(superClass);
 			if(parser == null) {
 				continue;
 			}
 			
-			Set<IArgumentBeforeParser<T>> beforeParsers;
+			Set<IBeforeParser<IArgument<T>>> beforeParsers;
 			if(!parser.isHandleAll()) {
 				beforeParsers = this.getBeforeParsers(type);
 			}else{
 				beforeParsers = Collections.emptySet();
 			}
 			
-			Set<IArgumentAfterParser<T>> afterParsers = this.getAfterParsers(type);
+			Set<IAfterParser<T, IArgument<T>>> afterParsers = this.getAfterParsers(type);
 			if(beforeParsers.isEmpty() && afterParsers.isEmpty()) {
-				return (IGenericArgumentParser<T>) parser;
+				return (IGenericParser<T, IArgument<T>>) parser;
 			}
 			
-			IGenericArgumentParser<T> newParser = new IGenericArgumentParser<>() {
+			IGenericParser<T, IArgument<T>> newParser = new IGenericParser<>() {
 				@Override
-				public ParsedArgument<T> parse(ParseContext context, Class<T> type, IArgument<T> argument, String content) {
-					for(IArgumentBeforeParser<T> parser : beforeParsers) {
-						ParsedArgument<String> parsed = parser.parse(context, argument, content);
+				public ParsedResult<T> parse(ParseContext context, Class<T> type, IArgument<T> argument, String content) {
+					for(IBeforeParser<IArgument<T>> parser : beforeParsers) {
+						ParsedResult<String> parsed = parser.parse(context, argument, content);
 						if(!parsed.isValid()) {
-							return new ParsedArgument<T>(false, null);
+							return new ParsedResult<T>(false, null);
 						}
 						
 						content = parsed.getObject();
 					}
 					
-					ParsedArgument<T> parsed = parser.parse(context, type, argument, content);
+					ParsedResult<T> parsed = parser.parse(context, type, argument, content);
 					if(!parsed.isValid()) {
 						return parsed;
 					}
 					
 					T object = parsed.getObject();
-					for(IArgumentAfterParser<T> parser : afterParsers) {
+					for(IAfterParser<T, IArgument<T>> parser : afterParsers) {
 						parsed = parser.parse(context, argument, object);
 						if(!parsed.isValid()) {
 							return parsed;
@@ -738,12 +542,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 						object = parsed.getObject();
 					}
 					
-					return new ParsedArgument<T>(true, object, parsed.getContentLeft());
-				}
-				
-				@Override
-				public int getPriority() {
-					return parser.getPriority();
+					return new ParsedResult<T>(true, object, parsed.getContentLeft());
 				}
 				
 				@Override
@@ -759,29 +558,29 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return null;
 	}
 	
-	protected Map<Class<?>, IArgumentParser<?>> parserCache = new HashMap<>();
+	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
 	
 	@SuppressWarnings("unchecked")
-	protected <T> Set<IArgumentBeforeParser<T>> getBeforeParsers(Class<T> type) {
+	protected <T> Set<IBeforeParser<IArgument<T>>> getBeforeParsers(Class<T> type) {
 		type = this.convertType(type);
 		
-		Set<IArgumentBeforeParser<T>> beforeParsers = new LinkedHashSet<>();
+		Set<IBeforeParser<IArgument<T>>> beforeParsers = new LinkedHashSet<>();
 		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
-			Set<IArgumentBeforeParser<?>> parsers = this.genericBeforeParsers.get(superClass);
+			Set<IBeforeParser<?>> parsers = this.genericBeforeParsers.get(superClass);
 			if(parsers == null) {
 				continue;
 			}
 			
-			for(IArgumentBeforeParser<?> beforeParser : parsers) {
-				beforeParsers.add((IArgumentBeforeParser<T>) beforeParser);
+			for(IBeforeParser<?> beforeParser : parsers) {
+				beforeParsers.add((IBeforeParser<IArgument<T>>) beforeParser);
 			}
 		}
 		
-		Set<IArgumentBeforeParser<?>> parsers = this.beforeParsers.get(type);
+		Set<IBeforeParser<?>> parsers = this.beforeParsers.get(type);
 		if(parsers != null) {
-			for(IArgumentBeforeParser<?> beforeParser : parsers) {
-				beforeParsers.add((IArgumentBeforeParser<T>) beforeParser);
+			for(IBeforeParser<?> beforeParser : parsers) {
+				beforeParsers.add((IBeforeParser<IArgument<T>>) beforeParser);
 			}
 		}
 		
@@ -789,14 +588,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected <T> Set<IArgumentAfterParser<T>> getAfterParsers(Class<T> type) {
+	protected <T> Set<IAfterParser<T, IArgument<T>>> getAfterParsers(Class<T> type) {
 		type = this.convertType(type);
 		
-		Set<IArgumentAfterParser<T>> afterParsers = new LinkedHashSet<>();
-		Set<IArgumentAfterParser<?>> parsers = this.afterParsers.get(type);
+		Set<IAfterParser<T, IArgument<T>>> afterParsers = new LinkedHashSet<>();
+		Set<IAfterParser<?, ?>> parsers = this.afterParsers.get(type);
 		if(parsers != null) {
-			for(IArgumentAfterParser<?> afterParser : parsers) {
-				afterParsers.add((IArgumentAfterParser<T>) afterParser);
+			for(IAfterParser<?, ?> afterParser : parsers) {
+				afterParsers.add((IAfterParser<T, IArgument<T>>) afterParser);
 			}
 		}
 		
@@ -805,7 +604,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> IArgumentParser<T> getParser(Class<T> type) {
+	public <T> IParser<T, IArgument<T>> getParser(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(!this.parsers.containsKey(type)) {
@@ -813,10 +612,10 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		}
 		
 		if(this.parserCache.containsKey(type)) {
-			return (IArgumentParser<T>) this.parserCache.get(type);
+			return (IParser<T, IArgument<T>>) this.parserCache.get(type);
 		}
 		
-		IArgumentParser<T> parser = (IArgumentParser<T>) this.parsers.get(type);
+		IParser<T, IArgument<T>> parser = (IParser<T, IArgument<T>>) this.parsers.get(type);
 		
 		/* 
 		 * TODO: Currently handle all does not support before parsers due to the conflicting nature of the two
@@ -846,14 +645,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		 * that the JSON definitely ends at the "}", not sure if there are any situations where you would need to have access to
 		 * the entire thing, but this seems like the best solution to fixing this (this would be used in combination with solution 1.)
 		 */
-		Set<IArgumentBeforeParser<T>> beforeParsers;
+		Set<IBeforeParser<IArgument<T>>> beforeParsers;
 		if(!parser.isHandleAll()) {
 			beforeParsers = this.getBeforeParsers(type);
 		}else{
 			beforeParsers = Collections.emptySet();
 		}
 		
-		Set<IArgumentAfterParser<T>> afterParsers = this.getAfterParsers(type);
+		Set<IAfterParser<T, IArgument<T>>> afterParsers = this.getAfterParsers(type);
 		if(beforeParsers.isEmpty() && afterParsers.isEmpty()) {
 			return parser;
 		}
@@ -873,25 +672,25 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		 * Currently normal parsers suffer from the same kind of issue, since you can not
 		 * register a new parser and have all the arguments use that new parser.
 		 */
-		IArgumentParser<T> newParser = new IArgumentParser<>() {
+		IParser<T, IArgument<T>> newParser = new IParser<T, IArgument<T>>() {
 			@Override
-			public ParsedArgument<T> parse(ParseContext context, IArgument<T> argument, String content) {
-				for(IArgumentBeforeParser<T> parser : beforeParsers) {
-					ParsedArgument<String> parsed = parser.parse(context, argument, content);
+			public ParsedResult<T> parse(ParseContext context, IArgument<T> argument, String content) {
+				for(IBeforeParser<IArgument<T>> parser : beforeParsers) {
+					ParsedResult<String> parsed = parser.parse(context, argument, content);
 					if(!parsed.isValid()) {
-						return new ParsedArgument<T>(false, null);
+						return new ParsedResult<T>(false, null);
 					}
 					
 					content = parsed.getObject();
 				}
 				
-				ParsedArgument<T> parsed = parser.parse(context, argument, content);
+				ParsedResult<T> parsed = parser.parse(context, argument, content);
 				if(!parsed.isValid()) {
 					return parsed;
 				}
 				
 				T object = parsed.getObject();
-				for(IArgumentAfterParser<T> parser : afterParsers) {
+				for(IAfterParser<T, IArgument<T>> parser : afterParsers) {
 					parsed = parser.parse(context, argument, object);
 					if(!parsed.isValid()) {
 						return parsed;
@@ -900,12 +699,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 					object = parsed.getObject();
 				}
 				
-				return new ParsedArgument<T>(true, object, parsed.getContentLeft());
-			}
-			
-			@Override
-			public int getPriority() {
-				return parser.getPriority();
+				return new ParsedResult<T>(true, object, parsed.getContentLeft());
 			}
 			
 			@Override
@@ -1010,7 +804,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
-	public <T> ArgumentFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IArgumentBeforeParser<T> parser) {
+	public <T> ArgumentFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -1021,7 +815,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public ArgumentFactoryImpl removeParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser) {
+	public ArgumentFactoryImpl removeParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
 		if(this.beforeParsers.containsKey(type)) {
@@ -1033,12 +827,12 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IArgumentBeforeParser<T>> getParsersBefore(Class<T> type) {
+	public <T> List<IBeforeParser<T>> getParsersBefore(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.beforeParsers.containsKey(type)) {
 			return this.beforeParsers.get(type).stream()
-				.map(parser -> (IArgumentBeforeParser<T>) parser)
+				.map(parser -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -1046,7 +840,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
-	public <T> ArgumentFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IArgumentBeforeParser<T> parser) {
+	public <T> ArgumentFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -1057,7 +851,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public ArgumentFactoryImpl removeGenericParserBefore(@Nullable Class<?> type, @Nullable IArgumentBeforeParser<?> parser) {
+	public ArgumentFactoryImpl removeGenericParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
 		if(this.genericBeforeParsers.containsKey(type)) {
@@ -1069,12 +863,12 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IArgumentBeforeParser<T>> getGenericParsersBefore(Class<T> type) {
+	public <T> List<IBeforeParser<T>> getGenericParsersBefore(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.genericBeforeParsers.containsKey(type)) {
 			return this.genericBeforeParsers.get(type).stream()
-				.map(parser -> (IArgumentBeforeParser<T>) parser)
+				.map(parser -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -1082,7 +876,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
-	public <T> ArgumentFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IArgumentAfterParser<T> parser) {
+	public <T> ArgumentFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -1093,7 +887,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public ArgumentFactoryImpl removeParserAfter(@Nullable Class<?> type, @Nullable IArgumentAfterParser<?> parser) {
+	public ArgumentFactoryImpl removeParserAfter(@Nullable Class<?> type, @Nullable IAfterParser<?, ?> parser) {
 		type = this.convertType(type);
 		
 		if(this.afterParsers.containsKey(type)) {
@@ -1105,12 +899,12 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IArgumentAfterParser<T>> getParsersAfter(Class<T> type) {
+	public <T> List<IAfterParser<T, IArgument<T>>> getParsersAfter(Class<T> type) {
 		type = this.convertType(type);
 		
 		if(this.afterParsers.containsKey(type)) {
 			return this.afterParsers.get(type).stream()
-				.map(parser -> (IArgumentAfterParser<T>) parser)
+				.map(parser -> (IAfterParser<T, IArgument<T>>) parser)
 				.collect(Collectors.toList());
 		}
 		

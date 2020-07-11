@@ -2,6 +2,7 @@ package com.jockie.bot.core.command.exception.parser;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
+import com.jockie.bot.core.command.parser.ParseContext;
 
 /**
  * This Exception indicates that a required argument was not provided, 
@@ -13,8 +14,8 @@ public class MissingRequiredArgumentException extends ParseException {
 	
 	private final IArgument<?> argument;
 	
-	public MissingRequiredArgumentException(IArgument<?> argument) {
-		super("Missing required argument " + argument.getName());
+	public MissingRequiredArgumentException(ParseContext context, IArgument<?> argument) {
+		super(context, "Missing required argument: " + argument.getName());
 		
 		this.argument = argument;
 	}

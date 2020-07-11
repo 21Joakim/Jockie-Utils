@@ -65,7 +65,7 @@ public class CommandImpl extends MethodCommandImpl {
 			}
 		}
 		
-		Map<String, ICommand> subCommands = new HashMap<>();
+		Map<String, List<ICommand>> subCommands = new HashMap<>();
 		
 		/* Find all method based commands in this class */
 		for(Method method : this.getClass().getDeclaredMethods()) {
@@ -75,7 +75,7 @@ public class CommandImpl extends MethodCommandImpl {
 			
 			if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
 				ICommand subCommand = MethodCommandFactory.getDefault().create(method, CommandUtility.getCommandName(method), this);
-				subCommands.put(subCommand.getCommand(), subCommand);
+				subCommands.computeIfAbsent(subCommand.getCommand(), (key) -> new ArrayList<>()).add(subCommand);
 			}
 		}
 		
@@ -89,8 +89,8 @@ public class CommandImpl extends MethodCommandImpl {
 					subCommand = commandClass.getDeclaredConstructor(this.getClass()).newInstance(this);
 				}
 				
-				subCommands.put(subCommand.getCommand(), subCommand);
-			}catch(Exception e) {
+				subCommands.computeIfAbsent(subCommand.getCommand(), (key) -> new ArrayList<>(1)).add(subCommand);
+			}catch(Throwable e) {
 				LOG.error("Failed to instantiate sub-command", e);
 			}
 		}
@@ -112,12 +112,32 @@ public class CommandImpl extends MethodCommandImpl {
 					continue;
 				}
 				
-				ICommand parent = CommandUtility.getSubCommandRecursive(subCommands.get(path[0]), Arrays.copyOfRange(path, 1, path.length));
-				if(parent == null) {
+				List<ICommand> possibleCommands = subCommands.get(path[0]);
+				String[] relevantPath = Arrays.copyOfRange(path, 1, path.length);
+				
+				List<ICommand> possibleParents = new ArrayList<>(1);
+				for(int i = 0; i < possibleCommands.size(); i++) {
+					ICommand parent = CommandUtility.getSubCommandRecursive(possibleCommands.get(i), relevantPath);
+					if(parent == null) {
+						continue;
+					}
+					
+					possibleParents.add(parent);
+				}
+				 
+				if(possibleParents.isEmpty()) {
 					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
 					
 					continue;
 				}
+				
+				if(possibleParents.size() > 1) {
+					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") has an ambiguous command path");
+					
+					continue;
+				}
+				
+				ICommand parent = possibleParents.get(0);
 				
 				/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
 				if(!(parent instanceof AbstractCommand)) {
@@ -130,8 +150,10 @@ public class CommandImpl extends MethodCommandImpl {
 			}
 		}
 		
-		for(ICommand subCommand : subCommands.values()) {
-			this.addSubCommand(subCommand);
+		for(List<ICommand> subCommandValues : subCommands.values()) {
+			for(ICommand subCommand : subCommandValues) {
+				this.addSubCommand(subCommand);
+			}
 		}
 	}
 	

@@ -271,6 +271,11 @@ public class DummyCommand implements ICommand {
 	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
 		return this.command.getDuplicateOptionPolicy();
 	}
+
+	@Override
+	public OptionParsingFailurePolicy getOptionParsingFailurePolicy() {
+		return this.command.getOptionParsingFailurePolicy();
+	}
 	
 	@Override
 	public ContentOverflowPolicy getContentOverflowPolicy() {
