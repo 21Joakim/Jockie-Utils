@@ -58,10 +58,10 @@ public interface ICommand extends IPropertyContainer {
 	 * This is used to determine how the {@link ICommandParser} should handle a command when an option fails to parse correctly
 	 */
 	public static enum OptionParsingFailurePolicy {
-		/** Ignores (removes) the options from the message, the option will not be set */
-		IGNORE,
 		/** Includes the option content as an argument instead of an option */
 		INCLUDE,
+		/** Ignores (removes) the options from the message, the option will not be set */
+		IGNORE,
 		/** Fails the command with a {@link OptionParseException} */
 		FAIL;
 	}

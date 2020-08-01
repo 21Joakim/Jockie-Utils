@@ -24,8 +24,8 @@ import com.jockie.bot.core.option.IOption;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.internal.utils.Checks;
 
-	
 public abstract class AbstractCommand implements ICommand {
+	
 	protected String command;
 	
 	protected String description, shortDescription;

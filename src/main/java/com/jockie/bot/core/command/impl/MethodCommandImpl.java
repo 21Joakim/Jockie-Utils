@@ -39,6 +39,7 @@ import com.jockie.bot.core.command.manager.IReturnManager;
 import com.jockie.bot.core.command.manager.impl.ContextManagerFactory;
 import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.Option;
+import com.jockie.bot.core.utility.CommandUtility;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.internal.utils.Checks;
@@ -274,21 +275,18 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 		
 		Object value = event.getOption(annotation.value());
-		if(value == null) {
-			for(String alias : annotation.aliases()) {
-				value = event.getOption(alias);
-			}
-		}
 		
+		DEFAULT:
 		if(value == null) {
 			if(option.hasDefault()) {
-				return option.getDefault(event);
+				value = option.getDefault(event);
 			}
 			
-			Class<?> type = option.getType();
-			if(type.equals(Boolean.class) || type.equals(boolean.class)) {
-				return false;
+			if(value != null) {
+				break DEFAULT;
 			}
+			
+			return CommandUtility.getDefaultValue(option.getType());
 		}
 		
 		return value;

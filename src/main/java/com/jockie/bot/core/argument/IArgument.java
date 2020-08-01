@@ -64,7 +64,7 @@ public interface IArgument<Type> extends IPropertyContainer, IParsableComponent<
 	 * 
 	 * @return an error consumer
 	 */
-	@Nonnull
+	@Nullable
 	public BiConsumer<Message, String> getErrorConsumer();
 	
 	/**

@@ -2,7 +2,9 @@ package com.jockie.bot.core.command.factory.impl;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -63,7 +65,12 @@ public class ComponentFactoryImpl implements IComponentFactory {
 		return arguments;
 	}
 	
-	private Set<String> getOptionTriggers(Parameter[] parameters) {
+	public IOption<?>[] createOptions(Method commandMethod) {
+		IOptionFactory optionFactory = OptionFactory.getDefault();
+		
+		Parameter[] parameters = commandMethod.getParameters();
+		
+		List<Parameter> optionParameters = new ArrayList<>(parameters.length);
 		Set<String> optionTriggers = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 		for(int i = 0; i < parameters.length; i++) {
 			Parameter parameter = parameters[i];
@@ -81,29 +88,17 @@ public class ComponentFactoryImpl implements IComponentFactory {
 					throw new IllegalArgumentException("Option at parameter " + (i + 1) + " has an alias, " + alias + ", which already exists in another option");
 				}
 			}
+			
+			optionParameters.add(parameter);
 		}
 		
-		return optionTriggers;
-	}
-	
-	public IOption<?>[] createOptions(Method commandMethod) {
-		IOptionFactory optionFactory = OptionFactory.getDefault();
-		
-		Parameter[] parameters = commandMethod.getParameters();
-		
-		Set<String> optionTriggers = this.getOptionTriggers(parameters);
-		if(optionTriggers.isEmpty()) {
+		if(optionParameters.isEmpty()) {
 			return new IOption[0];
 		}
 		
-		IOption<?>[] options = new IOption[optionTriggers.size()];
-		for(int parameterCount = 0, optionCount = 0; parameterCount < parameters.length; parameterCount++) {
-			Parameter parameter = parameters[parameterCount];
-			if(!parameter.isAnnotationPresent(Option.class)) {
-				continue;
-			}
-			
-			options[optionCount++] = optionFactory.createOption(parameter);
+		IOption<?>[] options = new IOption[optionParameters.size()];
+		for(int i = 0; i < optionParameters.size(); i++) {
+			options[i] = optionFactory.createOption(optionParameters.get(i));
 		}
 		
 		return options;

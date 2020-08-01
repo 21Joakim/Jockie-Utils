@@ -264,7 +264,12 @@ public class CommandParserImpl implements ICommandParser {
 		}
 		
 		for(String prefix : this.optionPrefixes) {
-			if(messageContent.startsWith(prefix, index + 1) && messageContent.charAt(index + prefix.length() + 1) != ' ') {
+			int characterAfter = index + prefix.length() + 1;
+			if(characterAfter >= messageContent.length()) {
+				continue;
+			}
+			
+			if(messageContent.startsWith(prefix, index + 1) && messageContent.charAt(characterAfter) != ' ') {
 				return prefix;
 			}
 		}
@@ -358,6 +363,11 @@ public class CommandParserImpl implements ICommandParser {
 					}
 				}
 				
+				/* Don't parse if no content was given */
+				if(stringValue == null) {
+					break PARSE_OPTION;
+				}
+				
 				ParsedResult<?> parsedArgument = option.parse(context, stringValue);
 				if(!parsedArgument.isValid()) {
 					switch(command.getOptionParsingFailurePolicy()) {
@@ -396,6 +406,14 @@ public class CommandParserImpl implements ICommandParser {
 						break;
 					}
 				}
+			}else{
+				/* 
+				 * This removes the ability to determine which trigger (alias)
+				 * the option was provided by, however, this is probably better
+				 * for convience as you wouldn't have to check each of the option's
+				 * triggers to determine whether it was provided or not
+				 */
+				stringOption = option.getName();
 			}
 			
 			if(options.containsKey(stringOption)) {
