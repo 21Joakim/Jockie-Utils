@@ -403,7 +403,7 @@ public class CommandParserImpl implements ICommandParser {
 					case INCLUDE: {
 						builder.append(messageContent.charAt(i));
 						
-						break;
+						continue;
 					}
 				}
 			}else{
