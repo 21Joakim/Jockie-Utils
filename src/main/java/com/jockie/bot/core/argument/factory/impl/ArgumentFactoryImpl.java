@@ -691,12 +691,12 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 				
 				T object = parsed.getObject();
 				for(IAfterParser<T, IArgument<T>> parser : afterParsers) {
-					parsed = parser.parse(context, argument, object);
-					if(!parsed.isValid()) {
-						return parsed;
+					ParsedResult<T> newResult = parser.parse(context, argument, object);
+					if(!newResult.isValid()) {
+						return newResult;
 					}
 					
-					object = parsed.getObject();
+					object = newResult.getObject();
 				}
 				
 				return new ParsedResult<T>(true, object, parsed.getContentLeft());
