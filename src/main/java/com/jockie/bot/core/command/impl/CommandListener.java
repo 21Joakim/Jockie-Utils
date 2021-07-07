@@ -766,7 +766,6 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return whether or not the provided id is the id of a developer
 	 */
-	@Nonnull
 	public boolean isDeveloper(@Nonnull String id) {
 		Checks.isSnowflake(id);
 		
@@ -776,7 +775,6 @@ public class CommandListener implements EventListener {
 	/**
 	 * @return whether or not the provided id (as a Snowflake) is the id of a developer
 	 */
-	@Nonnull
 	public boolean isDeveloper(@Nonnull ISnowflake id) {
 		Checks.notNull(id, "id");
 		

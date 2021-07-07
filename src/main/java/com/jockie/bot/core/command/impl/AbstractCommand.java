@@ -253,6 +253,11 @@ public abstract class AbstractCommand implements ICommand {
 		return (T) this.properties.getOrDefault(name, defaultValue);
 	}
 	
+	@Override
+	public Map<String, Object> getProperties() {
+		return Collections.unmodifiableMap(this.properties);
+	}
+	
 	@Nonnull
 	public AbstractCommand setCommand(@Nullable String command) {
 		/* TODO: Can this be null? What happens if it is */

@@ -117,4 +117,9 @@ public class OptionImpl<Type> implements IOption<Type> {
 	public <T> T getProperty(@Nonnull String key, @Nullable T defaultValue) {
 		return (T) this.properties.getOrDefault(key, defaultValue);
 	}
+
+	@Override
+	public Map<String, Object> getProperties() {
+		return Collections.unmodifiableMap(this.properties);
+	}
 }

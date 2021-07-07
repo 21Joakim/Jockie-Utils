@@ -1,5 +1,6 @@
 package com.jockie.bot.core.argument.impl;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -111,5 +112,10 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	@Nullable
 	public <T> T getProperty(@Nonnull String key, @Nullable T defaultValue) {
 		return (T) this.properties.getOrDefault(key, defaultValue);
+	}
+	
+	@Override
+	public Map<String, Object> getProperties() {
+		return Collections.unmodifiableMap(this.properties);
 	}
 }

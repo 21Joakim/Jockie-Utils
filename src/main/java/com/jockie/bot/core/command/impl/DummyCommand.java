@@ -311,4 +311,9 @@ public class DummyCommand implements ICommand {
 	public <T> T getProperty(String name, T defaultValue) {
 		return this.command.getProperty(name, defaultValue);
 	}
+	
+	@Override
+	public Map<String, Object> getProperties() {
+		return this.command.getProperties();
+	}
 }

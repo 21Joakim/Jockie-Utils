@@ -70,7 +70,6 @@ public interface IContextManager {
 	 * this means that it will, for instance, allow {@link Guild} as a context if 
 	 * {@link GuildImpl} is registered as one
 	 */
-	@Nonnull
 	public boolean isHandleInheritance(@Nonnull Type type);
 	
 	/**

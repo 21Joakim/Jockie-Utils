@@ -1,5 +1,7 @@
 package com.jockie.bot.core.property;
 
+import java.util.Map;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -40,4 +42,13 @@ public interface IPropertyContainer {
 	 */
 	@Nullable
 	public <T> T getProperty(@Nonnull String name, @Nullable T defaultValue);
+	
+	/**
+	 * Get all of the custom properties
+	 * 
+	 * @return an unmodifiable map of all the custom propreties
+	 */
+	@Nonnull
+	public Map<String, Object> getProperties();
+	
 }

@@ -85,7 +85,6 @@ public interface IErrorManager {
 	 * this means that it will, for instance, handle {@link GuildImpl} if {@link Guild}
 	 * was registered
 	 */
-	@Nonnull
 	public boolean isHandleInheritance(@Nonnull Class<?> type);
 	
 	/**

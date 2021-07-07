@@ -395,6 +395,11 @@ public class CommandEvent implements IPropertyContainer {
 		return (T) this.properties.getOrDefault(name, defaultValue);
 	}
 	
+	@Override
+	public Map<String, Object> getProperties() {
+		return Collections.unmodifiableMap(this.properties);
+	}
+	
 	/**
 	 * Set a custom property, this can be useful if you need to pass a
 	 * property from a pre-execute check
