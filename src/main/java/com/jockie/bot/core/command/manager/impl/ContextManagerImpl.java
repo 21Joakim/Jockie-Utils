@@ -9,6 +9,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandListener;
@@ -33,7 +36,7 @@ public class ContextManagerImpl implements IContextManager {
 		this.registerDefaultContext();
 	}
 	
-	public void registerDefaultContext() {
+	public final void registerDefaultContext() {
 		this.registerContext(CommandEvent.class, (event, type) -> event)
 			.setEnforcedContext(CommandEvent.class, true);
 		
@@ -66,7 +69,7 @@ public class ContextManagerImpl implements IContextManager {
 			.setHandleInheritance(PrivateChannelImpl.class, true);
 	}
 	
-	public void unregisterDefaultContext() {
+	public final void unregisterDefaultContext() {
 		this.unregisterContext(CommandEvent.class);
 		this.unregisterContext(CommandListener.class);
 		this.unregisterContext(ChannelType.class);
@@ -154,15 +157,10 @@ public class ContextManagerImpl implements IContextManager {
 		}
 		
 		if(!initialProvider) {
-			if(this.inheritanceCache.containsKey(type)) {
-				Type cachedType = this.inheritanceCache.get(type);
+			Type cachedType = this.inheritanceCache.get(type);
+			if(cachedType != null) {
 				provider = this.getContextProvider(cachedType);
-				
-				if(cachedType != null) {
-					return this.getContext(event, provider, cachedType, parameter);
-				}else{
-					return null;
-				}
+				return this.getContext(event, provider, cachedType, parameter);
 			}
 			
 			provider = (ContextProvider<T>) this.getInheritenceProvider(type);
@@ -171,26 +169,25 @@ public class ContextManagerImpl implements IContextManager {
 			}
 			
 			this.inheritanceCache.put(type, provider.getType());
-			
-			if(provider != null) {
-				return this.getContext(event, provider, type, parameter);
-			}
+			return this.getContext(event, provider, type, parameter);
 		}
 		
 		return null;
 	}
 	
-	public <T> T getContext(CommandEvent event, Type type) {
+	@Nullable
+	public <T> T getContext(@Nonnull CommandEvent event, @Nonnull Type type) {
 		return this.getContext(event, null, type, null);
 	}
 	
-	public <T> T getContext(CommandEvent event, Parameter parameter) {
+	@Nullable
+	public <T> T getContext(@Nonnull CommandEvent event, @Nonnull Parameter parameter) {
 		Checks.notNull(parameter, "parameter");
 		
 		return this.getContext(event, null, parameter.getParameterizedType(), parameter);
 	}
 	
-	public boolean isEnforcedContext(Type type) {
+	public boolean isEnforcedContext(@Nonnull Type type) {
 		Checks.notNull(type, "type");
 		
 		ContextProvider<?> provider = this.getContextProvider(type);
@@ -201,7 +198,8 @@ public class ContextManagerImpl implements IContextManager {
 		return false;
 	}
 	
-	public ContextManagerImpl setEnforcedContext(Type type, boolean enforced) {
+	@Nonnull
+	public ContextManagerImpl setEnforcedContext(@Nonnull Type type, boolean enforced) {
 		ContextProvider<?> provider = this.getContextProvider(type);
 		if(provider == null) {
 			throw new IllegalArgumentException(type.getTypeName() + " is not a registered context");
@@ -212,7 +210,7 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public boolean isHandleInheritance(Type type) {
+	public boolean isHandleInheritance(@Nonnull Type type) {
 		Checks.notNull(type, "type");
 		
 		ContextProvider<?> provider = this.getContextProvider(type);
@@ -223,7 +221,8 @@ public class ContextManagerImpl implements IContextManager {
 		return false;
 	}
 	
-	public ContextManagerImpl setHandleInheritance(Type type, boolean handle) {
+	@Nonnull
+	public ContextManagerImpl setHandleInheritance(@Nonnull Type type, boolean handle) {
 		Checks.notNull(type, "type");
 		
 		if(!(type instanceof Class)) {
@@ -253,7 +252,8 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public ContextManagerImpl unregisterContext(Type type) {
+	@Nonnull
+	public ContextManagerImpl unregisterContext(@Nonnull Type type) {
 		Checks.notNull(type, "type");
 		
 		this.handleInheritance.remove(this.contextProviders.remove(type));
@@ -261,7 +261,8 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public <T> ContextManagerImpl registerContext(Type type, TriFunction<CommandEvent, Parameter, Type, T> function) {
+	@Nonnull
+	public <T> ContextManagerImpl registerContext(@Nonnull Type type, @Nonnull TriFunction<CommandEvent, Parameter, Type, T> function) {
 		Checks.notNull(type, "type");
 		Checks.notNull(function, "function");
 		
@@ -276,13 +277,15 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public <T> ContextManagerImpl registerContext(Class<T> clazz, TriFunction<CommandEvent, Parameter, Type, T> function) {
+	@Nonnull
+	public <T> ContextManagerImpl registerContext(@Nonnull Class<T> clazz, @Nonnull TriFunction<CommandEvent, Parameter, Type, T> function) {
 		IContextManager.super.registerContext(clazz, function);
 		
 		return this;
 	}
 	
-	public <T> ContextManagerImpl registerContext(Type type, BiFunction<CommandEvent, Type, T> function) {
+	@Nonnull
+	public <T> ContextManagerImpl registerContext(@Nonnull Type type, @Nonnull BiFunction<CommandEvent, Type, T> function) {
 		Checks.notNull(type, "type");
 		Checks.notNull(function, "function");
 		
@@ -296,7 +299,9 @@ public class ContextManagerImpl implements IContextManager {
 		return this;
 	}
 	
-	public <T> ContextManagerImpl registerContext(Class<T> clazz, BiFunction<CommandEvent, Type, T> function) {
+	@Override
+	@Nonnull
+	public <T> ContextManagerImpl registerContext(@Nonnull Class<T> clazz, @Nonnull BiFunction<CommandEvent, Type, T> function) {
 		IContextManager.super.registerContext(clazz, function);
 		
 		return this;

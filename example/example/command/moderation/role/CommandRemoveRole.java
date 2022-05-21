@@ -9,7 +9,6 @@ import com.jockie.bot.core.command.impl.CommandImpl;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
 
 public class CommandRemoveRole extends CommandImpl {
 	
@@ -23,23 +22,26 @@ public class CommandRemoveRole extends CommandImpl {
 	
 	public void onCommand(CommandEvent event, @Argument("member") Optional<Member> optionalMember, @Argument(value="role", endless=true) Role role) {
 		Member member = optionalMember.orElse(event.getMember());
-		
-		if(event.getMember().canInteract(role)) {
-			if(event.getGuild().getSelfMember().canInteract(role)) {
-				if(member.getRoles().contains(role)) {
-					event.getGuild().removeRoleFromMember(member, role).queue(success -> {
-						User user = member.getUser();
-						
-						event.getChannel().sendMessage("Removed " + role.getName() + " from " + user.getName() + "#" + user.getDiscriminator()).queue();
-					});
-				}else{
-					event.getChannel().sendMessage("Member does not have that role").queue();
-				}
-			}else{
-				event.getChannel().sendMessage("I can not interact with that role").queue();
-			}
-		}else{
-			event.getChannel().sendMessage("You can not interact with that role").queue();
+		if(!event.getMember().canInteract(role)) {
+			event.reply("You can not interact with that role").queue();
+			
+			return;
 		}
+		
+		if(!event.getGuild().getSelfMember().canInteract(role)) {
+			event.reply("I can not interact with that role").queue();
+			
+			return;
+		}
+		
+		if(!member.getRoles().contains(role)) {
+			event.reply("Member does not have that role").queue();
+			
+			return;
+		}
+		
+		event.getGuild().removeRoleFromMember(member, role)
+			.flatMap((success) -> event.replyFormat("Removed %s from %s", role.getName(), member.getUser().getAsTag()))
+			.queue();
 	}
 }

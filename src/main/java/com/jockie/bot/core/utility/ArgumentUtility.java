@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Category;
@@ -30,7 +31,7 @@ public class ArgumentUtility {
 	
 	public static final Pattern USER_NAME_PATTERN = Pattern.compile("(.{2,32})#([0-9]{4})");
 	
-	@Nonnull
+	@Nullable
 	private static String getGroup(@Nonnull Pattern pattern, int group, @Nonnull String value) {
 		Matcher matcher = pattern.matcher(value);
 		if(matcher.find()) {
@@ -52,15 +53,13 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found role, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static Role getRoleById(@Nonnull Guild guild, @Nonnull String value) {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return guild.getRoleById(id);
 		}
 		
@@ -75,15 +74,13 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found member, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static Member getMemberById(@Nonnull Guild guild, @Nonnull String value) {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return guild.getMemberById(id);
 		}
 		
@@ -98,16 +95,35 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found text channel, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static TextChannel getTextChannelById(@Nonnull Guild guild, @Nonnull String value) {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return guild.getTextChannelById(id);
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Get a voice channel by id or mention
+	 * 
+	 * @param guild the guild to search for the voice channel in
+	 * @param value the mention or id of the text channel
+	 * 
+	 * @return the found text channel, may be null
+	 */
+	@Nullable
+	public static VoiceChannel getVoiceChannelById(@Nonnull Guild guild, @Nonnull String value) {
+		Checks.notNull(guild, "guild");
+		Checks.notNull(value, "value");
+		
+		String id = ArgumentUtility.getGroup(MentionType.CHANNEL.getPattern(), 1, value);
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
+			return guild.getVoiceChannelById(id);
 		}
 		
 		return null;
@@ -121,7 +137,7 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found emote, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static Emote getEmoteById(@Nonnull Guild guild, @Nonnull String value) {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
@@ -129,9 +145,7 @@ public class ArgumentUtility {
 		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
 		
 		String id = matcher.matches() ? matcher.group(2) : null;
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			long snowflake = Long.parseLong(id);
 			
 			Emote emote = guild.getEmoteById(snowflake);
@@ -155,15 +169,13 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found user, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static User getUserById(@Nonnull JDA jda, @Nonnull String value) {
 		Checks.notNull(jda, "jda");
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return jda.getUserById(id);
 		}
 		
@@ -178,15 +190,13 @@ public class ArgumentUtility {
 	 * 
 	 * @return the found user, may be null
 	 */
-	@Nonnull
+	@Nullable
 	public static User getUserById(@Nonnull ShardManager shardManager, @Nonnull String value) {
 		Checks.notNull(shardManager, "shardManager");
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return shardManager.getUserById(id);
 		}
 		
@@ -208,9 +218,7 @@ public class ArgumentUtility {
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return jda.retrieveUserById(id);
 		}
 		
@@ -232,13 +240,11 @@ public class ArgumentUtility {
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			return shardManager.retrieveUserById(id);
 		}
 		
-		return new CompletedRestAction<User>(shardManager.getShardCache().getElementById(0), (User) null);
+		return new CompletedRestAction<User>(shardManager.getShardCache().iterator().next(), (User) null);
 	}
 	
 	/**
@@ -259,9 +265,7 @@ public class ArgumentUtility {
 		Checks.notNull(value, "value");
 		
 		String id = ArgumentUtility.getGroup(MentionType.USER.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
+		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			long snowflake = Long.parseLong(id);
 			
 			User user = shardManager.getUserById(snowflake);
@@ -303,8 +307,8 @@ public class ArgumentUtility {
 			String descriminator = matcher.group(2);
 			
 			Member member = guild.getMemberCache().stream()
-				.filter(a -> a.getUser().getDiscriminator().equals(descriminator))
-				.filter(a -> a.getUser().getName().equals(name))
+				.filter((a) -> a.getUser().getDiscriminator().equals(descriminator))
+				.filter((a) -> a.getUser().getName().equals(name))
 				.findFirst()
 				.orElse(null);
 			
@@ -331,14 +335,9 @@ public class ArgumentUtility {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
-		String id = ArgumentUtility.getGroup(MentionType.ROLE.getPattern(), 1, value);
-		id = id != null ? id : value;
-		
-		if(ArgumentUtility.isSnowflake(id)) {
-			Role role = guild.getRoleById(id);
-			if(role != null) {
-				return List.of(role);
-			}
+		Role role = ArgumentUtility.getRoleById(guild, value);
+		if(role != null) {
+			return List.of(role);
 		}
 		
 		return guild.getRolesByName(value, ignoreCase);
@@ -405,11 +404,9 @@ public class ArgumentUtility {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
-		if(ArgumentUtility.isSnowflake(value)) {
-			VoiceChannel channel = guild.getVoiceChannelById(value);
-			if(channel != null) {
-				return List.of(channel);
-			}
+		VoiceChannel channel = ArgumentUtility.getVoiceChannelById(guild, value);
+		if(channel != null) {
+			return List.of(channel);
 		}
 		
 		return guild.getVoiceChannelsByName(value, ignoreCase);
@@ -468,8 +465,8 @@ public class ArgumentUtility {
 			String descriminator = matcher.group(2);
 			
 			User user = jda.getUserCache().stream()
-				.filter(a -> a.getDiscriminator().equals(descriminator))
-				.filter(a -> a.getName().equals(name))
+				.filter((a) -> a.getDiscriminator().equals(descriminator))
+				.filter((a) -> a.getName().equals(name))
 				.findFirst()
 				.orElse(null);
 			
@@ -509,8 +506,8 @@ public class ArgumentUtility {
 			String descriminator = matcher.group(2);
 			
 			User user = shardManager.getUserCache().stream()
-				.filter(a -> a.getDiscriminator().equals(descriminator))
-				.filter(a -> a.getName().equals(name))
+				.filter((a) -> a.getDiscriminator().equals(descriminator))
+				.filter((a) -> a.getName().equals(name))
 				.findFirst()
 				.orElse(null);
 			

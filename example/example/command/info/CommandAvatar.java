@@ -1,4 +1,4 @@
-package example.command.info.user;
+package example.command.info;
 
 import java.util.Optional;
 
@@ -19,6 +19,11 @@ public class CommandAvatar extends CommandImpl {
 	}
 	
 	public MessageEmbed onCommand(CommandEvent event, @Argument("user") Optional<User> user) {
-		return new EmbedBuilder().setImage(user.orElse(event.getAuthor()).getAvatarUrl()).build();
+		User effectiveUser = user.orElse(event.getAuthor());
+		
+		return new EmbedBuilder()
+			.setAuthor(effectiveUser.getAsTag(), null, effectiveUser.getEffectiveAvatarUrl())
+			.setImage(effectiveUser.getEffectiveAvatarUrl())
+			.build();
 	}
 }

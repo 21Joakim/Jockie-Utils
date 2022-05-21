@@ -495,15 +495,21 @@ public class CommandParserImpl implements ICommandParser {
 					String value = map.get(argument.getName());
 					
 					ParsedResult<?> parsedArgument = argument.parse(context, value);
-					if(parsedArgument.isValid() && (parsedArgument.getContentLeft() == null || parsedArgument.getContentLeft().isEmpty())) {
-						parsedArguments[argumentCount] = parsedArgument.getObject();
-						parsedArgumentsAsString[argumentCount] = value;
-						
-						argumentCount += 1;
-					}else{
+					if(!parsedArgument.isValid()) {
 						/* The content does not make for a valid argument */
 						throw new ArgumentParseException(context, argument, value);
 					}
+					
+					String contentLeft = parsedArgument.getContentLeft();
+					if(contentLeft != null && !contentLeft.isEmpty()) {
+						/* When would this happen? */
+						throw new ArgumentParseException(context, argument, value);
+					}
+					
+					parsedArguments[argumentCount] = parsedArgument.getObject();
+					parsedArgumentsAsString[argumentCount] = value;
+					
+					argumentCount += 1;
 					
 					map.remove(argument.getName());
 				}
@@ -533,7 +539,7 @@ public class CommandParserImpl implements ICommandParser {
 					if(messageContent.length() > 0) {
 						if(messageContent.startsWith(" ")) {
 							ArgumentTrimType trimType = command.getArgumentTrimType();
-							if(!trimType.equals(ArgumentTrimType.NONE) && !(argument.isEndless() && !trimType.equals(ArgumentTrimType.STRICT))) {
+							if(trimType != ArgumentTrimType.NONE && !(argument.isEndless() && trimType != ArgumentTrimType.STRICT)) {
 								messageContent = StringUtility.stripLeading(messageContent);
 							}else{
 								messageContent = messageContent.substring(1);
@@ -576,7 +582,7 @@ public class CommandParserImpl implements ICommandParser {
 									messageContent = messageContent.substring(content.length());
 									content = StringUtility.unwrap(content, '[', ']');
 									
-									if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
+									if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
 										content = StringUtility.strip(content);
 									}
 								}
@@ -587,7 +593,7 @@ public class CommandParserImpl implements ICommandParser {
 										messageContent = messageContent.substring(content.length());
 										content = StringUtility.unwrap(content, quotes.getLeft(), quotes.getRight());
 										
-										if(command.getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
+										if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
 											content = StringUtility.strip(content);
 										}
 										
@@ -625,7 +631,7 @@ public class CommandParserImpl implements ICommandParser {
 				
 				/* There is more content than the arguments could handle */
 				if(messageContent.length() > 0) {
-					if(command.getContentOverflowPolicy().equals(ContentOverflowPolicy.FAIL)) {
+					if(command.getContentOverflowPolicy() == ContentOverflowPolicy.FAIL) {
 						throw new ContentOverflowException(context, messageContent);
 					}
 				}

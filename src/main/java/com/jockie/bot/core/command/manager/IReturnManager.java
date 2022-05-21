@@ -3,7 +3,6 @@ package com.jockie.bot.core.command.manager;
 import java.util.function.BiConsumer;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import com.jockie.bot.core.command.impl.CommandEvent;
 
@@ -16,10 +15,9 @@ public interface IReturnManager {
 	 * @param event the event where the object was returned
 	 * @param object the returned object to handle
 	 * 
-	 * @return whether or not the provided object was recognized 
-	 * and handled
+	 * @return whether or not the provided object was recognized and handled
 	 */
-	public <T> boolean perform(@Nonnull CommandEvent event, @Nullable T object);
+	public <T> boolean perform(@Nonnull CommandEvent event, @Nonnull T object);
 	
 	/**
 	 * @param type the return type to handle

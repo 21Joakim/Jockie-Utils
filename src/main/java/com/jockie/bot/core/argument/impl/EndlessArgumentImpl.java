@@ -1,6 +1,7 @@
 package com.jockie.bot.core.argument.impl;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IEndlessArgument;
@@ -23,6 +24,7 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		/**
 		 * @throws UnsupportedOperationException
 		 */
+		@Nonnull
 		public Builder<Type> setAcceptQuote(boolean quote) {
 			/* I am not sure when you would want to have a quoted endless argument therefore this will be disabled for now */
 			throw new UnsupportedOperationException("Endless arguments can not be quoted");
@@ -31,7 +33,8 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		/**
 		 * @throws UnsupportedOperationException
 		 */
-		public Builder<Type> setParser(IParser<Type[], IArgument<Type[]>> parser) {
+		@Nonnull
+		public Builder<Type> setParser(@Nullable IParser<Type[], IArgument<Type[]>> parser) {
 			throw new UnsupportedOperationException();
 		}
 		
@@ -61,10 +64,12 @@ public class EndlessArgumentImpl<Type> extends ArgumentImpl<Type[]> implements I
 		this.maxArguments = builder.getMaxArguments();
 	}
 	
+	@Nonnull
 	public IArgument<Type> getArgument() {
 		return this.argument;
 	}
 	
+	@Nonnull
 	public Class<Type> getComponentType() {
 		return this.componentType;
 	}

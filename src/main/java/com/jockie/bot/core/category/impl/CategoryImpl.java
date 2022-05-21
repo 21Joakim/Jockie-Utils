@@ -4,6 +4,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.category.ICategory;
 import com.jockie.bot.core.command.ICommand;
 
@@ -32,18 +35,22 @@ public class CategoryImpl implements ICategory {
 		this.parent = parent;
 	}
 	
+	@Nonnull
 	public String getName() {
 		return this.name;
 	}
 	
+	@Nullable
 	public String getDescription() {
 		return this.description;
 	}
 	
+	@Nullable
 	public ICategory getParent() {
 		return this.parent;
 	}
 	
+	@Nonnull
 	public ICategory addSubCategory(ICategory category) {
 		Checks.notNull(category, "category");
 		
@@ -56,6 +63,7 @@ public class CategoryImpl implements ICategory {
 		return this;
 	}
 	
+	@Nonnull
 	public ICategory removeSubCategory(ICategory category) {
 		Checks.notNull(category, "category");
 		
@@ -64,10 +72,12 @@ public class CategoryImpl implements ICategory {
 		return this;
 	}
 	
+	@Nonnull
 	public Set<ICategory> getSubCategories() {
 		return Collections.unmodifiableSet(this.subCategories);
 	}
 	
+	@Nonnull
 	public ICategory addCommand(ICommand command) {
 		Checks.notNull(command, "command");
 		
@@ -80,6 +90,7 @@ public class CategoryImpl implements ICategory {
 		return this;
 	}
 	
+	@Nonnull
 	public ICategory removeCommand(ICommand command) {
 		Checks.notNull(command, "command");
 		
@@ -92,6 +103,7 @@ public class CategoryImpl implements ICategory {
 		return this;
 	}
 	
+	@Nonnull
 	public Set<ICommand> getCommands() {
 		return Collections.unmodifiableSet(this.commands);
 	}

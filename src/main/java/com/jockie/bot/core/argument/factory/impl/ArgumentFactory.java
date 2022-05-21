@@ -1,5 +1,7 @@
 package com.jockie.bot.core.argument.factory.impl;
 
+import java.util.Objects;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -27,11 +29,7 @@ public class ArgumentFactory {
 	 * @param factory the factory to set the default to, if null {@link #DEFAULT}
 	 */
 	public static void setDefault(@Nullable IArgumentFactory factory) {
-		if(factory != null) {
-			ArgumentFactory.defaultArgumentFactory = factory;
-		}else{
-			ArgumentFactory.defaultArgumentFactory = DEFAULT;
-		}
+		ArgumentFactory.defaultArgumentFactory = Objects.requireNonNullElse(factory, DEFAULT);
 	}
 	
 	/**

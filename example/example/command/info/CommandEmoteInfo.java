@@ -1,4 +1,4 @@
-package example.command.info.emote;
+package example.command.info;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -13,18 +13,18 @@ public class CommandEmoteInfo extends CommandImpl {
 
 	public CommandEmoteInfo() {
 		super("emote info");
+		
+		super.setShortDescription("Get information about an emote");
 	}
 	
 	public MessageEmbed onCommand(CommandEvent event, @Argument("emote") Emote emote) {
-		EmbedBuilder builder = new EmbedBuilder();
-		
-		builder.setThumbnail(emote.getImageUrl());
-		builder.addField("Name", emote.getName(), true);
-		builder.addField("Id", emote.getId(), true);
-		builder.addField("Emote", emote.getAsMention(), true);
-		builder.addField("Animated", String.valueOf(emote.isAnimated()), true);
-		builder.addField("Created", Main.FORMATTER.format(emote.getTimeCreated()), true);
-		
-		return builder.build();
+		return new EmbedBuilder()
+			.setThumbnail(emote.getImageUrl())
+			.addField("Name", emote.getName(), true)
+			.addField("Id", emote.getId(), true)
+			.addField("Emote", emote.getAsMention(), true)
+			.addField("Animated", String.valueOf(emote.isAnimated()), true)
+			.addField("Created", Main.FORMATTER.format(emote.getTimeCreated()), true)
+			.build();
 	}
 }

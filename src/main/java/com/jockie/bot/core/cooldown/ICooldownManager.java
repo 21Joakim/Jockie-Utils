@@ -2,6 +2,9 @@ package com.jockie.bot.core.cooldown;
 
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.cooldown.ICooldown.Scope;
 
@@ -17,6 +20,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the cooldown gotten by the provided context key, may be null
 	 */
+	@Nullable
 	public ICooldown getCooldown(ICommand command, Message message);
 	
 	/**
@@ -27,6 +31,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the cooldown gotten by the provided context key, may be null
 	 */
+	@Nullable
 	public ICooldown getCooldown(ICommand command, String key);
 	
 	/**
@@ -37,6 +42,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the previously applied cooldown, may be null
 	 */
+	@Nullable
 	public ICooldown applyCooldown(ICommand command, ICooldown cooldown);
 	
 	/**
@@ -47,6 +53,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the previously applied cooldown, may be null
 	 */
+	@Nullable
 	public ICooldown applyCooldown(ICommand command, Message message);
 	
 	/**
@@ -57,6 +64,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the cooldown which was created
 	 */
+	@Nonnull
 	public ICooldown applyCooldownAndGet(ICommand command, Message message);
 	
 	/**
@@ -67,6 +75,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the cooldown which it removed, may be null
 	 */
+	@Nullable
 	public ICooldown removeCooldown(ICommand command, Message message);
 	
 	/**
@@ -77,6 +86,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return the cooldown which it removed, may be null
 	 */
+	@Nullable
 	public ICooldown removeCooldown(ICommand command, String key);
 	
 	/**
@@ -86,6 +96,7 @@ public interface ICooldownManager {
 	 * 
 	 * @return an empty cooldown which is not bound to any context
 	 */
+	@Nonnull
 	public ICooldown createEmptyCooldown(Scope scope, long duration, TimeUnit unit);
 	
 }

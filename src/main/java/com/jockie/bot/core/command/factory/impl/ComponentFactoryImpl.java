@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.factory.IArgumentFactory;
 import com.jockie.bot.core.argument.factory.impl.ArgumentFactory;
@@ -39,7 +41,9 @@ public class ComponentFactoryImpl implements IComponentFactory {
 		return indexes;
 	}
 	
-	public IArgument<?>[] createArguments(Method commandMethod) {
+	@Override
+	@Nonnull
+	public IArgument<?>[] createArguments(@Nonnull Method commandMethod) {
 		IArgumentFactory argumentFactory = ArgumentFactory.getDefault();
 		
 		Parameter[] parameters = commandMethod.getParameters();
@@ -65,7 +69,9 @@ public class ComponentFactoryImpl implements IComponentFactory {
 		return arguments;
 	}
 	
-	public IOption<?>[] createOptions(Method commandMethod) {
+	@Override
+	@Nonnull
+	public IOption<?>[] createOptions(@Nonnull Method commandMethod) {
 		IOptionFactory optionFactory = OptionFactory.getDefault();
 		
 		Parameter[] parameters = commandMethod.getParameters();

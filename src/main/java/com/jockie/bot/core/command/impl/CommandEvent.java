@@ -8,6 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.command.ICommand;
 import com.jockie.bot.core.command.ICommand.ArgumentParsingType;
 import com.jockie.bot.core.command.ICommand.ContentOverflowPolicy;
@@ -283,56 +286,67 @@ public class CommandEvent implements IPropertyContainer {
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
+	@Nonnull
 	public MessageAction reply(CharSequence text) {
 		return this.getChannel().sendMessage(text);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendMessage(MessageEmbed)}, using the event's channel */
+	/** Equivalent to {@link MessageChannel#sendMessageEmbeds(MessageEmbed, MessageEmbed...)}, using the event's channel */
+	@Nonnull
 	public MessageAction reply(MessageEmbed embed) {
-		return this.getChannel().sendMessage(embed);
+		return this.getChannel().sendMessageEmbeds(embed);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessage(Message)}, using the event's channel */
+	@Nonnull
 	public MessageAction reply(Message message) {
 		return this.getChannel().sendMessage(message);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendFile(File, AttachmentOption...)}, using the event's channel */
+	@Nonnull
 	public MessageAction replyFile(File file, AttachmentOption... options) {
 		return this.getChannel().sendFile(file, options);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendFile(byte[], String, AttachmentOption...)}, using the event's channel */
+	@Nonnull
 	public MessageAction replyFile(byte[] data, String fileName, AttachmentOption... options) {
 		return this.getChannel().sendFile(data, fileName, options);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendFile(File, String, AttachmentOption...)}, using the event's channel */
+	@Nonnull
 	public MessageAction replyFile(File file, String fileName, AttachmentOption... options) {
 		return this.getChannel().sendFile(file, fileName, options);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String, AttachmentOption...)}, using the event's channel */
+	@Nonnull
 	public MessageAction replyFile(InputStream data, String fileName, AttachmentOption... options) {
 		return this.getChannel().sendFile(data, fileName, options);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessageFormat(String, Object...)}, using the event's channel */
+	@Nonnull
 	public MessageAction replyFormat(String format, Object... args) {
 		return this.getChannel().sendMessageFormat(format, args);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendTyping()}, using the event's channel */
+	@Nonnull
 	public RestAction<Void> replyTyping() {
 		return this.getChannel().sendTyping();
 	}
 	
 	/** Equivalent to {@link Message#addReaction(Emote)}, using the event's message */
+	@Nonnull
 	public RestAction<Void> react(Emote emote) {
 		return this.getMessage().addReaction(emote);
 	}
 	
 	/** Equivalent to {@link Message#addReaction(String)}, using the event's message */
+	@Nonnull
 	public RestAction<Void> react(String unicode) {
 		return this.getMessage().addReaction(unicode);
 	}
@@ -343,11 +357,13 @@ public class CommandEvent implements IPropertyContainer {
 	}
 	
 	/** Apply a cooldown to this command */
+	@Nonnull
 	public ICooldown applyCooldown() {
 		return this.commandListener.getCoooldownManager().applyCooldownAndGet(this.getCommand(), this.message);
 	}
 	
 	/** Apply a cooldown to this command */
+	@Nonnull
 	public ICooldown applyCooldown(long duration, TimeUnit unit) {
 		ICooldownManager manager = this.commandListener.getCoooldownManager();
 		ICooldown cooldown = manager.createEmptyCooldown(this.getCommand().getCooldownScope(), duration, unit);
@@ -359,6 +375,7 @@ public class CommandEvent implements IPropertyContainer {
 	}
 	
 	/** Remove the cooldown from this command */
+	@Nullable
 	public ICooldown removeCooldown() {
 		return this.commandListener.getCoooldownManager().removeCooldown(this.getCommand(), this.message);
 	}
@@ -368,7 +385,8 @@ public class CommandEvent implements IPropertyContainer {
 	 * 
 	 * @return the context for the provided type, gotten from {@link IContextManager#getContext(CommandEvent, Class)}
 	 */
-	public <T> T getContext(Class<T> type) {
+	@Nullable
+	public <T> T getContext(@Nonnull Class<T> type) {
 		return ContextManagerFactory.getDefault().getContext(this, type);
 	}
 	
@@ -377,7 +395,8 @@ public class CommandEvent implements IPropertyContainer {
 	 * 
 	 * @return the context for the provided type, gotten from {@link IContextManager#getContext(CommandEvent, Type)}
 	 */
-	public <T> T getContext(Type type) {
+	@Nullable
+	public <T> T getContext(@Nonnull Type type) {
 		return ContextManagerFactory.getDefault().getContext(this, type);
 	}
 	
@@ -391,11 +410,13 @@ public class CommandEvent implements IPropertyContainer {
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T getProperty(String name, T defaultValue) {
+	@Nullable
+	public <T> T getProperty(@Nonnull String name, @Nullable T defaultValue) {
 		return (T) this.properties.getOrDefault(name, defaultValue);
 	}
 	
 	@Override
+	@Nonnull
 	public Map<String, Object> getProperties() {
 		return Collections.unmodifiableMap(this.properties);
 	}
@@ -409,7 +430,8 @@ public class CommandEvent implements IPropertyContainer {
 	 * 
 	 * @return the {@link CommandEvent} instance, useful for chaining
 	 */
-	public <T> CommandEvent setProperty(String name, T value) {
+	@Nonnull
+	public <T> CommandEvent setProperty(@Nullable String name, @Nullable T value) {
 		this.properties.put(name, value);
 		
 		return this;

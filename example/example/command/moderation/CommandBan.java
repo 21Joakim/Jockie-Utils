@@ -23,25 +23,30 @@ public class CommandBan extends CommandImpl {
 	public void onCommand(CommandEvent event, @Argument("User") User user, @Argument(value="Reason", endless=true) Optional<String> optionalReason) {
 		String reason = optionalReason.orElse(null);
 		
-		if(event.getGuild().isMember(user)) {
-			Member member = event.getGuild().getMember(user);
-			
-			if(event.getMember().canInteract(member)) {
-				if(event.getGuild().getSelfMember().canInteract(member)) {
-					member.ban(0, reason).queue(success -> {
-						event.reply("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
-					});
-				}else{
-					event.reply("I can not interact with that member").queue();
-				}
-			}else{
-				event.reply("You can not interact with that member").queue();
-			}
-		}else{
+		Member member = event.getGuild().getMember(user);
+		if(member == null) {
 			/* This is for the so called "hackban" command */
-			event.getGuild().ban(user, 0, reason).queue(success -> {
-				event.reply("**" + user.getName() + "#" + user.getDiscriminator() + "** has been banned").queue();
-			});
+			event.getGuild().ban(user, 0, reason)
+				.flatMap((success) -> event.replyFormat("**%s** has been banned", user.getAsTag()))
+				.queue();
+			
+			return;
 		}
+		
+		if(!event.getMember().canInteract(member)) {
+			event.reply("You can not interact with that member").queue();
+			
+			return;
+		}
+		
+		if(!event.getGuild().getSelfMember().canInteract(member)) {
+			event.reply("I can not interact with that member").queue();
+			
+			return;
+		}
+		
+		member.ban(0, reason)
+			.flatMap((success) -> event.replyFormat("**%s** has been banned", user.getAsTag()))
+			.queue();
 	}
 }

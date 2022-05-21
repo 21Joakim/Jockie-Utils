@@ -2,6 +2,8 @@ package com.jockie.bot.core.parser.impl.discord;
 
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
@@ -40,26 +42,27 @@ public class UserParser<Component> implements IParser<User, Component> {
 		return this;
 	}
 	
-	@Override
-	public ParsedResult<User> parse(ParseContext context, Component component, String content) {
+	public List<User> getUsers(ParseContext context, String content) {
 		JDA jda = context.getMessage().getJDA();
 		
-		List<User> users = null;
-		if(this.useShardManager && jda.getAccountType().equals(AccountType.BOT)) {
+		if(this.useShardManager && jda.getAccountType() == AccountType.BOT) {
 			ShardManager shardManager = jda.getShardManager();
 			if(shardManager != null) {
-				users = ArgumentUtility.getUsersByIdOrName(shardManager, content, true);
+				return ArgumentUtility.getUsersByIdOrName(shardManager, content, true);
 			}
 		}
 		
-		if(users == null) {
-			users = ArgumentUtility.getUsersByIdOrName(jda, content, true);
-		}
-		
+		return ArgumentUtility.getUsersByIdOrName(jda, content, true);
+	}
+	
+	@Override
+	@Nonnull
+	public ParsedResult<User> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
+		List<User> users = this.getUsers(context, content);
 		if(users.size() == 1) {
 			return new ParsedResult<>(true, users.get(0));
-		}else{
-			return new ParsedResult<>(false, null);
 		}
-	}	
+		
+		return new ParsedResult<>(false, null);
+	}
 }

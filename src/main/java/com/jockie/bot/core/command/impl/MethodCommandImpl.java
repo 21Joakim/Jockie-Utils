@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -47,7 +48,7 @@ import net.dv8tion.jda.internal.utils.JDALogger;
 
 public class MethodCommandImpl extends AbstractCommand implements IMethodCommand {
 	
-	public static final Logger LOG = JDALogger.getLog(MethodCommandImpl.class);
+	private static final Logger LOG = JDALogger.getLog(MethodCommandImpl.class);
 	
 	protected Method method;
 	protected Object invoker;
@@ -61,40 +62,55 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 	public MethodCommandImpl(String name, Method method, Object invoker) {
 		super(name);
 		
-		this.method = method;
+		this.method = Objects.requireNonNull(method);
 		this.invoker = invoker;
 		
+		this.updateCommandMethod();
+	}
+	
+	@Nonnull
+	public final MethodCommandImpl updateCommandMethod() {
 		IComponentFactory componentFactory = ComponentFactory.getDefault();
-		
 		this.setArguments(componentFactory.createArguments(this.method));
 		this.setOptions(componentFactory.createOptions(this.method));
 		
+		/* 
+		 * TODO: This does not reset all the properties, which means it might result in an unexpected state
+		 * if you ever replace the method, which is currently not recommended to do.
+		 */
 		this.applyAnnotations();
+		
+		return this;
 	}
 	
 	@Override
+	@Nullable
 	public Method getCommandMethod() {
 		return this.method;
 	}
 	
 	@Override
+	@Nullable
 	public Object getCommandInvoker() {
 		return this.invoker;
 	}
 	
-	public MethodCommandImpl setCommandMethod(Method method) {
+	@Nonnull
+	public MethodCommandImpl setCommandMethod(@Nullable Method method) {
 		this.method = method;
 		
 		return this;
 	}
 	
-	public MethodCommandImpl setCommandInvoker(Object invoker) {
+	@Nonnull
+	public MethodCommandImpl setCommandInvoker(@Nullable Object invoker) {
 		this.invoker = invoker;
 		
 		return this;
 	}
 	
-	public MethodCommandImpl setArguments(IArgument<?>... arguments) {
+	@Nonnull
+	public MethodCommandImpl setArguments(@Nonnull IArgument<?>... arguments) {
 		super.setArguments(arguments);
 		
 		this.dummyCommands = MethodCommandImpl.generateDummyCommands(this);
@@ -116,6 +132,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 	}
 	
 	@Override
+	@Nonnull
 	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		List<ICommand> commands = new ArrayList<>();
 		commands.add(this);
@@ -132,9 +149,9 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 	}
 	
 	@Override
-	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
+	@Nonnull
+	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(@Nonnull Message message, @Nonnull String prefix) {
 		List<CommandTrigger> commands = super.getAllCommandsRecursiveWithTriggers(message, prefix);
-		
 		for(ICommand command : this.dummyCommands) {
 			commands.add(new CommandTrigger((prefix + " " + command.getCommand()).trim(), command));
 			
@@ -266,7 +283,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 		}
 		
 		IOption<?> option = options.stream()
-			.filter(opt -> opt.getName().equals(annotation.value()))
+			.filter((opt) -> opt.getName().equals(annotation.value()))
 			.findFirst()
 			.orElse(null);
 		
@@ -297,21 +314,21 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 			StringBuilder information = new StringBuilder();
 			information.append("Argument type mismatch for command \"" + event.getCommandTrigger() + "\"\n");
 			
-			information.append("	Arguments provided:\n");
+			information.append("\tArguments provided:\n");
 			for(Object argument : arguments) {
 				if(argument != null) {
-					information.append("		" + argument.getClass().getName() + "\n");
+					information.append("\t\t" + argument.getClass().getName() + "\n");
 				}else{
-					information.append("		null\n");
+					information.append("\t\tnull\n");
 				}
 			}
 			
-			information.append("	Arguments expected:\n");
+			information.append("\tArguments expected:\n");
 			for(Class<?> type : method.getParameterTypes()) {
-				information.append("		" + type.getName() + "\n");
+				information.append("\t\t" + type.getName() + "\n");
 			}
 			
-			information.append("	Argument values: " + Arrays.deepToString(arguments));
+			information.append("\tArgument values: " + Arrays.deepToString(arguments));
 			
 			throw new IllegalStateException(information.toString());
 		}
@@ -388,6 +405,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 			if(type.isAssignableFrom(Optional.class)) {
 				Type parameterType = genericTypes[i];
 				
+				/* TODO: Why do we catch the exception here? When would it throw something? */
 				try {
 					Type[] typeArguments = ((ParameterizedType) parameterType).getActualTypeArguments();
 					if(typeArguments.length > 0) {
@@ -413,7 +431,7 @@ public class MethodCommandImpl extends AbstractCommand implements IMethodCommand
 				IReturnManager returnManager = event.getCommandListener().getReturnManager();
 				
 				if(!returnManager.perform(event, object)) {
-					LOG.warn(object.getClass() + " is an unsupported return type for a command method");
+					LOG.warn("{} is an unsupported return type for a command method", object.getClass());
 				}
 			}
 		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {

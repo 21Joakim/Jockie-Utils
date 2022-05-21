@@ -2,6 +2,8 @@ package com.jockie.bot.core.parser.impl.discord;
 
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
@@ -40,26 +42,27 @@ public class GuildParser<Component> implements IParser<Guild, Component> {
 		return this;
 	}
 	
-	@Override
-	public ParsedResult<Guild> parse(ParseContext context, Component component, String content) {
+	public List<Guild> getGuilds(ParseContext context, String content) {
 		JDA jda = context.getMessage().getJDA();
 		
-		List<Guild> guilds = null;
-		if(this.useShardManager && jda.getAccountType().equals(AccountType.BOT)) {
+		if(this.useShardManager && jda.getAccountType() == AccountType.BOT) {
 			ShardManager shardManager = jda.getShardManager();
 			if(shardManager != null) {
-				guilds = ArgumentUtility.getGuildsByIdOrName(shardManager, content, true);
+				return ArgumentUtility.getGuildsByIdOrName(shardManager, content, true);
 			}
 		}
 		
-		if(guilds == null) {
-			guilds = ArgumentUtility.getGuildsByIdOrName(jda, content, true);
-		}
-		
+		return ArgumentUtility.getGuildsByIdOrName(jda, content, true);
+	}
+	
+	@Override
+	@Nonnull
+	public ParsedResult<Guild> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
+		List<Guild> guilds = this.getGuilds(context, content);
 		if(guilds.size() == 1) {
 			return new ParsedResult<>(true, guilds.get(0));
-		}else{
-			return new ParsedResult<>(false, null);
 		}
-	}	
+		
+		return new ParsedResult<>(false, null);
+	}
 }

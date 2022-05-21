@@ -13,13 +13,11 @@ public class CommandDeleteEmote extends CommandImpl {
 		super("delete emote");
 		
 		super.setDescription("delete emote");
-		super.setBotDiscordPermissions(Permission.MANAGE_EMOTES);
-		super.setAuthorDiscordPermissions(Permission.MANAGE_EMOTES);
+		super.setBotDiscordPermissions(Permission.MANAGE_EMOTES_AND_STICKERS);
+		super.setAuthorDiscordPermissions(Permission.MANAGE_EMOTES_AND_STICKERS);
 	}
 	
 	public void onCommand(CommandEvent event, @Argument(value="emote", endless=true) Emote emote) {
-		emote.delete().queue(success -> {
-			event.reply(emote.getName() + " has been deleted").queue();
-		});
+		emote.delete().flatMap((success) -> event.replyFormat("%s has been deleted", emote.getName())).queue();
 	}
 }

@@ -6,6 +6,7 @@ import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.parser.impl.json.JSONArrayParser;
 import com.jockie.bot.core.parser.impl.json.JSONObjectParser;
 
+/* TODO: Is there any reason this does not have "Component extends IParsableComponent<T, Component>" */
 @FunctionalInterface
 public interface IParser<Type, Component> {
 	

@@ -320,7 +320,7 @@ public interface ICommand extends IPropertyContainer {
 			return false;
 		}
 		
-		if(!this.isPrivateTriggerable() && message.getChannelType().equals(ChannelType.PRIVATE)) {
+		if(!this.isPrivateTriggerable() && message.getChannelType() == ChannelType.PRIVATE) {
 			return false;
 		}
 		
@@ -570,9 +570,9 @@ public interface ICommand extends IPropertyContainer {
 	public static ICommand getTopParent(@Nonnull ICommand command) {
 		Checks.notNull(command, "command");
 		
-		if(command.hasParent()) {
-			ICommand parent = command.getParent();
-			while(parent.hasParent()) {
+		ICommand parent = command.getParent();
+		if(parent != null && command.hasParent()) {
+			while(parent != null && parent.hasParent()) {
 				parent = parent.getParent();
 			}
 			

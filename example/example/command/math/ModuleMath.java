@@ -14,7 +14,7 @@ import example.core.command.ExtendedCommand;
 @Module
 public class ModuleMath {
 	
-	//@Initialize({"multiply", "remainder", "add", "addAll"})	
+	// @Initialize({"multiply", "remainder", "add", "addAll"})
 	@Initialize(all=true)
 	public void init(ExtendedCommand command) {
 		command.setCategory(CommandCategory.MATH);

@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command.factory.impl;
 
+import java.util.Objects;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -27,11 +29,7 @@ public class MethodCommandFactory {
 	 * @param factory the factory to set the default to, if null {@link #DEFAULT}
 	 */
 	public static void setDefault(@Nullable IMethodCommandFactory<?> factory) {
-		if(factory != null) {
-			MethodCommandFactory.defaultCommandFactory = factory;
-		}else{
-			MethodCommandFactory.defaultCommandFactory = DEFAULT;
-		}
+		MethodCommandFactory.defaultCommandFactory = Objects.requireNonNullElse(factory, DEFAULT);
 	}
 	
 	/**

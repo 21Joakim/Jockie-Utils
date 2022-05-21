@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.manager.IErrorManager;
 import com.jockie.bot.core.utility.CommandUtility;
@@ -22,28 +25,25 @@ public class ErrorManagerImpl implements IErrorManager {
 	protected Map<Class<?>, Class<?>> inheritanceCache = new HashMap<>();
 	
 	@Override
-	public boolean handle(IArgument<?> argument, Message message, String content) {
+	public boolean handle(@Nonnull IArgument<?> argument, @Nonnull Message message, @Nonnull String content) {
 		Checks.notNull(argument, "argument");
 		Checks.notNull(message, "message");
 		Checks.notNull(content, "content");
 		
 		Class<?> type = argument.getType();
 		
-		if(this.consumers.containsKey(type)) {
-			this.consumers.get(type).accept(argument, message, content);
+		TriConsumer<IArgument<?>, Message, String> consumer = this.consumers.get(type);
+		if(consumer != null) {
+			consumer.accept(argument, message, content);
 			
 			return true;
 		}
 		
-		if(this.inheritanceCache.containsKey(type)) {
-			Class<?> cachedType = this.inheritanceCache.get(type);
-			if(cachedType != null) {
-				this.consumers.get(cachedType).accept(argument, message, content);
-				
-				return true;
-			}
+		Class<?> cachedType = this.inheritanceCache.get(type);
+		if(cachedType != null) {
+			this.consumers.get(cachedType).accept(argument, message, content);
 			
-			return false;
+			return true;
 		}
 		
 		Class<?> inheritanceType = this.getInheritanceType(type);
@@ -58,9 +58,10 @@ public class ErrorManagerImpl implements IErrorManager {
 		return false;
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
-	public <T> ErrorManagerImpl registerResponse(Class<T> type, TriConsumer<IArgument<T>, Message, String> consumer) {
+	@Nonnull
+	public <T> ErrorManagerImpl registerResponse(@Nonnull Class<T> type, @Nonnull TriConsumer<IArgument<T>, Message, String> consumer) {
 		Checks.notNull(type, "type");
 		Checks.notNull(consumer, "consumer");
 		
@@ -71,14 +72,15 @@ public class ErrorManagerImpl implements IErrorManager {
 	}
 	
 	@Override
-	public ErrorManagerImpl unregisterResponse(Class<?> type) {
+	@Nonnull
+	public ErrorManagerImpl unregisterResponse(@Nullable Class<?> type) {
 		this.consumers.remove(type);
 		this.inheritanceCache.remove(type);
 		
 		return this;
 	}
 	
-	protected Class<?> getInheritanceType(Class<?> type) {
+	protected Class<?> getInheritanceType(@Nonnull Class<?> type) {
 		Checks.notNull(type, "type");
 		
 		for(Class<?> inheritanceType : this.handleInheritance) {
@@ -91,14 +93,15 @@ public class ErrorManagerImpl implements IErrorManager {
 	}
 	
 	@Override
-	public boolean isHandleInheritance(Class<?> type) {
+	public boolean isHandleInheritance(@Nonnull Class<?> type) {
 		Checks.notNull(type, "type");
 		
 		return this.handleInheritance.contains(type);
 	}
 	
 	@Override
-	public ErrorManagerImpl setHandleInheritance(Class<?> type, boolean handle) {
+	@Nonnull
+	public ErrorManagerImpl setHandleInheritance(@Nonnull Class<?> type, boolean handle) {
 		Checks.notNull(type, "type");
 		
 		if(!this.consumers.containsKey(type)) {

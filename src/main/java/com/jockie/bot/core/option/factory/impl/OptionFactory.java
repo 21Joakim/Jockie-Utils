@@ -1,5 +1,7 @@
 package com.jockie.bot.core.option.factory.impl;
 
+import java.util.Objects;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -24,11 +26,7 @@ public class OptionFactory {
 	 * @param factory the factory to set the default to, if null {@link #DEFAULT}
 	 */
 	public static void setDefault(@Nullable IOptionFactory factory) {
-		if(factory != null) {
-			OptionFactory.defaultOptionFactory = factory;
-		}else{
-			OptionFactory.defaultOptionFactory = DEFAULT;
-		}
+		OptionFactory.defaultOptionFactory = Objects.requireNonNullElse(factory, DEFAULT);
 	}
 	
 	/**

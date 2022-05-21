@@ -87,21 +87,25 @@ public abstract class AbstractCommand implements ICommand {
 	public AbstractCommand() {}
 	
 	@Override
+	@Nonnull
 	public String getCommand() {
 		return this.command;
 	}
 	
 	@Override
+	@Nullable
 	public String getShortDescription() {
 		return this.shortDescription;
 	}
 	
 	@Override
+	@Nullable
 	public String getDescription() {
 		return this.description;
 	}
 	
 	@Override
+	@Nonnull
 	public String getArgumentInfo() {
 		if(this.argumentInfo == null || this.argumentInfo.length() == 0) {
 			return ICommand.super.getArgumentInfo();
@@ -111,56 +115,67 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nonnull
 	public List<String> getAliases() {
 		return Collections.unmodifiableList(this.aliases);
 	}
 	
 	@Override
+	@Nonnull
 	public List<IArgument<?>> getArguments() {
 		return Collections.unmodifiableList(this.arguments);
 	}
 	
 	@Override
+	@Nonnull
 	public List<IOption<?>> getOptions() {
 		return Collections.unmodifiableList(this.options);
 	}
 	
 	@Override
+	@Nonnull
 	public UnknownOptionPolicy getUnknownOptionPolicy() {
 		return this.unknownOptionPolicy;
 	}
 	
 	@Override
+	@Nonnull
 	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
 		return this.duplicateOptionPolicy;
 	}
 
 	@Override
+	@Nonnull
 	public OptionParsingFailurePolicy getOptionParsingFailurePolicy() {
 		return this.optionParsingFailurePolicy;
 	}
 	
 	@Override
+	@Nonnull
 	public ContentOverflowPolicy getContentOverflowPolicy() {
 		return this.overflowPolicy;
 	}
 	
 	@Override
+	@Nonnull
 	public EnumSet<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.allowedArgumentParsingTypes;
 	}
 	
 	@Override
+	@Nonnull
 	public ArgumentTrimType getArgumentTrimType() {
 		return this.argumentTrimType;
 	}
 	
 	@Override
+	@Nonnull
 	public Set<Permission> getBotDiscordPermissions() {
 		return Collections.unmodifiableSet(this.botDiscordPermissions);
 	}
 	
 	@Override
+	@Nonnull
 	public Set<Permission> getAuthorDiscordPermissions() {
 		return Collections.unmodifiableSet(this.authorDiscordPermissions);
 	}
@@ -206,6 +221,7 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nonnull
 	public ICooldown.Scope getCooldownScope() {
 		return this.cooldownScope;
 	}
@@ -216,6 +232,7 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nullable
 	public Object getAsyncOrderingKey(CommandEvent event) {
 		if(this.asyncOrderingKey != null) {
 			return this.asyncOrderingKey.apply(event);
@@ -225,11 +242,13 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nullable
 	public ICommand getParent() {
 		return this.parent;
 	}
 	
 	@Override
+	@Nullable
 	public ICategory getCategory() {
 		return this.category;
 	}
@@ -240,6 +259,7 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nonnull
 	public List<ICommand> getSubCommands() {
 		return this.subCommands;
 	}
@@ -254,6 +274,7 @@ public abstract class AbstractCommand implements ICommand {
 	}
 	
 	@Override
+	@Nonnull
 	public Map<String, Object> getProperties() {
 		return Collections.unmodifiableMap(this.properties);
 	}

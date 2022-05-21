@@ -218,10 +218,10 @@ public class Main {
 		 */
 		listener.getErrorManager()
 			.registerResponse(User.class, (argument, message, content) -> {
-				return message.getAuthor().getAsMention() + ", `" + content + "` is not a valid user";
+				return String.format("%s, `%s` is not a valid user", message.getAuthor().getAsMention(), content);
 			})
 			.registerResponse(Member.class, (argument, message, content) -> {
-				return message.getAuthor().getAsMention() + ", `" + content + "` is not a valid member";
+				return String.format("%s, `%s` is not a valid member", message.getAuthor().getAsMention(), content);
 			});
 		
 		/* 

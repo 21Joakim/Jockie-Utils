@@ -72,7 +72,7 @@ public interface IArgument<Type> extends IPropertyContainer, IParsableComponent<
 	 * 
 	 * @return the default argument
 	 */
-	@Nonnull
+	@Nullable
 	public Type getDefault(@Nonnull CommandEvent commandEvent);
 	
 	/**

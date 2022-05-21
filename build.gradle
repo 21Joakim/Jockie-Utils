@@ -5,14 +5,14 @@ version '1.42'
 sourceCompatibility = 1.9
 
 repositories {
-	jcenter()
+	mavenCentral()
 }
 
 dependencies {
-	compile 'com.google.guava:guava:25.0-jre'
-	compile 'org.json:json:20180813'
+	implementation 'com.google.guava:guava:25.0-jre'
+	implementation 'org.json:json:20180813'
 	
-	compile 'net.dv8tion:JDA:4.2.0_183'
+	implementation 'net.dv8tion:JDA:5.0.0-alpha.12'
 }
 
 compileJava {

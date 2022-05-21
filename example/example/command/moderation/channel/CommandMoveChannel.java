@@ -8,6 +8,7 @@ import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.ICategorizableChannel;
 
 public class CommandMoveChannel extends CommandImpl {
 
@@ -15,26 +16,32 @@ public class CommandMoveChannel extends CommandImpl {
 		super("move");
 	}
 	
-	public void onCommand(CommandEvent event, GuildChannel channel, @Argument(value="category") Optional<Category> optionalCategory) {
+	public <T extends GuildChannel & ICategorizableChannel> void onCommand(CommandEvent event, T channel, @Argument(value="category") Optional<Category> optionalCategory) {
 		Category category = optionalCategory.orElse(null);
-		Category parent = channel.getParent();
+		Category parent = channel.getParentCategory();
 		
-		if(parent == null || !parent.equals(category)) {
-			channel.getManager().setParent(category).queue(success -> {
-				String message = channel.getName() + " was moved";
-				
-				if(parent != null) {
-					message += " from " + parent.getName();
-				}
-				
-				if(category != null) {
-					message += " to " + category.getName();
-				}
-				
-				event.getChannel().sendMessage(message).queue();
-			});
-		}else{
-			event.getChannel().sendMessage(channel.getName() + " is already under " + category.getName()).queue();
+		if(parent == category) {
+			if(category == null) {
+				event.replyFormat("%s is already not under any category").queue();
+			}else{
+				event.replyFormat("%s is already under %s", channel.getName(), category.getName()).queue();
+			}
+			
+			return;
 		}
+		
+		channel.getManager().setParent(category).queue((success) -> {
+			String message = channel.getName() + " was moved";
+			
+			if(parent != null) {
+				message += " from " + parent.getName();
+			}
+			
+			if(category != null) {
+				message += " to " + category.getName();
+			}
+			
+			event.reply(message).queue();
+		});
 	}
 }

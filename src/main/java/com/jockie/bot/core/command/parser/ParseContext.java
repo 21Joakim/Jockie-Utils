@@ -9,17 +9,17 @@ import net.dv8tion.jda.api.entities.Message;
 
 public class ParseContext {
 	
-	private CommandListener commandListener;
-	private ICommandParser commandParser;
-	private ICommand command;
+	protected final CommandListener commandListener;
+	protected final ICommandParser commandParser;
+	protected final ICommand command;
 	
-	private Message message;
+	protected final Message message;
 	
-	private String trigger;
-	private String prefix;
-	private String contentToParse;
+	protected final String trigger;
+	protected final String prefix;
+	protected final String contentToParse;
 	
-	private long timeStarted;
+	protected final long timeStarted;
 	
 	public ParseContext(CommandListener commandListener, ICommandParser commandParser, 
 			ICommand command, Message message, String prefix, String trigger, String contentToParse, 

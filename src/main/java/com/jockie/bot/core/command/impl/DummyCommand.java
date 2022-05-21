@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.category.ICategory;
@@ -58,10 +59,12 @@ public class DummyCommand implements ICommand {
 			MethodCommandImpl.executeMethodCommand(this, this.invoker, this.method, event, arguments);
 		}
 		
+		@Nonnull
 		public List<IOption<?>> getOptions() {
 			return this.options;
 		}
 		
+		@Nonnull
 		public String getArgumentInfo() {
 			return ICommand.getArgumentInfo(this);
 		}
@@ -132,16 +135,18 @@ public class DummyCommand implements ICommand {
 	/**
 	 * @return the actual command; the command this DummyCommand is replicating
 	 */
+	@Nonnull
 	public ICommand getActualCommand() {
 		return this.command;
 	}
 	
 	@Override
-	public boolean isAccessible(Message message, CommandListener commandListener) {
+	public boolean isAccessible(@Nonnull Message message, @Nonnull CommandListener commandListener) {
 		return this.command.isAccessible(message, commandListener);
 	}
 	
 	@Override
+	@Nonnull
 	public List<String> getAliases() {
 		return this.command.getAliases();
 	}
@@ -152,6 +157,7 @@ public class DummyCommand implements ICommand {
 	}
 	
 	@Override
+	@Nonnull
 	public ICooldown.Scope getCooldownScope() {
 		return this.command.getCooldownScope();
 	}
@@ -198,101 +204,121 @@ public class DummyCommand implements ICommand {
 	}
 	
 	@Override
+	@Nullable
 	public String getDescription() {
 		return this.command.getDescription();
 	}
 	
 	@Override
+	@Nullable
 	public String getShortDescription() {
 		return this.command.getShortDescription();
 	}
 	
 	@Override
+	@Nonnull
 	public String getArgumentInfo() {
 		return this.command.getArgumentInfo();
 	}
 	
 	@Override
+	@Nonnull
 	public Set<Permission> getAuthorDiscordPermissions() {
 		return this.command.getAuthorDiscordPermissions();
 	}
 	
 	@Override
+	@Nonnull
 	public Set<Permission> getBotDiscordPermissions() {
 		return this.command.getBotDiscordPermissions();
 	}
 	
 	@Override
+	@Nonnull
 	public String getCommand() {
 		return this.command.getCommand();
 	}
 	
 	@Override
+	@Nullable
 	public ICommand getParent() {
 		return this.command.getParent();
 	}
 	
 	@Override
+	@Nonnull
 	public List<IArgument<?>> getArguments() {
 		return Collections.unmodifiableList(this.arguments);
 	}
 	
 	@Override
+	@Nonnull
 	public List<ICommand> getSubCommands() {
 		return Collections.emptyList();
 	}
 	
 	@Override
-	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(Message message, String prefix) {
+	@Nonnull
+	public List<CommandTrigger> getAllCommandsRecursiveWithTriggers(@Nonnull Message message, @Nonnull String prefix) {
 		return Collections.emptyList();
 	}
 	
 	@Override
+	@Nonnull
 	public List<ICommand> getAllCommandsRecursive(boolean includeDummyCommands) {
 		return Collections.emptyList();
 	}
 	
 	@Override
+	@Nonnull
 	public String getCommandTrigger() {
 		return this.command.getCommandTrigger();
 	}
 	
 	@Override
+	@Nonnull
 	public List<IOption<?>> getOptions() {
 		return this.command.getOptions();
 	}
 	
 	@Override
+	@Nonnull
 	public UnknownOptionPolicy getUnknownOptionPolicy() {
 		return this.command.getUnknownOptionPolicy();
 	}
 	
 	@Override
+	@Nonnull
 	public DuplicateOptionPolicy getDuplicateOptionPolicy() {
 		return this.command.getDuplicateOptionPolicy();
 	}
 
 	@Override
+	@Nonnull
 	public OptionParsingFailurePolicy getOptionParsingFailurePolicy() {
 		return this.command.getOptionParsingFailurePolicy();
 	}
 	
 	@Override
+	@Nonnull
 	public ContentOverflowPolicy getContentOverflowPolicy() {
 		return this.command.getContentOverflowPolicy();
 	}
 	
 	@Override
+	@Nonnull
 	public Set<ArgumentParsingType> getAllowedArgumentParsingTypes() {
 		return this.command.getAllowedArgumentParsingTypes();
 	}
 	
 	@Override
+	@Nonnull
 	public ArgumentTrimType getArgumentTrimType() {
 		return this.command.getArgumentTrimType();
 	}
 	
 	@Override
+	@Nullable
 	public ICategory getCategory() {
 		return this.command.getCategory();
 	}
@@ -303,16 +329,19 @@ public class DummyCommand implements ICommand {
 	}
 	
 	@Override
-	public Object getAsyncOrderingKey(CommandEvent event) {
+	@Nullable
+	public Object getAsyncOrderingKey(@Nonnull CommandEvent event) {
 		return this.command.getAsyncOrderingKey(event);
 	}
 	
 	@Override
-	public <T> T getProperty(String name, T defaultValue) {
+	@Nullable
+	public <T> T getProperty(@Nonnull String name, @Nullable T defaultValue) {
 		return this.command.getProperty(name, defaultValue);
 	}
 	
 	@Override
+	@Nonnull
 	public Map<String, Object> getProperties() {
 		return this.command.getProperties();
 	}

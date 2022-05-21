@@ -1,5 +1,7 @@
 package com.jockie.bot.core.command.manager.impl;
 
+import java.util.Objects;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -42,11 +44,7 @@ public class ContextManagerFactory {
 	 * @param manager the manager to set the default to, if null {@link #DEFAULT}
 	 */
 	public static void setDefault(@Nullable IContextManager manager) {
-		if(manager != null) {
-			ContextManagerFactory.defaultContextManager = manager;
-		}else{
-			ContextManagerFactory.defaultContextManager = DEFAULT;
-		}
+		ContextManagerFactory.defaultContextManager = Objects.requireNonNullElse(manager, DEFAULT);
 	}
 	
 	/**

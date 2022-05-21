@@ -1,5 +1,10 @@
 package com.jockie.bot.core.parser.impl.json;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
+import javax.annotation.Nonnull;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,15 +16,24 @@ import com.jockie.bot.core.parser.ParsedResult;
 
 public class JSONArrayParser<Component> implements IParser<JSONArray, Component> {
 	
+	protected static final VarHandle JSON_TOKENER_INDEX_FIELD;
+	
+	static {
+		try {
+			JSON_TOKENER_INDEX_FIELD = MethodHandles.privateLookupIn(JSONTokener.class, MethodHandles.lookup())
+				.findVarHandle(JSONTokener.class, "index", long.class);
+		}catch(NoSuchFieldException | IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	public int getIndex(JSONTokener tokener) {
-		String string = tokener.toString().substring(4);
-		string = string.substring(0, string.indexOf(" "));
-		
-		return Integer.parseInt(string);
+		return (int) (long) JSONArrayParser.JSON_TOKENER_INDEX_FIELD.get(tokener);
 	}
 	
 	/* Code from org.json.JSONArray */
-	public ParsedResult<JSONArray> parse(ParseContext context, Component component, String value) {
+	@Nonnull
+	public ParsedResult<JSONArray> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String value) {
 		JSONTokener tokener = new JSONTokener(value);
 		JSONArray array = new JSONArray();
 		

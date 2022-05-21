@@ -1,6 +1,6 @@
 package example.command.fun;
 
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -8,9 +8,6 @@ import com.jockie.bot.core.command.impl.CommandImpl;
 
 public class CommandDecide extends CommandImpl {
 	
-	/* No need to create a new one each time someone uses it */
-	private Random random = new Random();
-
 	public CommandDecide() {
 		super("decide");
 		
@@ -18,6 +15,6 @@ public class CommandDecide extends CommandImpl {
 	}
 	
 	public String onCommand(CommandEvent event, @Argument("statement") String firstStatement, @Argument("statement 2") String secondStatement) {
-		return "**" + (this.random.nextBoolean() ? firstStatement : secondStatement) + "**" + " seems more reasonable to me!";
+		return String.format("**%s** seems more reasonable to me!", ThreadLocalRandom.current().nextBoolean() ? firstStatement : secondStatement);
 	}
 }

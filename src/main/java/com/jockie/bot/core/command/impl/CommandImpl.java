@@ -26,7 +26,7 @@ import net.dv8tion.jda.internal.utils.JDALogger;
 
 public class CommandImpl extends MethodCommandImpl {
 	
-	public static final Logger LOG = JDALogger.getLog(CommandImpl.class);
+	private static final Logger LOG = JDALogger.getLog(CommandImpl.class);
 	
 	protected boolean defaultGenerated;
 	

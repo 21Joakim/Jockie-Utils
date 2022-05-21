@@ -1,6 +1,7 @@
 package example.command.moderation.collection;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 
 import com.jockie.bot.core.argument.Argument;
@@ -11,6 +12,7 @@ import com.jockie.bot.core.command.impl.CommandImpl;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.ICopyableChannel;
 import net.dv8tion.jda.api.entities.Icon;
 import net.dv8tion.jda.api.entities.Role;
 
@@ -22,28 +24,30 @@ public class CommandCopy extends CommandImpl {
 	
 	@Command(value="role", authorPermissions=Permission.MANAGE_ROLES, botPermissions=Permission.MANAGE_ROLES)
 	public void onCommand(CommandEvent event, @Argument("role") Role role) {
-		role.createCopy().queue(copy -> {
-			event.reply("Created copy of role " + role.getName()).queue();
-		});
+		role.createCopy().flatMap((copy) -> event.replyFormat("Created copy of role %s", role.getName())).queue();
 	}
 	
 	@Command(value="channel", authorPermissions=Permission.MANAGE_CHANNEL, botPermissions=Permission.MANAGE_CHANNEL)
-	public void onCommand(CommandEvent event, @Argument("channel") GuildChannel channel) {
-		channel.createCopy().queue(copy -> {
-			event.reply("Created copy of channel " + channel.getName()).queue();
-		});
+	public <T extends GuildChannel & ICopyableChannel> void onCommand(CommandEvent event, @Argument("channel") T channel) {
+		channel.createCopy().flatMap((copy) -> event.replyFormat("Created copy of channel %s", channel.getName())).queue();
 	}
 	
-	@Command(value="emote", authorPermissions=Permission.MANAGE_EMOTES, botPermissions=Permission.MANAGE_EMOTES)
+	@Command(value="emote", authorPermissions=Permission.MANAGE_EMOTES_AND_STICKERS, botPermissions=Permission.MANAGE_EMOTES_AND_STICKERS)
 	public void onCommand(CommandEvent event, @Argument("emote") Emote emote) {
+		Icon icon;
 		try {
-			event.getGuild().createEmote(emote.getName(), Icon.from(new URL(emote.getImageUrl()).openStream())).queue(copy -> {
-				event.reply("Created copy of " + emote.getName() + " " + copy.getAsMention()).queue();
-			}, failure -> {
-				event.reply("Ops, that might not be an image or there are too many emotes on this server already!").queue();
-			});
+			try(InputStream stream = new URL(emote.getImageUrl()).openStream()) {
+				icon = Icon.from(stream);
+			}
 		}catch(IOException e) {
 			event.reply("Something went wrong when accessing the url").queue();
+			
+			return;
 		}
+		
+		event.getGuild().createEmote(emote.getName(), icon)
+			.flatMap((copy) -> event.replyFormat("Created copy of %s (%s)", emote.getName(), copy.getAsMention()))
+			.onErrorFlatMap((failure) -> event.reply("Ops, that might not be an image or there are too many emotes on this server already!"))
+			.queue();
 	}
 }

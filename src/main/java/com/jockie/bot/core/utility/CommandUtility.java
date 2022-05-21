@@ -235,20 +235,22 @@ public class CommandUtility {
 	
 	public static Method findCommandCreateMethod(Method[] methods) {
 		for(Method method : methods) {
-			if(method.getName().equals("createCommand")) {
-				if(!CommandUtility.isInstanceOf(method.getReturnType(), IMethodCommand.class)) {
-					continue;
+			if(!method.getName().equals("createCommand")) {
+				continue;
+			}
+			
+			if(!CommandUtility.isInstanceOf(method.getReturnType(), IMethodCommand.class)) {
+				continue;
+			}
+			
+			Class<?>[] types = method.getParameterTypes();
+			if(types.length == 1) {
+				if(types[0].isAssignableFrom(Method.class)) {
+					return method;
 				}
-				
-				Class<?>[] types = method.getParameterTypes();
-				if(types.length == 1) {
-					if(types[0].isAssignableFrom(Method.class)) {
-						return method;
-					}
-				}else if(types.length == 2) {
-					if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-						return method;
-					}
+			}else if(types.length == 2) {
+				if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+					return method;
 				}
 			}
 		}
@@ -258,13 +260,19 @@ public class CommandUtility {
 	
 	public static Method findCommandLoadMethod(Method[] methods) {
 		for(Method method : methods) {
-			if(method.getName().equals("onCommandLoad")) {
-				if(method.getParameterCount() == 1) {
-					if(method.getParameterTypes()[0].isAssignableFrom(ICommand.class)) {
-						return method;
-					}
-				}
+			if(!method.getName().equals("onCommandLoad")) {
+				continue;
 			}
+			
+			if(method.getParameterCount() != 1) {
+				continue;
+			}
+			
+			if(!method.getParameterTypes()[0].isAssignableFrom(ICommand.class)) {
+				continue;
+			}
+			
+			return method;
 		}
 		
 		return null;
@@ -272,11 +280,15 @@ public class CommandUtility {
 	
 	public static Method findModuleLoadMethod(Method[] methods) {
 		for(Method method : methods) {
-			if(method.getName().equals("onModuleLoad")) {
-				if(method.getParameterCount() == 0) {
-					return method;
-				}
+			if(!method.getName().equals("onModuleLoad")) {
+				continue;
 			}
+			
+			if(method.getParameterCount() != 0) {
+				continue;
+			}
+			
+			return method;
 		}
 		
 		return null;
@@ -284,7 +296,6 @@ public class CommandUtility {
 	
 	public static List<Method> getCommandMethods(Method[] methods) {
 		List<Method> commandMethods = new ArrayList<>();
-		
 		for(Method method : methods) {
 			if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
 				commandMethods.add(method);
@@ -296,7 +307,6 @@ public class CommandUtility {
 	
 	public static List<Method> getSubCommandMethods(Method[] methods) {
 		List<Method> subCommandMethods = new ArrayList<>();
-		
 		for(Method method : methods) {
 			if(method.isAnnotationPresent(Command.class) && method.isAnnotationPresent(SubCommand.class)) {
 				subCommandMethods.add(method);

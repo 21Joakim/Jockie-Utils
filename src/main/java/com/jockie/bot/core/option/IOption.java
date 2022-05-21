@@ -61,12 +61,12 @@ public interface IOption<Type> extends IPropertyContainer, IParsableComponent<Ty
 	public boolean hasDefault();
 	
 	/**
-	 * @param commandEvent the context to the default from
+	 * @param event the context to the default from
 	 * 
-	 * @return the default option
+	 * @return the default option value
 	 */
-	@Nonnull
-	public Type getDefault(@Nonnull CommandEvent commandEvent);
+	@Nullable
+	public Type getDefault(@Nonnull CommandEvent event);
 	
 	/**
 	 * @return the parser used to to parse the content provided by the command parser

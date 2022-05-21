@@ -27,12 +27,12 @@ import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.factory.IArgumentFactory;
 import com.jockie.bot.core.argument.impl.ArgumentImpl;
 import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
-import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.parser.IAfterParser;
 import com.jockie.bot.core.parser.IBeforeParser;
 import com.jockie.bot.core.parser.IGenericParser;
 import com.jockie.bot.core.parser.IParser;
-import com.jockie.bot.core.parser.ParsedResult;
+import com.jockie.bot.core.parser.impl.DelegateGenericParser;
+import com.jockie.bot.core.parser.impl.DelegateParser;
 import com.jockie.bot.core.parser.impl.discord.CategoryParser;
 import com.jockie.bot.core.parser.impl.discord.EmoteParser;
 import com.jockie.bot.core.parser.impl.discord.GuildChannelParser;
@@ -83,6 +83,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> builderConfigureFunctions = new HashMap<>();
 	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> genericBuilderConfigureFunctions = new HashMap<>();
+	
+	protected Map<Class<?>, IGenericParser<?, ?>> genericParserCache = new HashMap<>();
+	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
 	
 	protected ArgumentFactoryImpl() {
 		this.registerEssentialParsers();
@@ -148,7 +151,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl registerEssentialParsers() {
+	public final ArgumentFactoryImpl registerEssentialParsers() {
 		this.registerParser(Boolean.class, new BooleanParser<>());
 		this.registerParser(Byte.class, new ByteParser<>());
 		this.registerParser(Short.class, new ShortParser<>());
@@ -182,7 +185,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl registerDiscordParsers(boolean useShardManager) {
+	public final ArgumentFactoryImpl registerDiscordParsers(boolean useShardManager) {
 		this.registerParser(Member.class, new MemberParser<>());
 		this.registerParser(TextChannel.class, new TextChannelParser<>());
 		this.registerParser(VoiceChannel.class, new VoiceChannelParser<>());
@@ -206,7 +209,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl registerJSONParsers() {
+	public final ArgumentFactoryImpl registerJSONParsers() {
 		this.registerParser(JSONObject.class, new JSONObjectParser<>());
 		this.registerParser(JSONArray.class, new JSONArrayParser<>());
 		
@@ -223,7 +226,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl unregisterEssentialParsers() {
+	public final ArgumentFactoryImpl unregisterEssentialParsers() {
 		this.unregisterParser(Byte.class);
 		this.unregisterParser(Short.class);
 		this.unregisterParser(Integer.class);
@@ -247,7 +250,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl unregisterDiscordParsers() {
+	public final ArgumentFactoryImpl unregisterDiscordParsers() {
 		this.unregisterParser(Member.class);
 		this.unregisterParser(TextChannel.class);
 		this.unregisterParser(VoiceChannel.class);
@@ -270,7 +273,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * @return the {@link ArgumentFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public ArgumentFactoryImpl unregisterJSONParsers() {
+	public final ArgumentFactoryImpl unregisterJSONParsers() {
 		this.unregisterParser(JSONObject.class);
 		this.unregisterParser(JSONArray.class);
 		
@@ -350,7 +353,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public IArgument<?> createArgument(Parameter parameter) {
+	@Nonnull
+	public IArgument<?> createArgument(@Nonnull Parameter parameter) {
 		Class<?> type = parameter.getType();
 		
 		boolean isOptional = false;
@@ -482,19 +486,19 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this;
 	}
 	
-	protected Map<Class<?>, IGenericParser<?, ?>> genericParserCache = new HashMap<>();
-	
 	@Override
 	@SuppressWarnings("unchecked")
+	@Nullable
 	/* See the comments in #getParser for more information */
-	public <T> IGenericParser<T, IArgument<T>> getGenericParser(Class<T> type) {
+	public <T> IGenericParser<T, IArgument<T>> getGenericParser(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		if(type == null) {
 			return null;
 		}
 		
-		if(this.genericParserCache.containsKey(type)) {
-			return (IGenericParser<T, IArgument<T>>) this.genericParserCache.get(type);
+		IGenericParser<T, IArgument<T>> cachedParser = (IGenericParser<T, IArgument<T>>) this.genericParserCache.get(type);
+		if(cachedParser != null) {
+			return cachedParser;
 		}
 		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
@@ -515,41 +519,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 				return (IGenericParser<T, IArgument<T>>) parser;
 			}
 			
-			IGenericParser<T, IArgument<T>> newParser = new IGenericParser<>() {
-				@Override
-				public ParsedResult<T> parse(ParseContext context, Class<T> type, IArgument<T> argument, String content) {
-					for(IBeforeParser<IArgument<T>> parser : beforeParsers) {
-						ParsedResult<String> parsed = parser.parse(context, argument, content);
-						if(!parsed.isValid()) {
-							return new ParsedResult<T>(false, null);
-						}
-						
-						content = parsed.getObject();
-					}
-					
-					ParsedResult<T> parsed = parser.parse(context, type, argument, content);
-					if(!parsed.isValid()) {
-						return parsed;
-					}
-					
-					T object = parsed.getObject();
-					for(IAfterParser<T, IArgument<T>> parser : afterParsers) {
-						ParsedResult<T> newResult = parser.parse(context, argument, object);
-						if(!newResult.isValid()) {
-							return newResult;
-						}
-						
-						object = newResult.getObject();
-					}
-					
-					return new ParsedResult<T>(true, object, parsed.getContentLeft());
-				}
-				
-				@Override
-				public boolean isHandleAll() {
-					return parser.isHandleAll();
-				}
-			};
+			IGenericParser<T, IArgument<T>> newParser = new DelegateGenericParser<>(parser, beforeParsers, afterParsers);
 			
 			this.genericParserCache.put(type, newParser);
 			return newParser;
@@ -558,10 +528,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return null;
 	}
 	
-	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
-	
 	@SuppressWarnings("unchecked")
-	protected <T> Set<IBeforeParser<IArgument<T>>> getBeforeParsers(Class<T> type) {
+	@Nonnull
+	protected <T> Set<IBeforeParser<IArgument<T>>> getBeforeParsers(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
 		Set<IBeforeParser<IArgument<T>>> beforeParsers = new LinkedHashSet<>();
@@ -588,7 +557,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected <T> Set<IAfterParser<T, IArgument<T>>> getAfterParsers(Class<T> type) {
+	@Nonnull
+	protected <T> Set<IAfterParser<T, IArgument<T>>> getAfterParsers(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
 		Set<IAfterParser<T, IArgument<T>>> afterParsers = new LinkedHashSet<>();
@@ -604,18 +574,19 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> IParser<T, IArgument<T>> getParser(Class<T> type) {
+	@Nullable
+	public <T> IParser<T, IArgument<T>> getParser(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(!this.parsers.containsKey(type)) {
+		IParser<T, IArgument<T>> parser = (IParser<T, IArgument<T>>) this.parsers.get(type);
+		if(parser == null) {
 			return null;
 		}
 		
-		if(this.parserCache.containsKey(type)) {
-			return (IParser<T, IArgument<T>>) this.parserCache.get(type);
+		IParser<T, IArgument<T>> cachedParser = (IParser<T, IArgument<T>>) this.parserCache.get(type);
+		if(cachedParser != null) {
+			return cachedParser;
 		}
-		
-		IParser<T, IArgument<T>> parser = (IParser<T, IArgument<T>>) this.parsers.get(type);
 		
 		/* 
 		 * TODO: Currently handle all does not support before parsers due to the conflicting nature of the two
@@ -672,41 +643,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		 * Currently normal parsers suffer from the same kind of issue, since you can not
 		 * register a new parser and have all the arguments use that new parser.
 		 */
-		IParser<T, IArgument<T>> newParser = new IParser<T, IArgument<T>>() {
-			@Override
-			public ParsedResult<T> parse(ParseContext context, IArgument<T> argument, String content) {
-				for(IBeforeParser<IArgument<T>> parser : beforeParsers) {
-					ParsedResult<String> parsed = parser.parse(context, argument, content);
-					if(!parsed.isValid()) {
-						return new ParsedResult<T>(false, null);
-					}
-					
-					content = parsed.getObject();
-				}
-				
-				ParsedResult<T> parsed = parser.parse(context, argument, content);
-				if(!parsed.isValid()) {
-					return parsed;
-				}
-				
-				T object = parsed.getObject();
-				for(IAfterParser<T, IArgument<T>> parser : afterParsers) {
-					ParsedResult<T> newResult = parser.parse(context, argument, object);
-					if(!newResult.isValid()) {
-						return newResult;
-					}
-					
-					object = newResult.getObject();
-				}
-				
-				return new ParsedResult<T>(true, object, parsed.getContentLeft());
-			}
-			
-			@Override
-			public boolean isHandleAll() {
-				return parser.isHandleAll();
-			}
-		};
+		IParser<T, IArgument<T>> newParser = new DelegateParser<>(parser, beforeParsers, afterParsers);
 		
 		this.parserCache.put(type, newParser);
 		return newParser;
@@ -747,8 +684,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public ArgumentFactoryImpl removeBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
-		if(this.builderConfigureFunctions.containsKey(type)) {
-			this.builderConfigureFunctions.get(type).remove(configureFunction);
+		Set<?> builders = this.builderConfigureFunctions.get(type);
+		if(builders != null) {
+			builders.remove(configureFunction);
 		}
 		
 		return this;
@@ -759,9 +697,10 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public <T> List<BuilderConfigureFunction<T>> getBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.builderConfigureFunctions.containsKey(type)) {
-			return this.builderConfigureFunctions.get(type).stream()
-				.map(builder -> (BuilderConfigureFunction<T>) builder)
+		Set<?> builders = this.builderConfigureFunctions.get(type);
+		if(builders != null) {
+			return builders.stream()
+				.map((builder) -> (BuilderConfigureFunction<T>) builder)
 				.collect(Collectors.toList());
 		}
 		
@@ -782,8 +721,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public ArgumentFactoryImpl removeGenericBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
-		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
-			this.genericBuilderConfigureFunctions.get(type).remove(configureFunction);
+		Set<?> builders = this.genericBuilderConfigureFunctions.get(type);
+		if(builders != null) {
+			builders.remove(configureFunction);
 		}
 		
 		return this;
@@ -794,9 +734,10 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public <T> List<BuilderConfigureFunction<T>> getGenericBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
-			return this.genericBuilderConfigureFunctions.get(type).stream()
-				.map(builder -> (BuilderConfigureFunction<T>) builder)
+		Set<?> builders = this.genericBuilderConfigureFunctions.get(type);
+		if(builders != null) {
+			return builders.stream()
+				.map((builder) -> (BuilderConfigureFunction<T>) builder)
 				.collect(Collectors.toList());
 		}
 		
@@ -804,6 +745,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
+	@Nonnull
 	public <T> ArgumentFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
@@ -818,8 +760,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public ArgumentFactoryImpl removeParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
-		if(this.beforeParsers.containsKey(type)) {
-			this.beforeParsers.get(type).remove(parser);
+		Set<?> parsers = this.beforeParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -827,12 +770,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IBeforeParser<T>> getParsersBefore(Class<T> type) {
+	@Nonnull
+	public <T> List<IBeforeParser<T>> getParsersBefore(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.beforeParsers.containsKey(type)) {
-			return this.beforeParsers.get(type).stream()
-				.map(parser -> (IBeforeParser<T>) parser)
+		Set<?> parsers = this.beforeParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -840,6 +785,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
+	@Nonnull
 	public <T> ArgumentFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
@@ -854,8 +800,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public ArgumentFactoryImpl removeGenericParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
-		if(this.genericBeforeParsers.containsKey(type)) {
-			this.genericBeforeParsers.get(type).remove(parser);
+		Set<?> parsers = this.genericBeforeParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -863,12 +810,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IBeforeParser<T>> getGenericParsersBefore(Class<T> type) {
+	@Nonnull
+	public <T> List<IBeforeParser<T>> getGenericParsersBefore(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.genericBeforeParsers.containsKey(type)) {
-			return this.genericBeforeParsers.get(type).stream()
-				.map(parser -> (IBeforeParser<T>) parser)
+		Set<?> parsers = this.genericBeforeParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -876,6 +825,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	}
 	
 	@Override
+	@Nonnull
 	public <T> ArgumentFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
@@ -890,8 +840,9 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	public ArgumentFactoryImpl removeParserAfter(@Nullable Class<?> type, @Nullable IAfterParser<?, ?> parser) {
 		type = this.convertType(type);
 		
-		if(this.afterParsers.containsKey(type)) {
-			this.afterParsers.get(type).remove(parser);
+		Set<?> parsers = this.afterParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -899,12 +850,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IAfterParser<T, IArgument<T>>> getParsersAfter(Class<T> type) {
+	@Nonnull
+	public <T> List<IAfterParser<T, IArgument<T>>> getParsersAfter(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.afterParsers.containsKey(type)) {
-			return this.afterParsers.get(type).stream()
-				.map(parser -> (IAfterParser<T, IArgument<T>>) parser)
+		Set<?> parsers = this.afterParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IAfterParser<T, IArgument<T>>) parser)
 				.collect(Collectors.toList());
 		}
 		

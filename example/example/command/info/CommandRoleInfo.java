@@ -1,4 +1,4 @@
-package example.command.info.role;
+package example.command.info;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -19,19 +19,17 @@ public class CommandRoleInfo extends CommandImpl {
 	}
 	
 	public MessageEmbed onCommand(CommandEvent event, @Argument("Role") Role role) {
-		EmbedBuilder builder = new EmbedBuilder();
-		
-		builder.setColor(role.getColor());
-		builder.addField("Name", role.getName(), true);
-		builder.addField("Id", role.getName(), true);
-		builder.addBlankField(true);
-		builder.addField("Mention", role.getAsMention(), true);
-		builder.addField("Raw Permissions", String.valueOf(role.getPermissionsRaw()), true);
-		builder.addBlankField(true);
-		builder.addField("Created", Main.FORMATTER.format(role.getTimeCreated()), true);
-		builder.addBlankField(true);
-		builder.addBlankField(true);
-
-		return builder.build();
+		return new EmbedBuilder()
+			.setColor(role.getColor())
+			.addField("Name", role.getName(), true)
+			.addField("Id", role.getName(), true)
+			.addBlankField(true)
+			.addField("Mention", role.getAsMention(), true)
+			.addField("Raw Permissions", String.valueOf(role.getPermissionsRaw()), true)
+			.addBlankField(true)
+			.addField("Created", Main.FORMATTER.format(role.getTimeCreated()), true)
+			.addBlankField(true)
+			.addBlankField(true)
+			.build();
 	}
 }

@@ -3,6 +3,8 @@ package com.jockie.bot.core.argument.impl;
 import java.lang.reflect.Array;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
 import com.jockie.bot.core.command.parser.ParseContext;
@@ -25,8 +27,9 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 	private EndlessArgumentParser() {}
 	
 	@SuppressWarnings("unchecked")
+	@Nonnull
 	/* TODO: Probably need to look over and re-make this */
-	public ParsedResult<Type[]> parse(ParseContext context, IArgument<Type[]> argument, String value) {
+	public ParsedResult<Type[]> parse(@Nonnull ParseContext context, @Nonnull IArgument<Type[]> argument, @Nonnull String value) {
 		if(!(argument instanceof EndlessArgumentImpl)) {
 			throw new UnsupportedOperationException();
 		}
@@ -46,8 +49,7 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 			if(i != 0 && value.length() > 0) {
 				if(value.startsWith(" ")) {
 					ArgumentTrimType trimType = context.getCommand().getArgumentTrimType();
-					
-					if(!trimType.equals(ArgumentTrimType.NONE)) {
+					if(trimType != ArgumentTrimType.NONE) {
 						value = StringUtility.stripLeading(value);
 					}else{
 						value = value.substring(1);
@@ -68,8 +70,9 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 			if(self.getArgument().getParser().isHandleAll()) {
 				parsedArgument = self.getArgument().parse(context, content = value);
 				
-				if(parsedArgument.getContentLeft() != null) {
-					value = parsedArgument.getContentLeft();
+				String contentLeft = parsedArgument.getContentLeft();
+				if(contentLeft != null) {
+					value = contentLeft;
 				}else{
 					value = "";
 				}
@@ -90,7 +93,7 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 								value = value.substring(content.length());
 								content = StringUtility.unwrap(content, quotes.getLeft(), quotes.getRight());
 								
-								if(context.getCommand().getArgumentTrimType().equals(ArgumentTrimType.STRICT)) {
+								if(context.getCommand().getArgumentTrimType() == ArgumentTrimType.STRICT) {
 									content = StringUtility.strip(content);
 								}
 								

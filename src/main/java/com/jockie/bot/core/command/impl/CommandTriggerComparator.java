@@ -78,8 +78,9 @@ public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 		return this.priorities.getOrDefault(type, 0);
 	}
 	
+	/* TODO: I think this needs a bit of a clean-up */
 	@Override
-	public int compare(@Nonnull CommandTrigger commandTrigger, @Nonnull CommandTrigger commandTrigger2) {
+	public int compare(CommandTrigger commandTrigger, CommandTrigger commandTrigger2) {
 		ICommand command = commandTrigger.getCommand(), command2 = commandTrigger2.getCommand();
 		
 		/* Check the trigger length, the longer the more specific so it goes first */

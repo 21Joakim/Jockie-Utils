@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
+import javax.annotation.Nonnull;
+
 import org.slf4j.Logger;
 
 import com.google.common.collect.ImmutableSet;
@@ -39,7 +41,7 @@ import net.dv8tion.jda.internal.utils.JDALogger;
  */
 public class CommandStore {
 	
-	public static final Logger LOG = JDALogger.getLog(CommandStore.class);
+	private static final Logger LOG = JDALogger.getLog(CommandStore.class);
 	
 	/**
 	 * Load commands from the provided package and its sub-packages, equivalent to {@link #loadFrom(String)}
@@ -48,7 +50,8 @@ public class CommandStore {
 	 * 
 	 * @return the created {@link CommandStore}
 	 */
-	public static CommandStore of(String packagePath) {
+	@Nonnull
+	public static CommandStore of(@Nonnull String packagePath) {
 		return new CommandStore().loadFrom(packagePath);
 	}
 	
@@ -60,7 +63,8 @@ public class CommandStore {
 	 * 
 	 * @return the created {@link CommandStore}
 	 */
-	public static CommandStore of(String packagePath, boolean subPackages) {
+	@Nonnull 
+	public static CommandStore of(@Nonnull String packagePath, boolean subPackages) {
 		return new CommandStore().loadFrom(packagePath, subPackages);
 	}
 	
@@ -96,6 +100,27 @@ public class CommandStore {
 		return message;
 	}
 	
+	private static BiFunction<Method, Object, ? extends IMethodCommand> createCommandFunction(Method createCommand) {
+		return (method, container) -> {
+			try {
+				Class<?>[] types = createCommand.getParameterTypes();
+				if(types.length == 1) {
+					if(types[0].isAssignableFrom(Method.class)) {
+						return (IMethodCommand) createCommand.invoke(container, method);
+					}
+				}else if(types.length == 2) {
+					if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+						return (IMethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
+					}
+				}
+			}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				LOG.error("Failed to create method command", e);
+			}
+			
+			return DEFAULT_CREATE_FUNCTION.apply(method, container);
+		};
+	}
+	
 	/**
 	 * Load a module and get all the loaded commands
 	 * 
@@ -119,7 +144,8 @@ public class CommandStore {
 	/*
 	 * TODO: If a single command fails to load should that make the entire module fail?
 	 */
-	public static List<ICommand> loadModule(Object module) throws Throwable {
+	@Nonnull
+	public static List<ICommand> loadModule(@Nonnull Object module) throws Throwable {
 		Objects.requireNonNull(module);
 		
 		List<ICommand> commands = new ArrayList<>();
@@ -134,30 +160,7 @@ public class CommandStore {
 		
 		BiFunction<Method, Object, ? extends IMethodCommand> createFunction = DEFAULT_CREATE_FUNCTION;
 		if(createCommand != null) {
-			createFunction = (method, container) -> {
-				IMethodCommand result = null;
-				
-				try {
-					Class<?>[] types = createCommand.getParameterTypes();
-					if(types.length == 1) {
-						if(types[0].isAssignableFrom(Method.class)) {
-							result = (IMethodCommand) createCommand.invoke(container, method);
-						}
-					}else if(types.length == 2) {
-						if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-							result = (IMethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
-						}
-					}
-				}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-					LOG.error("Failed to create method command", e);
-				}
-				
-				if(result == null) {
-					result = DEFAULT_CREATE_FUNCTION.apply(method, container);
-				}
-				
-				return result;
-			};
+			createFunction = CommandStore.createCommandFunction(createCommand);
 		}
 		
 		Map<String, List<ICommand>> moduleCommands = new HashMap<>();
@@ -196,7 +199,7 @@ public class CommandStore {
 		}
 		
 		List<Method> subCommandMethods = CommandUtility.getSubCommandMethods(methods);
-		subCommandMethods.sort(Comparator.comparingInt(method -> method.getAnnotation(SubCommand.class).value().length));
+		subCommandMethods.sort(Comparator.comparingInt((method) -> method.getAnnotation(SubCommand.class).value().length));
 		
 		/* Load commands marked as sub-commands */
 		for(Method method : subCommandMethods) {
@@ -209,7 +212,7 @@ public class CommandStore {
 			
 			String[] path = subCommand.value();
 			if(path.length == 0) {
-				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
+				LOG.warn("[{}] Sub-command {} does not have a command path", module.getClass().getSimpleName(), command.getCommand());
 				
 				continue;
 			}
@@ -228,13 +231,13 @@ public class CommandStore {
 			}
 			 
 			if(possibleParents.isEmpty()) {
-				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
+				LOG.warn("[{}] Sub-command {} does not have a valid command path", module.getClass().getSimpleName(), command.getCommand());
 				
 				continue;
 			}
 			
 			if(possibleParents.size() > 1) {
-				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") has an ambiguous command path");
+				LOG.warn("[{}] Sub-command {} has an ambiguous command path", module.getClass().getSimpleName(), command.getCommand());
 				
 				continue;
 			}
@@ -243,7 +246,7 @@ public class CommandStore {
 			
 			/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
 			if(!(parent instanceof AbstractCommand)) {
-				LOG.warn("[" + module.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
+				LOG.warn("[{}] Sub-command {}'s parent does not implement AbstractCommand", module.getClass().getSimpleName(), command.getCommand());
 				
 				continue;
 			}
@@ -312,18 +315,24 @@ public class CommandStore {
 						initializer.accept(command);
 					}
 				}
-			}else if(initialize.value().length == 0) {
+				
+				continue;
+			}
+			
+			if(initialize.value().length == 0) {
 				if(moduleCommands.containsKey(method.getName())) {
 					for(ICommand command : moduleCommands.get(method.getName())) {
 						initializer.accept(command);
 					}
 				}
-			}else{
-				for(String value : initialize.value()) {
-					if(moduleCommands.containsKey(value)) {
-						for(ICommand command : moduleCommands.get(method.getName())) {
-							initializer.accept(command);
-						}
+				
+				continue;
+			}
+			
+			for(String value : initialize.value()) {
+				if(moduleCommands.containsKey(value)) {
+					for(ICommand command : moduleCommands.get(method.getName())) {
+						initializer.accept(command);
 					}
 				}
 			}
@@ -369,7 +378,8 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore loadFrom(String packagePath) {
+	@Nonnull
+	public CommandStore loadFrom(@Nonnull String packagePath) {
 		return this.loadFrom(packagePath, true);
 	}
 	
@@ -381,7 +391,8 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore loadFrom(String packagePath, boolean subPackages) {
+	@Nonnull
+	public CommandStore loadFrom(@Nonnull String packagePath, boolean subPackages) {
 		return this.loadFrom(ClassLoader.getSystemClassLoader(), packagePath, subPackages);
 	}
 	
@@ -394,7 +405,8 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore loadFrom(ClassLoader classLoader, String packagePath, boolean subPackages) {
+	@Nonnull
+	public CommandStore loadFrom(@Nonnull ClassLoader classLoader, @Nonnull String packagePath, boolean subPackages) {
 		List<ICommand> commands = new ArrayList<>();
 		
 		try {
@@ -417,19 +429,83 @@ public class CommandStore {
 					}catch(Throwable e) {
 						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
 					}
-				}else if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(loadedClass, IModule.class)) {
+					
+					continue;
+				}
+				
+				if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(loadedClass, IModule.class)) {
 					try {
 						commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
 					}catch(Throwable e) {
 						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
 					}
+					
+					continue;
 				}
 			}
 		}catch(Throwable e) {
-			LOG.warn("Failed to load commands from package " + packagePath, e);
+			LOG.warn("Failed to load commands from package {}", packagePath, e);
 		}
 		
 		return this.addCommands(commands);
+	}
+	
+	/**
+	 * Add a command or module
+	 * 
+	 * @param object the command or module to add, these can also be classes
+	 * 
+	 * @return the {@link CommandStore} instance, useful for chaining
+	 */
+	@Nonnull
+	public CommandStore addCommand(@Nonnull Object object) {
+		if(object instanceof Collection) {
+			this.addCommands(((Collection<?>) object).toArray(new Object[0]));
+			
+			return this;
+		}
+		
+		if(object instanceof ICommand) {
+			this.commands.add(((ICommand) object).getTopParent());
+			
+			return this;
+		}
+		
+		if(object.getClass().isAnnotationPresent(Module.class) || object instanceof IModule) {
+			try {
+				this.commands.addAll(CommandStore.loadModule(object));
+			}catch(Throwable e) {
+				LOG.warn(CommandStore.getCommandLoadErrorMessage(null, object.getClass(), null), e);
+			}
+			
+			return this;
+		}
+		
+		if(object instanceof Class) {
+			Class<?> clazz = (Class<?>) object;
+			if(CommandUtility.isInstanceOf(clazz, ICommand.class)) {					
+				try {
+					this.commands.add((ICommand) clazz.getConstructor().newInstance());
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
+				}
+				
+				return this;
+			}
+			
+			if(clazz.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(clazz, IModule.class)) {
+				try {
+					this.commands.addAll(CommandStore.loadModule(clazz.getConstructor().newInstance()));
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
+				}
+				
+				return this;
+			}
+		}
+		
+		LOG.warn("{} is not a command or command container (or a class of either)", object.getClass());
+		return this;
 	}
 	
 	/**
@@ -439,50 +515,10 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore addCommands(Object... objects) {
+	@Nonnull
+	public CommandStore addCommands(@Nonnull Object... objects) {
 		for(Object object : objects) {
-			if(object instanceof Collection) {
-				this.addCommands(((Collection<?>) object).toArray(new Object[0]));
-				
-				continue;
-			}
-			
-			if(object instanceof ICommand) {
-				ICommand command = (ICommand) object;
-				
-				this.commands.add(command.getTopParent());
-				
-				continue;
-			}else if(object.getClass().isAnnotationPresent(Module.class) || object instanceof IModule) {
-				try {
-					this.commands.addAll(CommandStore.loadModule(object));
-				}catch(Throwable e) {
-					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, object.getClass(), null), e);
-				}
-			}
-			
-			if(object instanceof Class) {
-				Class<?> clazz = (Class<?>) object;
-				if(CommandUtility.isInstanceOf(clazz, ICommand.class)) {					
-					try {
-						this.commands.add((ICommand) clazz.getConstructor().newInstance());
-					}catch(Throwable e) {
-						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
-					}
-					
-					continue;
-				}else if(clazz.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(clazz, IModule.class)) {
-					try {
-						this.commands.addAll(CommandStore.loadModule(clazz.getConstructor().newInstance()));
-					}catch(Throwable e) {
-						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, clazz, null), e);
-					}
-					
-					continue;
-				}
-			}
-			
-			LOG.warn(object.getClass() + " is not a command or command container (or a class of either)");
+			this.addCommand(object);
 		}
 		
 		return this;
@@ -495,7 +531,8 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore addCommands(Collection<Object> objects)  {
+	@Nonnull
+	public CommandStore addCommands(@Nonnull Collection<Object> objects)  {
 		return this.addCommands(objects.toArray(new Object[0]));
 	}
 	
@@ -506,7 +543,8 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore removeCommands(ICommand... commands) {
+	@Nonnull
+	public CommandStore removeCommands(@Nonnull ICommand... commands) {
 		for(ICommand command : commands) {
 			this.commands.remove(command.getTopParent());
 		}
@@ -521,13 +559,15 @@ public class CommandStore {
 	 * 
 	 * @return the {@link CommandStore} instance, useful for chaining
 	 */
-	public CommandStore removeCommands(Collection<ICommand> commands) {
+	@Nonnull
+	public CommandStore removeCommands(@Nonnull Collection<ICommand> commands) {
 		return this.removeCommands(commands.toArray(new ICommand[0]));
 	}
 	
 	/**
 	 * @return an unmodifiable set of all the registered commands
 	 */
+	@Nonnull
 	public Set<ICommand> getCommands() {
 		return Collections.unmodifiableSet(this.commands);
 	}

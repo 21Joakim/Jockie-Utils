@@ -23,11 +23,13 @@ public class OptionImpl<Type> implements IOption<Type> {
 		}
 		
 		@Override
+		@Nonnull
 		public Builder<Type> self() {
 			return this;
 		}
 		
 		@Override
+		@Nonnull
 		public OptionImpl<Type> build() {
 			return new OptionImpl<>(this);
 		}
@@ -63,21 +65,25 @@ public class OptionImpl<Type> implements IOption<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public Class<Type> getType() {
 		return this.type;
 	}
 	
 	@Override
+	@Nonnull
 	public String getName() {
 		return this.name;
 	}
 	
 	@Override
+	@Nullable
 	public String getDescription() {
 		return this.description;
 	}
 	
 	@Override
+	@Nonnull
 	public List<String> getAliases() {
 		return this.aliases;
 	}
@@ -93,6 +99,7 @@ public class OptionImpl<Type> implements IOption<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public IParser<Type, IOption<Type>> getParser() {
 		return this.parser;
 	}
@@ -103,7 +110,8 @@ public class OptionImpl<Type> implements IOption<Type> {
 	}
 
 	@Override
-	public Type getDefault(CommandEvent event) {
+	@Nullable
+	public Type getDefault(@Nonnull CommandEvent event) {
 		if(this.defaultValueFunction != null) {
 			return this.defaultValueFunction.apply(event);
 		}
@@ -119,6 +127,7 @@ public class OptionImpl<Type> implements IOption<Type> {
 	}
 
 	@Override
+	@Nonnull
 	public Map<String, Object> getProperties() {
 		return Collections.unmodifiableMap(this.properties);
 	}

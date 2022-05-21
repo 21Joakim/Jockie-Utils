@@ -18,7 +18,6 @@ import javax.annotation.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.option.IOption.Builder;
 import com.jockie.bot.core.option.Option;
@@ -28,7 +27,8 @@ import com.jockie.bot.core.parser.IAfterParser;
 import com.jockie.bot.core.parser.IBeforeParser;
 import com.jockie.bot.core.parser.IGenericParser;
 import com.jockie.bot.core.parser.IParser;
-import com.jockie.bot.core.parser.ParsedResult;
+import com.jockie.bot.core.parser.impl.DelegateGenericParser;
+import com.jockie.bot.core.parser.impl.DelegateParser;
 import com.jockie.bot.core.parser.impl.discord.CategoryParser;
 import com.jockie.bot.core.parser.impl.discord.EmoteParser;
 import com.jockie.bot.core.parser.impl.discord.GuildChannelParser;
@@ -83,6 +83,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> builderConfigureFunctions = new HashMap<>();
 	protected Map<Class<?>, Set<BuilderConfigureFunction<?>>> genericBuilderConfigureFunctions = new HashMap<>();
+	
+	protected Map<Class<?>, IGenericParser<?, ?>> genericParserCache = new HashMap<>();
+	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
 	
 	protected OptionFactoryImpl() {
 		this.registerEssentialParsers();
@@ -148,7 +151,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl registerEssentialParsers() {
+	public final OptionFactoryImpl registerEssentialParsers() {
 		this.registerParser(Boolean.class, new BooleanParser<>());
 		this.registerParser(Byte.class, new ByteParser<>());
 		this.registerParser(Short.class, new ShortParser<>());
@@ -182,7 +185,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl registerDiscordParsers(boolean useShardManager) {
+	public final OptionFactoryImpl registerDiscordParsers(boolean useShardManager) {
 		this.registerParser(Member.class, new MemberParser<>());
 		this.registerParser(TextChannel.class, new TextChannelParser<>());
 		this.registerParser(VoiceChannel.class, new VoiceChannelParser<>());
@@ -206,7 +209,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl registerJSONParsers() {
+	public final OptionFactoryImpl registerJSONParsers() {
 		this.registerParser(JSONObject.class, new JSONObjectParser<>());
 		this.registerParser(JSONArray.class, new JSONArrayParser<>());
 		
@@ -223,7 +226,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl unregisterEssentialParsers() {
+	public final OptionFactoryImpl unregisterEssentialParsers() {
 		this.unregisterParser(Byte.class);
 		this.unregisterParser(Short.class);
 		this.unregisterParser(Integer.class);
@@ -247,7 +250,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl unregisterDiscordParsers() {
+	public final OptionFactoryImpl unregisterDiscordParsers() {
 		this.unregisterParser(Member.class);
 		this.unregisterParser(TextChannel.class);
 		this.unregisterParser(VoiceChannel.class);
@@ -270,7 +273,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	 * @return the {@link OptionFactoryImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public OptionFactoryImpl unregisterJSONParsers() {
+	public final OptionFactoryImpl unregisterJSONParsers() {
 		this.unregisterParser(JSONObject.class);
 		this.unregisterParser(JSONArray.class);
 		
@@ -345,7 +348,8 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public IOption<?> createOption(Parameter parameter) {
+	@Nonnull
+	public IOption<?> createOption(@Nonnull Parameter parameter) {
 		Class<?> type = parameter.getType();
 		
 		boolean isOptional = false;
@@ -439,18 +443,18 @@ public class OptionFactoryImpl implements IOptionFactory {
 		return this;
 	}
 	
-	protected Map<Class<?>, IGenericParser<?, ?>> genericParserCache = new HashMap<>();
-	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> IGenericParser<T, IOption<T>> getGenericParser(Class<T> type) {
+	@Nullable
+	public <T> IGenericParser<T, IOption<T>> getGenericParser(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		if(type == null) {
 			return null;
 		}
 		
-		if(this.genericParserCache.containsKey(type)) {
-			return (IGenericParser<T, IOption<T>>) this.genericParserCache.get(type);
+		IGenericParser<T, IOption<T>> cachedParser = (IGenericParser<T, IOption<T>>) this.genericParserCache.get(type);
+		if(cachedParser != null) {
+			return cachedParser;
 		}
 		
 		for(Class<?> superClass : this.getExtendedClasses(type)) {
@@ -471,41 +475,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 				return (IGenericParser<T, IOption<T>>) parser;
 			}
 			
-			IGenericParser<T, IOption<T>> newParser = new IGenericParser<>() {
-				@Override
-				public ParsedResult<T> parse(ParseContext context, Class<T> type, IOption<T> option, String content) {
-					for(IBeforeParser<IOption<T>> parser : beforeParsers) {
-						ParsedResult<String> parsed = parser.parse(context, option, content);
-						if(!parsed.isValid()) {
-							return new ParsedResult<T>(false, null);
-						}
-						
-						content = parsed.getObject();
-					}
-					
-					ParsedResult<T> parsed = parser.parse(context, type, option, content);
-					if(!parsed.isValid()) {
-						return parsed;
-					}
-					
-					T object = parsed.getObject();
-					for(IAfterParser<T, IOption<T>> parser : afterParsers) {
-						parsed = parser.parse(context, option, object);
-						if(!parsed.isValid()) {
-							return parsed;
-						}
-						
-						object = parsed.getObject();
-					}
-					
-					return new ParsedResult<T>(true, object, parsed.getContentLeft());
-				}
-				
-				@Override
-				public boolean isHandleAll() {
-					return parser.isHandleAll();
-				}
-			};
+			IGenericParser<T, IOption<T>> newParser = new DelegateGenericParser<>(parser, beforeParsers, afterParsers);
 			
 			this.genericParserCache.put(type, newParser);
 			return newParser;
@@ -513,8 +483,6 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		return null;
 	}
-	
-	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
 	
 	@SuppressWarnings("unchecked")
 	protected <T> Set<IBeforeParser<IOption<T>>> getBeforeParsers(Class<T> type) {
@@ -560,15 +528,17 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> IParser<T, IOption<T>> getParser(Class<T> type) {
+	@Nullable
+	public <T> IParser<T, IOption<T>> getParser(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
 		if(!this.parsers.containsKey(type)) {
 			return null;
 		}
 		
-		if(this.parserCache.containsKey(type)) {
-			return (IParser<T, IOption<T>>) this.parserCache.get(type);
+		IParser<T, IOption<T>> cachedParser = (IParser<T, IOption<T>>) this.parserCache.get(type);
+		if(cachedParser != null) {
+			return cachedParser;
 		}
 		
 		IParser<T, IOption<T>> parser = (IParser<T, IOption<T>>) this.parsers.get(type);
@@ -585,41 +555,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 			return parser;
 		}
 		
-		IParser<T, IOption<T>> newParser = new IParser<T, IOption<T>>() {
-			@Override
-			public ParsedResult<T> parse(ParseContext context, IOption<T> option, String content) {
-				for(IBeforeParser<IOption<T>> parser : beforeParsers) {
-					ParsedResult<String> parsed = parser.parse(context, option, content);
-					if(!parsed.isValid()) {
-						return new ParsedResult<T>(false, null);
-					}
-					
-					content = parsed.getObject();
-				}
-				
-				ParsedResult<T> parsed = parser.parse(context, option, content);
-				if(!parsed.isValid()) {
-					return parsed;
-				}
-				
-				T object = parsed.getObject();
-				for(IAfterParser<T, IOption<T>> parser : afterParsers) {
-					parsed = parser.parse(context, option, object);
-					if(!parsed.isValid()) {
-						return parsed;
-					}
-					
-					object = parsed.getObject();
-				}
-				
-				return new ParsedResult<T>(true, object, parsed.getContentLeft());
-			}
-			
-			@Override
-			public boolean isHandleAll() {
-				return parser.isHandleAll();
-			}
-		};
+		IParser<T, IOption<T>> newParser = new DelegateParser<>(parser, beforeParsers, afterParsers);
 		
 		this.parserCache.put(type, newParser);
 		return newParser;
@@ -660,8 +596,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public OptionFactoryImpl removeBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
-		if(this.builderConfigureFunctions.containsKey(type)) {
-			this.builderConfigureFunctions.get(type).remove(configureFunction);
+		Set<?> builders = this.builderConfigureFunctions.get(type);
+		if(builders != null) {
+			builders.remove(configureFunction);
 		}
 		
 		return this;
@@ -672,9 +609,10 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public <T> List<BuilderConfigureFunction<T>> getBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.builderConfigureFunctions.containsKey(type)) {
-			return this.builderConfigureFunctions.get(type).stream()
-				.map(builder -> (BuilderConfigureFunction<T>) builder)
+		Set<?> builders = this.builderConfigureFunctions.get(type);
+		if(builders != null) {
+			return builders.stream()
+				.map((builder) -> (BuilderConfigureFunction<T>) builder)
 				.collect(Collectors.toList());
 		}
 		
@@ -695,8 +633,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public OptionFactoryImpl removeGenericBuilderConfigureFunction(@Nullable Class<?> type, @Nullable BuilderConfigureFunction<?> configureFunction) {
 		type = this.convertType(type);
 		
-		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
-			this.genericBuilderConfigureFunctions.get(type).remove(configureFunction);
+		Set<?> builders = this.genericBuilderConfigureFunctions.get(type);
+		if(builders != null) {
+			builders.remove(configureFunction);
 		}
 		
 		return this;
@@ -707,9 +646,10 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public <T> List<BuilderConfigureFunction<T>> getGenericBuilderConfigureFunctions(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.genericBuilderConfigureFunctions.containsKey(type)) {
-			return this.genericBuilderConfigureFunctions.get(type).stream()
-				.map(builder -> (BuilderConfigureFunction<T>) builder)
+		Set<?> builders = genericBuilderConfigureFunctions.get(type);
+		if(builders != null) {
+			return builders.stream()
+				.map((builder) -> (BuilderConfigureFunction<T>) builder)
 				.collect(Collectors.toList());
 		}
 		
@@ -731,8 +671,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public OptionFactoryImpl removeParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
-		if(this.beforeParsers.containsKey(type)) {
-			this.beforeParsers.get(type).remove(parser);
+		Set<?> parsers = this.beforeParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -740,12 +681,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IBeforeParser<T>> getParsersBefore(Class<T> type) {
+	@Nonnull
+	public <T> List<IBeforeParser<T>> getParsersBefore(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.beforeParsers.containsKey(type)) {
-			return this.beforeParsers.get(type).stream()
-				.map(parser -> (IBeforeParser<T>) parser)
+		Set<?> parsers = this.beforeParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -767,8 +710,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public OptionFactoryImpl removeGenericParserBefore(@Nullable Class<?> type, @Nullable IBeforeParser<?> parser) {
 		type = this.convertType(type);
 		
-		if(this.genericBeforeParsers.containsKey(type)) {
-			this.genericBeforeParsers.get(type).remove(parser);
+		Set<?> parsers = this.genericBeforeParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -776,12 +720,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IBeforeParser<T>> getGenericParsersBefore(Class<T> type) {
+	@Nonnull
+	public <T> List<IBeforeParser<T>> getGenericParsersBefore(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.genericBeforeParsers.containsKey(type)) {
-			return this.genericBeforeParsers.get(type).stream()
-				.map(parser -> (IBeforeParser<T>) parser)
+		Set<?> parsers = this.genericBeforeParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IBeforeParser<T>) parser)
 				.collect(Collectors.toList());
 		}
 		
@@ -803,8 +749,9 @@ public class OptionFactoryImpl implements IOptionFactory {
 	public OptionFactoryImpl removeParserAfter(@Nullable Class<?> type, @Nullable IAfterParser<?, ?> parser) {
 		type = this.convertType(type);
 		
-		if(this.afterParsers.containsKey(type)) {
-			this.afterParsers.get(type).remove(parser);
+		Set<?> parsers = this.afterParsers.get(type);
+		if(parsers != null) {
+			parsers.remove(parser);
 		}
 		
 		return this;
@@ -812,12 +759,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<IAfterParser<T, IOption<T>>> getParsersAfter(Class<T> type) {
+	@Nonnull
+	public <T> List<IAfterParser<T, IOption<T>>> getParsersAfter(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		if(this.afterParsers.containsKey(type)) {
-			return this.afterParsers.get(type).stream()
-				.map(parser -> (IAfterParser<T, IOption<T>>) parser)
+		Set<?> parsers = this.afterParsers.get(type);
+		if(parsers != null) {
+			return parsers.stream()
+				.map((parser) -> (IAfterParser<T, IOption<T>>) parser)
 				.collect(Collectors.toList());
 		}
 		

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -14,6 +15,33 @@ import net.dv8tion.jda.internal.utils.tuple.Pair;
 public class StringUtility {
 	
 	private StringUtility() {}
+	
+	public static <T> String concat(Collection<T> entities, Function<T, String> conversionFunction) {
+		return StringUtility.concat(entities, conversionFunction, "and");
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> String concat(Collection<T> entities, Function<T, String> conversionFunction, String endWord) {
+		return StringUtility.concat((T[]) entities.toArray(), conversionFunction, endWord);
+	}
+	
+	public static <T> String concat(T[] entities, Function<T, String> conversionFunction) {
+		return StringUtility.concat(entities, conversionFunction, "and");
+	}
+	
+	public static <T> String concat(T[] entities, Function<T, String> conversionFunction, String endWord) {
+		StringBuilder result = new StringBuilder();
+		for(int i = 0; i < entities.length; i++) {
+			String string = conversionFunction.apply(entities[i]);
+			
+			result.append(string);
+			if(i != entities.length - 1) {
+				result.append((entities.length - 2 == i) ? " " + endWord + " " : ", ");
+			}
+		}
+		
+		return result.toString();
+	}
 	
 	/**
 	 * Removes all leading spaces from the provided string

@@ -23,10 +23,12 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 			super(type);
 		}
 		
+		@Nonnull
 		public Builder<Type> self() {
 			return this;
 		}
 		
+		@Nonnull
 		public ArgumentImpl<Type> build() {
 			return new ArgumentImpl<>(this);
 		}
@@ -59,6 +61,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public Class<Type> getType() {
 		return this.type;
 	}
@@ -93,6 +96,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public String getName() {
 		return this.name;
 	}
@@ -103,6 +107,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public IParser<Type, IArgument<Type>> getParser() {
 		return this.parser;
 	}
@@ -115,6 +120,7 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 	}
 	
 	@Override
+	@Nonnull
 	public Map<String, Object> getProperties() {
 		return Collections.unmodifiableMap(this.properties);
 	}
