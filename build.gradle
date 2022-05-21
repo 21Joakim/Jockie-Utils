@@ -1,4 +1,7 @@
-apply plugin: 'java'
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
 
 version '1.42'
 
@@ -6,6 +9,7 @@ sourceCompatibility = 1.9
 
 repositories {
 	mavenCentral()
+	maven { url "https://jitpack.io" }
 }
 
 dependencies {
@@ -23,17 +27,15 @@ javadoc {
     options.encoding = 'UTF-8'
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-	classifier = 'sources'
-	from sourceSets.main.allSource
+java {
+	withSourcesJar()
+	withJavadocJar()
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
-	classifier = 'javadoc'
-	from javadoc.destinationDir
-}
-
-artifacts {
-	archives sourcesJar
-	archives javadocJar
+publishing {
+    publications {
+        maven(MavenPublication) {
+			from components.java
+        }
+    }
 }
