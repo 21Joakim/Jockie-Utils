@@ -24,6 +24,39 @@ public class CommandUtility {
 	
 	private CommandUtility() {}
 	
+	public static char getPrimitiveClassSymbol(@Nonnull Class<?> clazz) {
+		Checks.notNull(clazz, "clazz");
+		
+		if(!clazz.isPrimitive()) {
+			throw new IllegalArgumentException("The provided class is not a primitive class");
+		}
+		
+		if(clazz.equals(boolean.class)) return 'Z';
+		if(clazz.equals(byte.class)) return 'B';
+		if(clazz.equals(short.class)) return 'S';
+		if(clazz.equals(int.class)) return 'I';
+		if(clazz.equals(long.class)) return 'J';
+		if(clazz.equals(float.class)) return 'F';
+		if(clazz.equals(double.class)) return 'D';
+		if(clazz.equals(char.class)) return 'C';
+		
+		throw new IllegalStateException("No known class symbol for: " + clazz);
+	}
+	
+	public static String getClassSymbol(@Nonnull Class<?> clazz) {
+		Checks.notNull(clazz, "clazz");
+		
+		if(clazz.isArray()) {
+			return clazz.getName();
+		}
+		
+		if(clazz.isPrimitive()) {
+			return String.valueOf(CommandUtility.getPrimitiveClassSymbol(clazz));
+		}
+		
+		return "L" + clazz.getName() + ";";
+	}
+	
 	/**
 	 * @param clazz the class to get as an array, if the type is already an array
 	 * it will return it as the next layer, String[] would become String[][]
@@ -35,35 +68,8 @@ public class CommandUtility {
 	public static <T> Class<T[]> getClassAsArray(@Nonnull Class<T> clazz) {
 		Checks.notNull(clazz, "clazz");
 		
-		String className;
-		if(clazz.isArray()) {
-			className = clazz.getName();
-		}else if(clazz.isPrimitive()) {
-			if(clazz.equals(boolean.class)) {
-				className = "Z";
-			}else if(clazz.equals(byte.class)) {
-				className = "B";
-			}else if(clazz.equals(short.class)) {
-				className = "S";
-			}else if(clazz.equals(int.class)) {
-				className = "I";
-			}else if(clazz.equals(long.class)) {
-				className = "J";
-			}else if(clazz.equals(float.class)) {
-				className = "F";
-			}else if(clazz.equals(double.class)) {
-				className = "D";
-			}else if(clazz.equals(char.class)) {
-				className = "C";
-			}else{
-				throw new IllegalStateException();
-			}
-		}else{
-			className = "L" + clazz.getName() + ";";
-		}
-		
 		try {
-			return (Class<T[]>) Class.forName("[" + className);
+			return (Class<T[]>) Class.forName("[" + CommandUtility.getClassSymbol(clazz));
 		}catch(ClassNotFoundException e) {
 			throw new IllegalStateException(e);
 		}
@@ -81,25 +87,16 @@ public class CommandUtility {
 			throw new IllegalArgumentException("The provided class is not a primitive class");
 		}
 		
-		if(clazz.equals(boolean.class)) {
-			return Boolean.class;
-		}else if(clazz.equals(byte.class)) {
-			return Byte.class;
-		}else if(clazz.equals(short.class)) {
-			return Short.class;
-		}else if(clazz.equals(int.class)) {
-			return Integer.class;
-		}else if(clazz.equals(long.class)) {
-			return Long.class;
-		}else if(clazz.equals(float.class)) {
-			return Float.class;
-		}else if(clazz.equals(double.class)) {
-			return Double.class;
-		}else if(clazz.equals(char.class)) {
-			return Character.class;
-		}else{
-			throw new RuntimeException();
-		}
+		if(clazz.equals(boolean.class)) return Boolean.class;
+		if(clazz.equals(byte.class)) return Byte.class;
+		if(clazz.equals(short.class)) return Short.class;
+		if(clazz.equals(int.class)) return Integer.class;
+		if(clazz.equals(long.class)) return Long.class;
+		if(clazz.equals(float.class)) return Float.class;
+		if(clazz.equals(double.class)) return Double.class;
+		if(clazz.equals(char.class)) return Character.class;
+		
+		throw new IllegalStateException("No known boxed class for: " + clazz);
 	}
 	
 	/**
@@ -111,29 +108,17 @@ public class CommandUtility {
 	public static Object getDefaultValue(@Nonnull Class<?> clazz) {
 		Checks.notNull(clazz, "clazz");
 		
-		if(!clazz.isPrimitive()) {
-			return null;
-		}
+		if(!clazz.isPrimitive()) return null;
+		if(clazz.equals(boolean.class)) return false;
+		if(clazz.equals(byte.class)) return (byte) 0;
+		if(clazz.equals(short.class)) return (short) 0;
+		if(clazz.equals(int.class)) return 0;
+		if(clazz.equals(long.class)) return 0L;
+		if(clazz.equals(float.class)) return 0.0F;
+		if(clazz.equals(double.class)) return 0.0D;
+		if(clazz.equals(char.class)) return '\u0000';
 		
-		if(clazz.equals(boolean.class)) {
-			return false;
-		}else if(clazz.equals(byte.class)) {
-			return (byte) 0;
-		}else if(clazz.equals(short.class)) {
-			return (short) 0;
-		}else if(clazz.equals(int.class)) {
-			return 0;
-		}else if(clazz.equals(long.class)) {
-			return 0L;
-		}else if(clazz.equals(float.class)) {
-			return 0.0F;
-		}else if(clazz.equals(double.class)) {
-			return 0.0D;
-		}else if(clazz.equals(char.class)) {
-			return '\u0000';
-		}else{
-			throw new RuntimeException();
-		}
+		throw new IllegalStateException("No known default value for: " + clazz);
 	}
 	
 	/**

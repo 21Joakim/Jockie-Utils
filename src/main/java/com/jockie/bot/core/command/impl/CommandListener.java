@@ -1070,7 +1070,9 @@ public class CommandListener implements EventListener {
 	}
 	
 	/**
-	 * Set the executor service which will be used in executing async commands
+	 * Set the executor service which will be used in executing async commands,
+	 * setting this will not shutdown the previous command executor, you must
+	 * use {@link #setCommandExecutor(ExecutorService, boolean)} to do that!
 	 * 
 	 * @param executorService the executor service
 	 * 
@@ -1078,7 +1080,23 @@ public class CommandListener implements EventListener {
 	 */
 	@Nonnull
 	public CommandListener setCommandExecutor(@Nonnull ExecutorService executorService) {
+		return this.setCommandExecutor(executorService, false);
+	}
+	
+	/**
+	 * Set the executor service which will be used in executing async commands
+	 * 
+	 * @param executorService the executor service
+	 * @param shutdown whether or not to shutdown the previous commandExecutor
+	 * 
+	 * @return the {@link CommandListener} instance, useful for chaining
+	 */
+	public CommandListener setCommandExecutor(@Nonnull ExecutorService executorService, boolean shutdown) {
 		Checks.notNull(executorService, "executorService");
+		
+		if(shutdown) {
+			this.commandExecutor.shutdown();
+		}
 		
 		this.commandExecutor = executorService;
 		
@@ -1299,7 +1317,7 @@ public class CommandListener implements EventListener {
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandListener removeDefaultPreExecuteChecks() {
+	public final CommandListener removeDefaultPreExecuteChecks() {
 		return this.removePreExecuteCheck(this.defaultBotPermissionCheck)
 			.removePreExecuteCheck(this.defaultAuthorPermissionCheck)
 			.removePreExecuteCheck(this.defaultNsfwCheck);
@@ -1311,7 +1329,7 @@ public class CommandListener implements EventListener {
 	 * @return the {@link CommandListener} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandListener addDefaultPreExecuteChecks() {
+	public final CommandListener addDefaultPreExecuteChecks() {
 		return this.addPreExecuteCheck(this.defaultBotPermissionCheck)
 			.addPreExecuteCheck(this.defaultAuthorPermissionCheck)
 			.addPreExecuteCheck(this.defaultNsfwCheck);

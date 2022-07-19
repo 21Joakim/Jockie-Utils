@@ -34,10 +34,11 @@ import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.impl.DelegateGenericParser;
 import com.jockie.bot.core.parser.impl.DelegateParser;
 import com.jockie.bot.core.parser.impl.discord.CategoryParser;
-import com.jockie.bot.core.parser.impl.discord.EmoteParser;
+import com.jockie.bot.core.parser.impl.discord.CustomEmojiParser;
 import com.jockie.bot.core.parser.impl.discord.GuildChannelParser;
 import com.jockie.bot.core.parser.impl.discord.GuildParser;
 import com.jockie.bot.core.parser.impl.discord.MemberParser;
+import com.jockie.bot.core.parser.impl.discord.RichCustomEmojiParser;
 import com.jockie.bot.core.parser.impl.discord.RoleParser;
 import com.jockie.bot.core.parser.impl.discord.TextChannelParser;
 import com.jockie.bot.core.parser.impl.discord.UserParser;
@@ -57,7 +58,6 @@ import com.jockie.bot.core.parser.impl.json.JSONObjectParser;
 import com.jockie.bot.core.utility.CommandUtility;
 
 import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
@@ -65,6 +65,8 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.internal.utils.Checks;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 
@@ -177,7 +179,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	 * 	<li>Channel</li>
 	 * 	<li>Category</li>
 	 * 	<li>Role</li>
-	 * 	<li>Emote</li>
+	 * 	<li>CustomEmoji</li>
+	 * 	<li>RichCustomEmoji</li>
 	 * 	<li>User</li>
 	 * 	<li>Guild</li>
 	 * </ul>
@@ -192,7 +195,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		this.registerParser(GuildChannel.class, new GuildChannelParser<>());
 		this.registerParser(Category.class, new CategoryParser<>());
 		this.registerParser(Role.class, new RoleParser<>());
-		this.registerParser(Emote.class, new EmoteParser<>());
+		this.registerParser(CustomEmoji.class, new CustomEmojiParser<>());
+		this.registerParser(RichCustomEmoji.class, new RichCustomEmojiParser<>());
 		this.registerParser(User.class, new UserParser<>(useShardManager));
 		this.registerParser(Guild.class, new GuildParser<>(useShardManager));
 		
@@ -257,7 +261,8 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		this.unregisterParser(GuildChannel.class);
 		this.unregisterParser(Category.class);
 		this.unregisterParser(Role.class);
-		this.unregisterParser(Emote.class);
+		this.unregisterParser(CustomEmoji.class);
+		this.unregisterParser(RichCustomEmoji.class);
 		this.unregisterParser(User.class);
 		this.unregisterParser(Guild.class);
 		

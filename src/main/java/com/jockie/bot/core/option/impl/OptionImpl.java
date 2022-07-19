@@ -35,22 +35,21 @@ public class OptionImpl<Type> implements IOption<Type> {
 		}
 	}
 	
-	private final Class<Type> type;
+	protected final Class<Type> type;
 	
-	private final String name;
+	protected final String name;
+	protected final String description;
 	
-	private final String description;
+	protected final List<String> aliases;
 	
-	private final List<String> aliases;
+	protected final boolean hidden;
+	protected final boolean developer;
 	
-	private final boolean hidden;
-	private final boolean developer;
+	protected final IParser<Type, IOption<Type>> parser;
 	
-	private final IParser<Type, IOption<Type>> parser;
+	protected final Function<CommandEvent, Type> defaultValueFunction;
 	
-	private final Function<CommandEvent, Type> defaultValueFunction;
-	
-	private final Map<String, Object> properties;
+	protected final Map<String, Object> properties;
 	
 	protected <BuilderType extends IOption.Builder<Type, ?, ?>> OptionImpl(BuilderType builder) {
 		this.type = builder.getType();

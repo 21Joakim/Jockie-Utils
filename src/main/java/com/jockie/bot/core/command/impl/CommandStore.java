@@ -100,25 +100,27 @@ public class CommandStore {
 		return message;
 	}
 	
-	private static BiFunction<Method, Object, ? extends IMethodCommand> createCommandFunction(Method createCommand) {
-		return (method, container) -> {
-			try {
-				Class<?>[] types = createCommand.getParameterTypes();
-				if(types.length == 1) {
-					if(types[0].isAssignableFrom(Method.class)) {
-						return (IMethodCommand) createCommand.invoke(container, method);
-					}
-				}else if(types.length == 2) {
-					if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-						return (IMethodCommand) createCommand.invoke(container, method, CommandUtility.getCommandName(method));
-					}
+	private static IMethodCommand executeCreateCommandMethod(Method createCommandMethod, Method commandMethod, Object commandContainer) {
+		try {
+			Class<?>[] types = createCommandMethod.getParameterTypes();
+			if(types.length == 1) {
+				if(types[0].isAssignableFrom(Method.class)) {
+					return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod);
 				}
-			}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				LOG.error("Failed to create method command", e);
+			}else if(types.length == 2) {
+				if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+					return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod, CommandUtility.getCommandName(commandMethod));
+				}
 			}
-			
-			return DEFAULT_CREATE_FUNCTION.apply(method, container);
-		};
+		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			LOG.error("Failed to create method command", e);
+		}
+		
+		return DEFAULT_CREATE_FUNCTION.apply(commandMethod, commandContainer);
+	}
+	
+	private static BiFunction<Method, Object, ? extends IMethodCommand> createCommandFunction(Method createCommandMethod) {
+		return (method, container) -> CommandStore.executeCreateCommandMethod(createCommandMethod, method, container);
 	}
 	
 	/**

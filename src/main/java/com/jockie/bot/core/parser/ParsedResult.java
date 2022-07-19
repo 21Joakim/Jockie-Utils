@@ -4,11 +4,9 @@ import javax.annotation.Nullable;
 
 public class ParsedResult<Type> {
 	
-	private boolean valid;
-	
-	private Type object;
-	
-	private String contentLeft;
+	protected final boolean valid;
+	protected final Type object;
+	protected final String contentLeft;
 	
 	public ParsedResult() {
 		this(false, null);

@@ -24,7 +24,6 @@ import com.jockie.bot.core.property.IPropertyContainer;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDA.ShardInfo;
 import net.dv8tion.jda.api.entities.ChannelType;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
@@ -34,6 +33,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
@@ -339,19 +339,22 @@ public class CommandEvent implements IPropertyContainer {
 		return this.getChannel().sendTyping();
 	}
 	
-	/** Equivalent to {@link Message#addReaction(Emote)}, using the event's message */
+	/** Equivalent to {@link Message#addReaction(Emoji)}, using the event's message */
 	@Nonnull
-	public RestAction<Void> react(Emote emote) {
-		return this.getMessage().addReaction(emote);
+	public RestAction<Void> react(Emoji emoji) {
+		return this.getMessage().addReaction(emoji);
 	}
 	
-	/** Equivalent to {@link Message#addReaction(String)}, using the event's message */
+	/** Equivalent to {@link Message#addReaction(Emoji)} with {@link Emoji#fromFormatted(String)}, using the event's message */
 	@Nonnull
-	public RestAction<Void> react(String unicode) {
-		return this.getMessage().addReaction(unicode);
+	public RestAction<Void> react(String emoji) {
+		return this.getMessage().addReaction(Emoji.fromFormatted(emoji));
 	}
 	
-	/** throws a new CancelException to cancel the execution of the current command */
+	/** 
+	 * Throws a {@link CancelException} which is then caught by the
+	 * {@link CommandListener} to cancel the execution of the current command
+	 */
 	public void cancel() {
 		throw new CancelException();
 	}

@@ -34,19 +34,19 @@ public class ArgumentImpl<Type> implements IArgument<Type> {
 		}
 	}
 	
-	private final Class<Type> type;
+	protected final Class<Type> type;
 	
-	private final Function<CommandEvent, Type> defaultValueFunction;
+	protected final Function<CommandEvent, Type> defaultValueFunction;
 	
-	private final boolean endless, empty, quote;
+	protected final boolean endless, empty, quote;
 	
-	private final String name;
+	protected final String name;
 	
-	private final BiConsumer<Message, String> errorConsumer;
+	protected final BiConsumer<Message, String> errorConsumer;
 	
-	private final IParser<Type, IArgument<Type>> parser;
+	protected final IParser<Type, IArgument<Type>> parser;
 	
-	private final Map<String, Object> properties;
+	protected final Map<String, Object> properties;
 	
 	protected <BuilderType extends IArgument.Builder<Type, ?, ?>> ArgumentImpl(BuilderType builder) {
 		this.type = builder.getType();

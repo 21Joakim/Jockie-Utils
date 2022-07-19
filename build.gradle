@@ -13,10 +13,16 @@ repositories {
 }
 
 dependencies {
-	implementation 'com.google.guava:guava:25.0-jre'
-	implementation 'org.json:json:20180813'
+	implementation 'com.google.guava:guava:31.0-jre'
+	api 'org.json:json:20180813'
 	
-	implementation 'net.dv8tion:JDA:5.0.0-alpha.12'
+	api 'net.dv8tion:JDA'
+	
+	constraints {
+		api('net.dv8tion:JDA:5.0.0-alpha.13') {
+			because 'there are breaking changes above and below this version'
+		}
+	}
 }
 
 compileJava {

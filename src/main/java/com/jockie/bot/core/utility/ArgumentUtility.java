@@ -9,7 +9,6 @@ import javax.annotation.Nullable;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.MentionType;
@@ -17,10 +16,11 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
-import net.dv8tion.jda.internal.JDAImpl;
-import net.dv8tion.jda.internal.entities.EmoteImpl;
 import net.dv8tion.jda.internal.requests.CompletedRestAction;
 import net.dv8tion.jda.internal.utils.Checks;
 import net.dv8tion.jda.internal.utils.Helpers;
@@ -130,35 +130,59 @@ public class ArgumentUtility {
 	}
 	
 	/**
-	 * Get an emote by id or mention
+	 * Get an emoji by id or mention
 	 * 
 	 * @param guild the guild to search for the emote in
-	 * @param value the mention or id of the emote
+	 * @param value the mention or id of the emoji
 	 * 
-	 * @return the found emote, may be null
+	 * @return the found emoji, may be null
 	 */
 	@Nullable
-	public static Emote getEmoteById(@Nonnull Guild guild, @Nonnull String value) {
+	public static CustomEmoji getEmojiById(@Nonnull Guild guild, @Nonnull String value, boolean rich) {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
-		Matcher matcher = MentionType.EMOTE.getPattern().matcher(value);
+		Matcher matcher = MentionType.EMOJI.getPattern().matcher(value);
 		
 		String id = matcher.matches() ? matcher.group(2) : null;
 		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
 			long snowflake = Long.parseLong(id);
 			
-			Emote emote = guild.getEmoteById(snowflake);
-			if(emote == null) {
-				return new EmoteImpl(snowflake, (JDAImpl) guild.getJDA())
-					.setName(matcher.group(1))
-					.setAnimated(value.startsWith("<a:"));
+			RichCustomEmoji emoji = guild.getEmojiById(snowflake);
+			if(emoji == null && !rich) {
+				return Emoji.fromCustom(matcher.group(1), snowflake, value.startsWith("<a:"));
 			}
 			
-			return emote;
+			return emoji;
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * Get an emoji by id or mention
+	 * 
+	 * @param guild the guild to search for the emote in
+	 * @param value the mention or id of the emoji
+	 * 
+	 * @return the found emoji, may be null
+	 */
+	@Nullable
+	public static CustomEmoji getEmojiById(@Nonnull Guild guild, @Nonnull String value) {
+		return ArgumentUtility.getEmojiById(guild, value, false);
+	}
+	
+	/**
+	 * Get a rich emoji by id or mention
+	 * 
+	 * @param guild the guild to search for the emote in
+	 * @param value the mention or id of the rich emoji
+	 * 
+	 * @return the found rich emoji, may be null
+	 */
+	@Nullable
+	public static RichCustomEmoji getRichEmojiById(@Nonnull Guild guild, @Nonnull String value) {
+		return (RichCustomEmoji) ArgumentUtility.getEmojiById(guild, value, true);
 	}
 	
 	/**
@@ -344,26 +368,59 @@ public class ArgumentUtility {
 	}
 	
 	/**
-	 * Get emotes by id, mention or name
-	 * If a category was found by id it will not check for names
+	 * Get emojis by id, mention or name.
+	 * If an emoji was found by id it will not check for names
+	 * 
+	 * @param guild the guild to search for the emotes in
+	 * @param value the mention, id or name of the emote to search for
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * @param rich whether the emoji needs to be rich or not (this effectively means it needs to be in the guild)
+	 * 
+	 * @return the found emojis
+	 */
+	@Nonnull
+	public static List<? extends CustomEmoji> getEmojisByIdOrName(@Nonnull Guild guild, @Nonnull String value, boolean ignoreCase, boolean rich) {
+		Checks.notNull(guild, "guild");
+		Checks.notNull(value, "value");
+		
+		CustomEmoji emoji = ArgumentUtility.getEmojiById(guild, value, rich);
+		if(emoji != null) {
+			return List.of(emoji);
+		}
+		
+		return guild.getEmojisByName(value, ignoreCase);
+	}
+	
+	/**
+	 * Get emojis by id, mention or name.
+	 * If an emoji was found by id it will not check for names
 	 * 
 	 * @param guild the guild to search for the emotes in
 	 * @param value the mention, id or name of the emote to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
-	 * @return the found emotes
+	 * @return the found emojis
 	 */
+	@SuppressWarnings("unchecked")
 	@Nonnull
-	public static List<Emote> getEmotesByIdOrName(@Nonnull Guild guild, @Nonnull String value, boolean ignoreCase) {
-		Checks.notNull(guild, "guild");
-		Checks.notNull(value, "value");
-		
-		Emote emote = ArgumentUtility.getEmoteById(guild, value);
-		if(emote != null) {
-			return List.of(emote);
-		}
-		
-		return guild.getEmotesByName(value, ignoreCase);
+	public static List<CustomEmoji> getEmojisByIdOrName(@Nonnull Guild guild, @Nonnull String value, boolean ignoreCase) {
+		return (List<CustomEmoji>) ArgumentUtility.getEmojisByIdOrName(guild, value, ignoreCase, false);
+	}
+	
+	/**
+	 * Get rich emojis by id, mention or name.
+	 * If an emoji was found by id it will not check for names
+	 * 
+	 * @param guild the guild to search for the emotes in
+	 * @param value the mention, id or name of the emote to search for
+	 * @param ignoreCase whether or not the name should be case sensitive
+	 * 
+	 * @return the found emojis
+	 */
+	@SuppressWarnings("unchecked")
+	@Nonnull
+	public static List<RichCustomEmoji> getRichEmojisByIdOrName(@Nonnull Guild guild, @Nonnull String value, boolean ignoreCase) {
+		return (List<RichCustomEmoji>) ArgumentUtility.getEmojisByIdOrName(guild, value, ignoreCase, true);
 	}
 	
 	/**

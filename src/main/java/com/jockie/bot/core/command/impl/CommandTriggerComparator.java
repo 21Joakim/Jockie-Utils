@@ -24,7 +24,7 @@ public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 		return INSTANCE;
 	}
 	
-	private Map<Class<?>, Integer> priorities = new HashMap<>();
+	private final Map<Class<?>, Integer> priorities = new HashMap<>();
 	
 	private CommandTriggerComparator() {
 		/* 
@@ -51,7 +51,7 @@ public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 	 * 
 	 * @see #getPriority(Class)
 	 */
-	public CommandTriggerComparator setPriority(@Nonnull Class<?> type, int priority) {
+	public final CommandTriggerComparator setPriority(@Nonnull Class<?> type, int priority) {
 		Checks.notNull(type, "type");
 		
 		if(priority == 0) {
@@ -74,7 +74,7 @@ public class CommandTriggerComparator implements Comparator<CommandTrigger> {
 	 * 
 	 * @see #setPriority(Class, int)
 	 */
-	public int getPriority(@Nullable Class<?> type) {
+	public final int getPriority(@Nullable Class<?> type) {
 		return this.priorities.getOrDefault(type, 0);
 	}
 	

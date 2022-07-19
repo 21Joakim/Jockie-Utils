@@ -570,16 +570,13 @@ public interface ICommand extends IPropertyContainer {
 	public static ICommand getTopParent(@Nonnull ICommand command) {
 		Checks.notNull(command, "command");
 		
-		ICommand parent = command.getParent();
-		if(parent != null && command.hasParent()) {
-			while(parent != null && parent.hasParent()) {
-				parent = parent.getParent();
-			}
-			
-			return parent;
+		ICommand current = command;
+		ICommand parent;
+		while((parent = current.getParent()) != null && current.hasParent()) {
+			current = parent;
 		}
 		
-		return command;
+		return current;
 	}
 	
 	/**
