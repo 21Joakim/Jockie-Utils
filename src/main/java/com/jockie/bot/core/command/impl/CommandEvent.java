@@ -23,23 +23,24 @@ import com.jockie.bot.core.property.IPropertyContainer;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDA.ShardInfo;
-import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.PrivateChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.GuildMessageChannelUnion;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.requests.RestAction;
-import net.dv8tion.jda.api.requests.restaction.MessageAction;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
-import net.dv8tion.jda.api.utils.AttachmentOption;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 
 /* 
  * TODO: Refactor to CommandEventImpl with a CommandEvent interface,
@@ -308,49 +309,76 @@ public class CommandEvent implements IPropertyContainer {
 	
 	/** Equivalent to {@link MessageChannel#sendMessage(CharSequence)}, using the event's channel */
 	@Nonnull
-	public MessageAction reply(CharSequence text) {
+	public MessageCreateAction reply(CharSequence text) {
 		return this.getChannel().sendMessage(text);
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessageEmbeds(MessageEmbed, MessageEmbed...)}, using the event's channel */
 	@Nonnull
-	public MessageAction reply(MessageEmbed embed) {
-		return this.getChannel().sendMessageEmbeds(embed);
+	public MessageCreateAction reply(MessageEmbed embed, MessageEmbed... other) {
+		return this.getChannel().sendMessageEmbeds(embed, other);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendMessage(Message)}, using the event's channel */
+	/** Equivalent to {@link MessageChannel#sendMessage(MessageCreateData)}, using the event's channel */
 	@Nonnull
-	public MessageAction reply(Message message) {
+	public MessageCreateAction reply(MessageCreateData message) {
 		return this.getChannel().sendMessage(message);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(File, AttachmentOption...)}, using the event's channel */
+	/** 
+	 * Equivalent to {@link MessageChannel#sendMessage(MessageCreateData)}, using the event's channel
+	 * and created with {@link MessageCreateData#fromMessage(Message)}
+	 */
 	@Nonnull
-	public MessageAction replyFile(File file, AttachmentOption... options) {
-		return this.getChannel().sendFile(file, options);
+	public MessageCreateAction reply(Message message) {
+		return this.getChannel().sendMessage(MessageCreateData.fromMessage(message));
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(byte[], String, AttachmentOption...)}, using the event's channel */
+	/** Equivalent to {@link MessageChannel#sendFiles(FileUpload...)}, using the event's channel */
 	@Nonnull
-	public MessageAction replyFile(byte[] data, String fileName, AttachmentOption... options) {
-		return this.getChannel().sendFile(data, fileName, options);
+	public MessageCreateAction replyFiles(FileUpload... files) {
+		return this.getChannel().sendFiles(files);
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(File, String, AttachmentOption...)}, using the event's channel */
+	/** 
+	 * Equivalent to {@link MessageChannel#sendFiles(FileUpload...)}, using the event's channel
+	 * and created with {@link FileUpload#fromData(File)}
+	 */
 	@Nonnull
-	public MessageAction replyFile(File file, String fileName, AttachmentOption... options) {
-		return this.getChannel().sendFile(file, fileName, options);
+	public MessageCreateAction replyFile(File file) {
+		return this.getChannel().sendFiles(FileUpload.fromData(file));
 	}
 	
-	/** Equivalent to {@link MessageChannel#sendFile(InputStream, String, AttachmentOption...)}, using the event's channel */
+	/** 
+	 * Equivalent to {@link MessageChannel#sendFiles(FileUpload...)}, using the event's channel
+	 * and created with {@link FileUpload#fromData(byte[], String)}
+	 */
 	@Nonnull
-	public MessageAction replyFile(InputStream data, String fileName, AttachmentOption... options) {
-		return this.getChannel().sendFile(data, fileName, options);
+	public MessageCreateAction replyFile(byte[] data, String fileName) {
+		return this.getChannel().sendFiles(FileUpload.fromData(data, fileName));
+	}
+	
+	/** 
+	 * Equivalent to {@link MessageChannel#sendFiles(FileUpload...)}, using the event's channel
+	 * and created with {@link FileUpload#fromData(File, String)}
+	 */
+	@Nonnull
+	public MessageCreateAction replyFile(File file, String fileName) {
+		return this.getChannel().sendFiles(FileUpload.fromData(file, fileName));
+	}
+	
+	/** 
+	 * Equivalent to {@link MessageChannel#sendFiles(FileUpload...)}, using the event's channel
+	 * and created with {@link FileUpload#fromData(InputStream, String)}
+	 */
+	@Nonnull
+	public MessageCreateAction replyFile(InputStream data, String fileName) {
+		return this.getChannel().sendFiles(FileUpload.fromData(data, fileName));
 	}
 	
 	/** Equivalent to {@link MessageChannel#sendMessageFormat(String, Object...)}, using the event's channel */
 	@Nonnull
-	public MessageAction replyFormat(String format, Object... args) {
+	public MessageCreateAction replyFormat(String format, Object... args) {
 		return this.getChannel().sendMessageFormat(format, args);
 	}
 	

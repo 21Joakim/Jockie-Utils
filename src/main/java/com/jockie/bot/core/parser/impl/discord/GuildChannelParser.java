@@ -11,7 +11,7 @@ import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.ArgumentUtility;
 
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 
 /* Even though Category technically does implement Channel I do not want it to be a part of the Channel argument, objections? */
 public class GuildChannelParser<Component> implements IParser<GuildChannel, Component> {

@@ -20,8 +20,8 @@ import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.property.IPropertyContainer;
 
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.internal.utils.Checks;
 
 public interface ICommand extends IPropertyContainer {

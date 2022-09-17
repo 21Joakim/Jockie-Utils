@@ -16,6 +16,8 @@ import com.jockie.bot.core.utility.CommandUtility;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.internal.utils.Checks;
 
 public class ReturnManagerImpl implements IReturnManager {
@@ -28,11 +30,17 @@ public class ReturnManagerImpl implements IReturnManager {
 		this.registerHandler(CharSequence.class, (event, value) -> event.reply(value).queue())
 			.setHandleInheritance(CharSequence.class, true);
 		
+		this.registerHandler(MessageCreateData.class, (event, value) -> event.reply(value).queue())
+			.setHandleInheritance(MessageCreateData.class, true);
+		
 		this.registerHandler(Message.class, (event, value) -> event.reply(value).queue())
 			.setHandleInheritance(Message.class, true);
 		
 		this.registerHandler(MessageEmbed.class, (event, value) -> event.reply(value).queue())
 			.setHandleInheritance(MessageEmbed.class, true);
+		
+		this.registerHandler(FileUpload.class, (event, value) -> event.replyFiles(value).queue())
+			.setHandleInheritance(FileUpload.class, true);
 		
 		this.registerHandler(File.class, (event, value) -> event.replyFile(value).queue());
 	}

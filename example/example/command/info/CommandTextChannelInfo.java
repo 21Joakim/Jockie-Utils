@@ -9,9 +9,9 @@ import com.jockie.bot.core.command.impl.CommandImpl;
 
 import example.Main;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Invite;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 public class CommandTextChannelInfo extends CommandImpl {
 

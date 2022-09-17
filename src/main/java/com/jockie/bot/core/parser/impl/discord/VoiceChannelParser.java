@@ -9,7 +9,7 @@ import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.ArgumentUtility;
 
-import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 
 public class VoiceChannelParser<Component> implements IParser<VoiceChannel, Component> {
 	

@@ -1,6 +1,7 @@
 package example.command.moderation;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import com.jockie.bot.core.argument.Argument;
 import com.jockie.bot.core.command.impl.CommandEvent;
@@ -26,7 +27,8 @@ public class CommandBan extends CommandImpl {
 		Member member = event.getGuild().getMember(user);
 		if(member == null) {
 			/* This is for the so called "hackban" command */
-			event.getGuild().ban(user, 0, reason)
+			event.getGuild().ban(user, 0, TimeUnit.SECONDS)
+				.reason(reason)
 				.flatMap((success) -> event.replyFormat("**%s** has been banned", user.getAsTag()))
 				.queue();
 			
@@ -45,7 +47,8 @@ public class CommandBan extends CommandImpl {
 			return;
 		}
 		
-		member.ban(0, reason)
+		member.ban(0, TimeUnit.SECONDS)
+			.reason(reason)
 			.flatMap((success) -> event.replyFormat("**%s** has been banned", user.getAsTag()))
 			.queue();
 	}

@@ -172,7 +172,10 @@ public class CommandImpl extends MethodCommandImpl {
 		
 		for(Method method : this.getClass().getDeclaredMethods()) {
 			if(method.getName().equalsIgnoreCase("onCommand") || method.getName().equalsIgnoreCase("on_command")) {
-				methods.add(method);
+				Command command = method.getAnnotation(Command.class);
+				if(command == null || command.value().isEmpty()) {
+					methods.add(method);
+				}
 			}
 		}
 		

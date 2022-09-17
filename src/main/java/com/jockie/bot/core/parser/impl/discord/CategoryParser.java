@@ -9,7 +9,7 @@ import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.ArgumentUtility;
 
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 
 public class CategoryParser<Component> implements IParser<Category, Component> {
 	
