@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -129,6 +128,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	protected Set<Class<?>> getExtendedClasses(Class<?> type) {
 		Set<Class<?>> classes = new LinkedHashSet<>();
+		
+		/*
+		 * TODO: Figure out why this wasn't in the initial implementation,
+		 * I presume, because there was no comment or additional information
+		 * about it, that this was either a design choice or a bug
+		 */
+		classes.add(type);
+		
 		this.addExtendedClasses(classes, type);
 		
 		classes.add(Object.class);
@@ -376,7 +383,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 		}
 		
 		if(builder == null) {
-			builder = new OptionImpl.Builder(type);
+			builder = new OptionImpl.Builder<>(type);
 		}
 		
 		if(builder.getParser() == null) {
@@ -412,7 +419,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@Override
 	@Nonnull
-	public <T> OptionFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IOption<T>> parser) {
+	public <T> OptionFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, ? extends IOption<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -431,7 +438,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 	
 	@Override
 	@Nonnull
-	public <T> OptionFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IOption<T>> parser) {
+	public <T> OptionFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, ? extends IOption<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -616,9 +623,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		Set<?> builders = this.builderConfigureFunctions.get(type);
 		if(builders != null) {
-			return builders.stream()
-				.map((builder) -> (BuilderConfigureFunction<T>) builder)
-				.collect(Collectors.toList());
+			return (List<BuilderConfigureFunction<T>>) new ArrayList<>(builders);
 		}
 		
 		return Collections.emptyList();
@@ -653,16 +658,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		Set<?> builders = genericBuilderConfigureFunctions.get(type);
 		if(builders != null) {
-			return builders.stream()
-				.map((builder) -> (BuilderConfigureFunction<T>) builder)
-				.collect(Collectors.toList());
+			return (List<BuilderConfigureFunction<T>>) new ArrayList<>(builders);
 		}
 		
 		return Collections.emptyList();
 	}
 	
 	@Override
-	public <T> OptionFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IOption<T>> parser) {
+	public <T> OptionFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IOption<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -692,16 +695,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		Set<?> parsers = this.beforeParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IBeforeParser<T>) parser)
-				.collect(Collectors.toList());
+			return (List<IBeforeParser<T>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();
 	}
 	
 	@Override
-	public <T> OptionFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IOption<T>> parser) {
+	public <T> OptionFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IOption<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -731,16 +732,14 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		Set<?> parsers = this.genericBeforeParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IBeforeParser<T>) parser)
-				.collect(Collectors.toList());
+			return (List<IBeforeParser<T>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();
 	}
 	
 	@Override
-	public <T> OptionFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IOption<T>> parser) {
+	public <T> OptionFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, ? extends IOption<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -770,9 +769,7 @@ public class OptionFactoryImpl implements IOptionFactory {
 		
 		Set<?> parsers = this.afterParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IAfterParser<T, IOption<T>>) parser)
-				.collect(Collectors.toList());
+			return (List<IAfterParser<T, IOption<T>>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();

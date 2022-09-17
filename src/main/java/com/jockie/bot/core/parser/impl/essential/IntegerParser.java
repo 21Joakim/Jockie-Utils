@@ -12,9 +12,9 @@ public class IntegerParser<Component> implements IParser<Integer, Component> {
 	@Nonnull
 	public ParsedResult<Integer> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Integer.parseInt(content));
+			return ParsedResult.valid(Integer.parseInt(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

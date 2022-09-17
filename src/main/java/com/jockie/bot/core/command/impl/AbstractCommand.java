@@ -568,7 +568,8 @@ public abstract class AbstractCommand implements ICommand {
 		return this;
 	}
 	
+	@Override
 	public String toString() {
-		return (this.getCommandTrigger() + " " + this.getArgumentInfo()).trim();
+		return String.format("%s{usage=%s}", this.getClass().getSimpleName(), this.getUsage().trim());
 	}
 }

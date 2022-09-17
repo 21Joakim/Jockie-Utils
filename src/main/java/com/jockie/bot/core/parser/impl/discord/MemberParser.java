@@ -18,9 +18,9 @@ public class MemberParser<Component> implements IParser<Member, Component> {
 	public ParsedResult<Member> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<Member> members = ArgumentUtility.getMembersByIdOrName(context.getMessage().getGuild(), content, true);
 		if(members.size() == 1) {
-			return new ParsedResult<>(true, members.get(0));
+			return ParsedResult.valid(members.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

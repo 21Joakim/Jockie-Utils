@@ -68,6 +68,11 @@ public class DummyCommand implements ICommand {
 		public String getArgumentInfo() {
 			return ICommand.getArgumentInfo(this);
 		}
+		
+		@Override
+		public String toString() {
+			return String.format("AlternativeCommand<%s>{usage=%s}", this.command.getClass().getSimpleName(), this.getUsage().trim());
+		}
 	}
 	
 	protected ICommand command;
@@ -344,5 +349,10 @@ public class DummyCommand implements ICommand {
 	@Nonnull
 	public Map<String, Object> getProperties() {
 		return this.command.getProperties();
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("DummyCommand<%s>{usage=%s}", this.command.getClass().getSimpleName(), (this.getCommandTrigger() + " " + ICommand.getArgumentInfo(this)).trim());
 	}
 }

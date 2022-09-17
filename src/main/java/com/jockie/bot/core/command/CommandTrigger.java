@@ -17,4 +17,9 @@ public class CommandTrigger {
 	public ICommand getCommand() {
 		return this.command;
 	}
+	
+	@Override
+	public String toString() {
+		return String.format("CommandTrigger{trigger=%s, command=%s}", this.trigger, this.command);
+	}
 }

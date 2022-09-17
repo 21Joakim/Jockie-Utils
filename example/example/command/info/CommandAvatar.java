@@ -15,6 +15,7 @@ public class CommandAvatar extends CommandImpl {
 	public CommandAvatar() {
 		super("avatar");
 		
+		super.setAliases("av");
 		super.setDescription("Get the avatar of a user");
 	}
 	

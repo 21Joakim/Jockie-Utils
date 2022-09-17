@@ -40,17 +40,17 @@ public class JSONObjectParser<Component> implements IParser<JSONObject, Componen
 		String key;
 
 		if(tokener.nextClean() != '{') {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 		
 		for(;;) {
 			character = tokener.nextClean();
 			switch(character) {
 				case 0: {
-					return new ParsedResult<>(false, null);
+					return ParsedResult.invalid();
 				}
 				case '}': {
-					return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
+					return ParsedResult.valid(object, value.substring(this.getIndex(tokener)));
 				}
 				default: {
 					tokener.back();
@@ -60,20 +60,20 @@ public class JSONObjectParser<Component> implements IParser<JSONObject, Componen
 			
 			character = tokener.nextClean();
 			if(character != ':') {
-				return new ParsedResult<>(false, null);
+				return ParsedResult.invalid();
 			}
 			
 			try {
 				object.putOnce(key, tokener.nextValue());
 			}catch(JSONException e) {
-				return new ParsedResult<>(false, null);
+				return ParsedResult.invalid();
 			}
 			
 			switch(tokener.nextClean()) {
 				case ';': 
 				case ',': {
 					if(tokener.nextClean() == '}') {
-						return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
+						return ParsedResult.valid(object, value.substring(this.getIndex(tokener)));
 					}
 					
 					tokener.back();
@@ -81,10 +81,10 @@ public class JSONObjectParser<Component> implements IParser<JSONObject, Componen
 					break;
 				}
 				case '}': {
-					return new ParsedResult<>(true, object, value.substring(this.getIndex(tokener)));
+					return ParsedResult.valid(object, value.substring(this.getIndex(tokener)));
 				}
 				default: {
-					return new ParsedResult<>(false, null);
+					return ParsedResult.invalid();
 				}
 			}
 		}

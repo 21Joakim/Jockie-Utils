@@ -1,19 +1,19 @@
 package com.jockie.bot.core.argument.impl;
 
 import java.lang.reflect.Array;
-import java.util.Set;
+import java.util.Collection;
 
 import javax.annotation.Nonnull;
 
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.command.ICommand.ArgumentTrimType;
+import com.jockie.bot.core.command.parser.ICommandParser;
 import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.command.parser.impl.CommandParserImpl;
 import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.StringUtility;
-
-import net.dv8tion.jda.internal.utils.tuple.Pair;
+import com.jockie.bot.core.utility.StringUtility.QuoteCharacter;
 
 public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Type[]>> {
 	
@@ -26,9 +26,23 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 	
 	private EndlessArgumentParser() {}
 	
+	private Collection<QuoteCharacter> getQuoteCharacters(ParseContext context) {
+		ICommandParser commandParser = context.getCommandParser();
+		if(commandParser instanceof CommandParserImpl) {
+			return ((CommandParserImpl) commandParser).getQuoteCharacters();
+		}
+		
+		/* TODO: Unsure of what to do if it's not a CommandParserImpl */
+		return StringUtility.DEFAULT_QUOTE_CHARACTERS;
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Nonnull
-	/* TODO: Probably need to look over and re-make this */
+	/* 
+	 * TODO: Probably need to look over and re-make this to be more in line with the CommandParserImpl.
+	 * Currently changing either this or CommandParserImpl may require changes to the other to keep the
+	 * behaviour consistent, a setup like this can easily introduce bugs.
+	 */
 	public ParsedResult<Type[]> parse(@Nonnull ParseContext context, @Nonnull IArgument<Type[]> argument, @Nonnull String value) {
 		if(!(argument instanceof EndlessArgumentImpl)) {
 			throw new UnsupportedOperationException();
@@ -37,19 +51,17 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 		EndlessArgumentImpl<Type> self = (EndlessArgumentImpl<Type>) argument;
 		
 		int argumentCount = 0;
+		int maxArguments = self.getMaxArguments() > 0 ? self.getMaxArguments() : (int) value.codePoints().filter((character) -> character == ' ').count() + 1;
 		
-		int maxArguments = self.getMaxArguments() > 0 ? self.getMaxArguments() : (int) value.codePoints().filter(c2 -> c2 == ' ').count() + 1;
 		Type[] parsedArguments = (Type[]) Array.newInstance(self.getComponentType(), maxArguments);
-		
 		for(int i = 0; i < parsedArguments.length; i++) {
-			if(value.trim().length() == 0) {
+			if(value.trim().isEmpty()) {
 				break;
 			}
 			
-			if(i != 0 && value.length() > 0) {
-				if(value.startsWith(" ")) {
-					ArgumentTrimType trimType = context.getCommand().getArgumentTrimType();
-					if(trimType != ArgumentTrimType.NONE) {
+			if(i != 0 && !value.isEmpty()) {
+				if(value.charAt(0) == ' ') {
+					if(context.getCommand().getArgumentTrimType() != ArgumentTrimType.NONE) {
 						value = StringUtility.stripLeading(value);
 					}else{
 						value = value.substring(1);
@@ -77,42 +89,34 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 					value = "";
 				}
 			}else{
-				if(value.length() > 0) {
-					if(self.getArgument().acceptQuote()) {
-						Set<Pair<Character, Character>> quotesCharacters;
-						if(context.getCommandParser() instanceof CommandParserImpl) {
-							quotesCharacters = ((CommandParserImpl) context.getCommandParser()).getQuoteCharacters();
-						}else{
-							/* TODO: Unsure of what to do if it's not a CommandParserImpl */
-							quotesCharacters = Set.of(Pair.of('"', '"'));
+				if(!value.isEmpty() && self.getArgument().acceptQuote()) {
+					for(QuoteCharacter quote : this.getQuoteCharacters(context)) {
+						content = StringUtility.parseWrapped(value, quote.start, quote.end);
+						if(content == null) {
+							continue;
 						}
 						
-						for(Pair<Character, Character> quotes : quotesCharacters) {
-							content = StringUtility.parseWrapped(value, quotes.getLeft(), quotes.getRight());
-							if(content != null) {
-								value = value.substring(content.length());
-								content = StringUtility.unwrap(content, quotes.getLeft(), quotes.getRight());
-								
-								if(context.getCommand().getArgumentTrimType() == ArgumentTrimType.STRICT) {
-									content = StringUtility.strip(content);
-								}
-								
-								break;
-							}
-						}
-					}
-					
-					if(content == null) {
-						content = value.substring(0, (value.contains(" ")) ? value.indexOf(" ") : value.length());
 						value = value.substring(content.length());
+						content = StringUtility.unwrap(content, quote.start, quote.end);
+						
+						if(context.getCommand().getArgumentTrimType() == ArgumentTrimType.STRICT) {
+							content = StringUtility.strip(content);
+						}
+						
+						break;
 					}
-				}else{
-					content = "";
 				}
 				
-				if(content.length() == 0 && !self.getArgument().acceptEmpty()) {
+				if(content == null) {
+					int index = value.indexOf(' ');
+					content = value.substring(0, index != -1 ? index : value.length());
+					
+					value = value.substring(content.length());
+				}
+				
+				if(content.isEmpty() && !self.getArgument().acceptEmpty()) {
 					/* Content may not be empty */
-					return new ParsedResult<>(false, null);
+					return ParsedResult.invalid();
 				}
 				
 				parsedArgument = self.getArgument().parse(context, content);
@@ -122,18 +126,17 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 				parsedArguments[argumentCount++] = (Type) parsedArgument.getObject();
 			}else{
 				/* "argument at index " + (i + 1) + " is not valid" */
-				return new ParsedResult<>(false, null);
+				return ParsedResult.invalid();
 			}
 		}
 		
-		if(value.length() > 0) {
+		if(!value.isEmpty()) {
 			/* Content overflow, when does this happen? */
-			
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 		
 		if(argumentCount < self.getMinArguments() || ((self.getMaxArguments() > 0) ? argumentCount > self.getMaxArguments() : false)) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 		
 		Type[] objects = (Type[]) Array.newInstance(self.getComponentType(), argumentCount);
@@ -141,6 +144,6 @@ public class EndlessArgumentParser<Type> implements IParser<Type[], IArgument<Ty
 			objects[i2] = (Type) parsedArguments[i2];
 		}
 		
-		return new ParsedResult<>(true, objects);
+		return ParsedResult.valid(objects);
 	}
 }

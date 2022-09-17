@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -20,6 +21,7 @@ import net.dv8tion.jda.internal.utils.Checks;
 /**
  * Methods used internally for loading commands and modules
  */
+/* TODO: Move all class related utility methods to another more specific utility class */
 public class CommandUtility {
 	
 	private CommandUtility() {}
@@ -122,32 +124,40 @@ public class CommandUtility {
 	}
 	
 	/**
+	 * @param parameterizedType the type
+	 * 
+	 * @return the generic classes of the provided type, 
+	 * if the generic type is not a class it will be null instead of the class
+	 */
+	@Nonnull
+	public static Class<?>[] getGenericClasses(ParameterizedType parameterizedType) {
+		Type[] types = parameterizedType.getActualTypeArguments();
+		
+		Class<?>[] classes = new Class<?>[types.length];
+		for(int i = 0; i < types.length; i++) {
+			Type type = types[i];
+			if(type instanceof Class) {
+				classes[i] = (Class<?>) type;
+			}else{
+				classes[i] = null;
+			}
+		}
+		
+		return classes;
+	}
+	
+	/**
 	 * @param type the type
 	 * 
 	 * @return the generic classes of the provided type, 
-	 * if the generic type is not a class it will be a null instead of the class
+	 * if the generic type is not a class it will be null instead of the class
 	 */
 	@Nonnull
 	public static Class<?>[] getGenericClasses(@Nonnull Type type) {
 		Checks.notNull(type, "type");
 		
 		if(type instanceof ParameterizedType) {
-			ParameterizedType parameterizedType = (ParameterizedType) type;
-			
-			Type[] typeArguments = parameterizedType.getActualTypeArguments();
-			Class<?>[] classes = new Class<?>[typeArguments.length];
-			
-			for(int i = 0; i < typeArguments.length; i++) {
-				Type typeArgument = typeArguments[i];
-				
-				if(typeArgument instanceof Class) {
-					classes[i] = (Class<?>) typeArgument;
-				}else{
-					classes[i] = null;
-				}
-			}
-			
-			return classes;
+			return CommandUtility.getGenericClasses((ParameterizedType) type);
 		}
 		
 		return new Class[0];
@@ -218,102 +228,100 @@ public class CommandUtility {
 		return name.toString();
 	}
 	
-	public static Method findCommandCreateMethod(Method[] methods) {
-		for(Method method : methods) {
-			if(!method.getName().equals("createCommand")) {
-				continue;
-			}
-			
-			if(!CommandUtility.isInstanceOf(method.getReturnType(), IMethodCommand.class)) {
-				continue;
-			}
-			
-			Class<?>[] types = method.getParameterTypes();
-			if(types.length == 1) {
-				if(types[0].isAssignableFrom(Method.class)) {
-					return method;
-				}
-			}else if(types.length == 2) {
-				if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-					return method;
-				}
+	public static boolean isCommandCreateMethod(Method method) {
+		if(!method.getName().equals("createCommand")) {
+			return false;
+		}
+		
+		if(!CommandUtility.isInstanceOf(method.getReturnType(), IMethodCommand.class)) {
+			return false;
+		}
+		
+		Class<?>[] types = method.getParameterTypes();
+		if(types.length == 1) {
+			return types[0].isAssignableFrom(Method.class);
+		}
+		
+		if(types.length == 2) {
+			return types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class);
+		}
+		
+		return false;
+	}
+	
+	public static boolean isCommandLoadMethod(Method method) {
+		if(!method.getName().equals("onCommandLoad")) {
+			return false;
+		}
+		
+		if(method.getParameterCount() != 1) {
+			return false;
+		}
+		
+		return method.getParameterTypes()[0].isAssignableFrom(ICommand.class);
+	}
+	
+	public static boolean isModuleLoadMethod(Method method) {
+		if(!method.getName().equals("onModuleLoad")) {
+			return false;
+		}
+		
+		return method.getParameterCount() == 0;
+	}
+	
+	/* TODO: Move this to some more general utility class */
+	public static <T> T find(T[] values, Predicate<T> predicate) {
+		for(T value : values) {
+			if(predicate.test(value)) {
+				return value;
 			}
 		}
 		
 		return null;
 	}
 	
-	public static Method findCommandLoadMethod(Method[] methods) {
-		for(Method method : methods) {
-			if(!method.getName().equals("onCommandLoad")) {
-				continue;
-			}
-			
-			if(method.getParameterCount() != 1) {
-				continue;
-			}
-			
-			if(!method.getParameterTypes()[0].isAssignableFrom(ICommand.class)) {
-				continue;
-			}
-			
-			return method;
-		}
-		
-		return null;
-	}
-	
-	public static Method findModuleLoadMethod(Method[] methods) {
-		for(Method method : methods) {
-			if(!method.getName().equals("onModuleLoad")) {
-				continue;
-			}
-			
-			if(method.getParameterCount() != 0) {
-				continue;
-			}
-			
-			return method;
-		}
-		
-		return null;
-	}
-	
-	public static List<Method> getCommandMethods(Method[] methods) {
+	public static List<Method> getCommandMethods(Method[] methods, boolean subCommand) {
 		List<Method> commandMethods = new ArrayList<>();
 		for(Method method : methods) {
-			if(method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(SubCommand.class)) {
-				commandMethods.add(method);
+			if(!method.isAnnotationPresent(Command.class)) {
+				continue;
 			}
+			
+			if(method.isAnnotationPresent(SubCommand.class) != subCommand) {
+				continue;
+			}
+			
+			commandMethods.add(method);
 		}
 		
 		return commandMethods;
 	}
 	
+	public static List<Method> getCommandMethods(Method[] methods) {
+		return CommandUtility.getCommandMethods(methods, false);
+	}
+	
 	public static List<Method> getSubCommandMethods(Method[] methods) {
-		List<Method> subCommandMethods = new ArrayList<>();
-		for(Method method : methods) {
-			if(method.isAnnotationPresent(Command.class) && method.isAnnotationPresent(SubCommand.class)) {
-				subCommandMethods.add(method);
-			}
-		}
-		
-		return subCommandMethods;
+		return CommandUtility.getCommandMethods(methods, true);
 	}
 	
 	public static ICommand getSubCommandRecursive(ICommand start, String[] path) {
 		Objects.requireNonNull(path, "path must not be null");
 		
-		if(path.length > 0 && start != null) {
-			String path0 = path[0];
-			for(ICommand subCommand : start.getSubCommands()) {
-				if(subCommand.getCommand().equalsIgnoreCase(path0)) {
-					String[] newPath = new String[path.length - 1];
-					System.arraycopy(path, 1, newPath, 0, path.length - 1);
-					
-					return getSubCommandRecursive(subCommand, newPath);
-				}
+		if(path.length == 0 || start == null) {
+			return start;
+		}
+		
+		String startPath = path[0];
+		for(ICommand subCommand : start.getSubCommands()) {
+			if(!subCommand.getCommand().equalsIgnoreCase(startPath)) {
+				continue;
 			}
+			
+			String[] newPath = new String[path.length - 1];
+			System.arraycopy(path, 1, newPath, 0, path.length - 1);
+			
+			return CommandUtility.getSubCommandRecursive(subCommand, newPath);
 		}
 		
 		return start;

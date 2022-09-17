@@ -38,11 +38,11 @@ public class JSONArrayParser<Component> implements IParser<JSONArray, Component>
 		JSONArray array = new JSONArray();
 		
 		if(tokener.nextClean() != '[') {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 		
 		if(tokener.nextClean() == ']') {
-			return new ParsedResult<>(true, array, value.substring(this.getIndex(tokener)));
+			return ParsedResult.valid(array, value.substring(this.getIndex(tokener)));
 		}
 		
 		tokener.back();
@@ -58,14 +58,14 @@ public class JSONArrayParser<Component> implements IParser<JSONArray, Component>
 				try {
 					array.put(tokener.nextValue());
 				}catch(JSONException e) {
-					return new ParsedResult<>(false, null);
+					return ParsedResult.invalid();
 				}
 			}
 			
 			switch (tokener.nextClean()) {
 				case ',': {
 					if(tokener.nextClean() == ']') {
-						return new ParsedResult<>(true, array, value.substring(this.getIndex(tokener)));
+						return ParsedResult.valid(array, value.substring(this.getIndex(tokener)));
 					}
 					
 					tokener.back();
@@ -73,10 +73,10 @@ public class JSONArrayParser<Component> implements IParser<JSONArray, Component>
 					break;
 				}
 				case ']': {
-					return new ParsedResult<>(true, array, value.substring(this.getIndex(tokener)));
+					return ParsedResult.valid(array, value.substring(this.getIndex(tokener)));
 				}
 				default: {
-					return new ParsedResult<>(false, null);
+					return ParsedResult.invalid();
 				}
 			}
 		}

@@ -18,9 +18,9 @@ public class CategoryParser<Component> implements IParser<Category, Component> {
 	public ParsedResult<Category> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<Category> categories = ArgumentUtility.getCategoriesByIdOrName(context.getMessage().getGuild(), content, true);
 		if(categories.size() == 1) {
-			return new ParsedResult<>(true, categories.get(0));
+			return ParsedResult.valid(categories.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

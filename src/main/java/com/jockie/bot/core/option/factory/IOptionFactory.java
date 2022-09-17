@@ -29,7 +29,7 @@ public interface IOptionFactory {
 	 * @return the {@link IOptionFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IOptionFactory registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IOption<T>> parser);
+	public <T> IOptionFactory registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, ? extends IOption<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to unregister
@@ -56,7 +56,7 @@ public interface IOptionFactory {
 	 * 
 	 * @return the {@link IOptionFactory} instance, useful for chaining
 	 */
-	public <T> IOptionFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IOption<T>> parser);
+	public <T> IOptionFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IOption<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -84,7 +84,7 @@ public interface IOptionFactory {
 	 * 
 	 * @return the {@link IOptionFactory} instance, useful for chaining
 	 */
-	public <T> IOptionFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IOption<T>> parser);
+	public <T> IOptionFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, ? extends IOption<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -114,7 +114,7 @@ public interface IOptionFactory {
 	 * 
 	 * @return the {@link IOptionFactory} instance, useful for chaining
 	 */
-	public <T> IOptionFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IOption<T>> parser);
+	public <T> IOptionFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IOption<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to remove
@@ -145,7 +145,7 @@ public interface IOptionFactory {
 	 * @return the {@link IOptionFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IOptionFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IOption<T>> parser);
+	public <T> IOptionFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, ? extends IOption<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to unregister

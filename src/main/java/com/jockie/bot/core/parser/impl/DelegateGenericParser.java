@@ -30,7 +30,7 @@ public class DelegateGenericParser<T, Component extends IParsableComponent<T, Co
 		for(IBeforeParser<Component> parser : this.beforeParsers) {
 			ParsedResult<String> parsed = parser.parse(context, argument, content);
 			if(!parsed.isValid()) {
-				return new ParsedResult<T>(false, null);
+				return ParsedResult.invalid();
 			}
 			
 			String value = parsed.getObject();
@@ -56,7 +56,7 @@ public class DelegateGenericParser<T, Component extends IParsableComponent<T, Co
 			object = newResult.getObject();
 		}
 		
-		return new ParsedResult<T>(true, object, parsed.getContentLeft());
+		return ParsedResult.valid(object, parsed.getContentLeft());
 	}
 	
 	@Override

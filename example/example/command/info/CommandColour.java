@@ -11,6 +11,8 @@ public class CommandColour extends CommandImpl {
 	
 	public CommandColour() {
 		super("colour");
+		
+		super.setAliases("color");
 	}
 	
 	private String getColourHex(int colourRaw) {

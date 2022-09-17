@@ -18,9 +18,9 @@ public class VoiceChannelParser<Component> implements IParser<VoiceChannel, Comp
 	public ParsedResult<VoiceChannel> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<VoiceChannel> channels = ArgumentUtility.getVoiceChannelsByIdOrName(context.getMessage().getGuild(), content, true);
 		if(channels.size() == 1) {
-			return new ParsedResult<>(true, channels.get(0));
+			return ParsedResult.valid(channels.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

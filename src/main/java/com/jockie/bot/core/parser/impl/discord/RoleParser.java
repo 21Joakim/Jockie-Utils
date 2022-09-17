@@ -18,9 +18,9 @@ public class RoleParser<Component> implements IParser<Role, Component> {
 	public ParsedResult<Role> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<Role> roles = ArgumentUtility.getRolesByIdOrName(context.getMessage().getGuild(), content, true);
 		if(roles.size() == 1) {
-			return new ParsedResult<>(true, roles.get(0));
+			return ParsedResult.valid(roles.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

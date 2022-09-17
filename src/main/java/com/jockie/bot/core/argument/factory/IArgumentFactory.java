@@ -29,7 +29,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IArgument<T>> parser);
+	public <T> IArgumentFactory registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, ? extends IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to unregister
@@ -56,7 +56,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser);
+	public <T> IArgumentFactory addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -84,7 +84,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IArgument<T>> parser);
+	public <T> IArgumentFactory addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, ? extends IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the parser to remove
@@ -114,7 +114,7 @@ public interface IArgumentFactory {
 	 * 
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
-	public <T> IArgumentFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser);
+	public <T> IArgumentFactory addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to remove
@@ -145,7 +145,7 @@ public interface IArgumentFactory {
 	 * @return the {@link IArgumentFactory} instance, useful for chaining
 	 */
 	@Nonnull
-	public <T> IArgumentFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IArgument<T>> parser);
+	public <T> IArgumentFactory registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, ? extends IArgument<T>> parser);
 	
 	/**
 	 * @param type the type of the generic parser to unregister

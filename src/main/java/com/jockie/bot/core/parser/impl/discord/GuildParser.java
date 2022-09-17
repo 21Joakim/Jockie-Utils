@@ -60,9 +60,9 @@ public class GuildParser<Component> implements IParser<Guild, Component> {
 	public ParsedResult<Guild> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<Guild> guilds = this.getGuilds(context, content);
 		if(guilds.size() == 1) {
-			return new ParsedResult<>(true, guilds.get(0));
+			return ParsedResult.valid(guilds.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

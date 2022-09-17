@@ -27,9 +27,9 @@ public class GuildChannelParser<Component> implements IParser<GuildChannel, Comp
 		}
 		
 		if(channels.size() == 1) {
-			return new ParsedResult<>(true, channels.get(0));
+			return ParsedResult.valid(channels.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

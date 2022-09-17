@@ -3,13 +3,14 @@ package example;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
 
 import com.jockie.bot.core.argument.factory.impl.ArgumentFactory;
 import com.jockie.bot.core.argument.factory.impl.ArgumentFactoryImpl;
@@ -34,8 +35,12 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.internal.utils.JDALogger;
 
 public class Main {
+	
+	private static final Logger LOG = JDALogger.getLog(Main.class);
 	
 	public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE;
 	
@@ -47,22 +52,44 @@ public class Main {
 		argumentFactory.registerParser(Color.class, (event, argument, value) -> {
 			Matcher matcher = hexPattern.matcher(value);
 			if(matcher.matches()) {
-				return new ParsedResult<>(true, Color.decode("#" + matcher.group(2)));
+				return ParsedResult.valid(Color.decode("#" + matcher.group(2)));
 			}
 			
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		});
 		
 		/* Register the class URL so that it can be used as an argument */
 		argumentFactory.registerParser(URL.class, (event, argument, value) -> {
 			try {
+				URL url = new URL(value);
+				
+				/* Ensure it's not a local file (server file) such as "file:///C:/Users/Joakim/Desktop/my%20nudes.png" */
+				String protocol = url.getProtocol();
+				if(!"http".equals(protocol) && !"https".equals(protocol)) {
+					return ParsedResult.invalid();
+				}
+				
 				/* 
-				 * Preferably you would add an extra check to not allow for local files (server files) to be used,
-				 * such as file:///C:/Users/Joakim/Desktop/my%20nudes.png 
+				 * Ensure it's not a local domain.
+				 * NOTE: There may be other domains configured on your system so be careful with this
 				 */
-				return new ParsedResult<>(true, new URL(value));
+				String host = url.getHost();
+				if(host.equals("localhost")) {
+					return ParsedResult.invalid();
+				}
+				
+				/* 
+				 * Ensure it's not a local ip.
+				 * NOTE: This does not check IPv6
+				 * NOTE: There may be other local addresses on your system so be careful with this
+				 */
+				if(host.equals("127.0.0.1")) {
+					return ParsedResult.invalid();
+				}
+				
+				return ParsedResult.valid(url);
 			}catch(MalformedURLException e) {
-				return new ParsedResult<>(false, null);
+				return ParsedResult.invalid();
 			}
 		});
 	}
@@ -71,10 +98,10 @@ public class Main {
 		argumentFactory.addGenericParserBefore(Object.class, (context, argument, value) -> {
 			Pattern pattern = argument.getProperty("pattern");
 			if(pattern != null && !pattern.matcher(value).matches()) {
-				return new ParsedResult<>(false, value);
+				return ParsedResult.invalid();
 			}
 			
-			return new ParsedResult<>(true, value);
+			return ParsedResult.valid(value);
 		});
 		
 		/* 
@@ -103,7 +130,7 @@ public class Main {
 				value = Math.max(min, value);
 			}
 			
-			return new ParsedResult<>(value);
+			return ParsedResult.valid(value);
 		});
 		
 		/* 
@@ -146,9 +173,7 @@ public class Main {
 		Main.registerMinMaxAnnotation(argumentFactory);
 		
 		/* Set the default exception handler to make sure you don't miss out on them exception */
-		Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-			throwable.printStackTrace();
-		});
+		Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> LOG.error("Uncaught exception from thread {}", thread.getName(), throwable));
 		
 		/* 
 		 * Set the default MethodCommandFactory, this is used when creating commands
@@ -157,12 +182,7 @@ public class Main {
 		 * 
 		 * NOTE: This needs to be registered before you load any commands (Like CommandStore.of)
 		 */
-		MethodCommandFactory.setDefault(new IMethodCommandFactory<>() {
-			@Override
-			public ExtendedCommand create(Method method, String name, Object invoker) {
-				return new ExtendedCommand(IMethodCommandFactory.getName(name, method), method, invoker);
-			}
-		});
+		MethodCommandFactory.setDefault((method, name, invoker) -> new ExtendedCommand(IMethodCommandFactory.getName(name, method), method, invoker));
 		
 		/* 
 		 * Register contexts for commands, for instance, if a command has
@@ -238,11 +258,12 @@ public class Main {
 			 */
 			.setHandleInheritance(Object.class, true);
 		
-		
 		/* Create the JDA instance */
 		JDABuilder.createDefault(token)
 			/* Register the CommandListener, this is an important step */
 			.addEventListeners(listener)
+			/* Required for message based commands */
+			.enableIntents(GatewayIntent.MESSAGE_CONTENT)
 			.build()
 			.awaitReady();
 	}

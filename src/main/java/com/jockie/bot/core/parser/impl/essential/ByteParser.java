@@ -12,9 +12,9 @@ public class ByteParser<Component> implements IParser<Byte, Component> {
 	@Nonnull
 	public ParsedResult<Byte> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Byte.parseByte(content));
+			return ParsedResult.valid(Byte.parseByte(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

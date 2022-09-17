@@ -36,4 +36,9 @@ public @interface Argument {
 	 */
 	public String value() default "";
 	
+	/**
+	 * @see IArgument#getDescription()
+	 */
+	public String description() default "";
+	
 }

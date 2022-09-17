@@ -10,11 +10,53 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import net.dv8tion.jda.internal.utils.Checks;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class StringUtility {
 	
 	private StringUtility() {}
+	
+	public static final QuoteCharacter DEFAULT_QUOTE_CHARACTER = new QuoteCharacter('"');
+	public static final Collection<QuoteCharacter> DEFAULT_QUOTE_CHARACTERS = List.of(DEFAULT_QUOTE_CHARACTER);
+	
+	public static final class QuoteCharacter {
+		
+		public final char start;
+		public final char end;
+		
+		public QuoteCharacter(char start, char end) {
+			this.start = start;
+			this.end = end;
+		}
+		
+		public QuoteCharacter(char character) {
+			this.start = character;
+			this.end = character;
+		}
+		
+		@Override
+		public boolean equals(final Object object) {
+			if(object == this) {
+				return true;
+			}
+			
+			if(object instanceof QuoteCharacter) {
+				QuoteCharacter other = (QuoteCharacter) object;
+				return this.start == other.start && this.end == other.end;
+			}
+			
+			return false;
+		}
+		
+		@Override
+		public int hashCode() {
+			return Character.hashCode(this.start) ^ Character.hashCode(this.end);
+		}
+		
+		@Override
+		public String toString() {
+			return "Quote{start=" + this.start + ", end=" + this.end + "}";
+		}
+	}
 	
 	public static <T> String concat(Collection<T> entities, Function<T, String> conversionFunction) {
 		return StringUtility.concat(entities, conversionFunction, "and");
@@ -113,18 +155,7 @@ public class StringUtility {
 	 */
 	@Nonnull
 	public static String unwrap(@Nonnull String wrappedString, char wrapCharacter) {
-		Checks.notNull(wrappedString, "wrappedString");
-		
-		if(wrappedString.charAt(0) != wrapCharacter) {
-			throw new IllegalArgumentException("wrappedString does not start with the wrapCharacter character");
-		}
-		
-		if(wrappedString.charAt(wrappedString.length() - 1) != wrapCharacter) {
-			throw new IllegalArgumentException("wrappedString does not end with the wrapCharacter character");
-		}
-		
-		return wrappedString.substring(1, wrappedString.length() - 1)
-			.replace("\\" + wrapCharacter, String.valueOf(wrapCharacter));
+		return StringUtility.unwrap(wrappedString, wrapCharacter, wrapCharacter);
 	}
 	
 	/**
@@ -154,9 +185,14 @@ public class StringUtility {
 			throw new IllegalArgumentException("wrappedString does not end with the wrapEnd character");
 		}
 		
-		return wrappedString.substring(1, wrappedString.length() - 1)
-			.replace("\\" + wrapStart, String.valueOf(wrapStart))
-			.replace("\\" + wrapEnd, String.valueOf(wrapEnd));
+		wrappedString = wrappedString.substring(1, wrappedString.length() - 1)
+			.replace("\\" + wrapStart, String.valueOf(wrapStart));
+		
+		if(wrapStart != wrapEnd) {
+			wrappedString = wrappedString.replace("\\" + wrapEnd, String.valueOf(wrapEnd));
+		}
+		
+		return wrappedString;
 	}
 	
 	/**
@@ -208,7 +244,7 @@ public class StringUtility {
 	 * @return the map containing the parsed values
 	 */
 	public static Map<String, String> asMap(@Nonnull String string) {
-		return StringUtility.asMap(string, List.of(Pair.of('"', '"')));
+		return StringUtility.asMap(string, DEFAULT_QUOTE_CHARACTERS);
 	}
 	
 	/**
@@ -223,7 +259,7 @@ public class StringUtility {
 	 * @return the map containing the parsed values
 	 */
 	@Nullable
-	public static Map<String, String> asMap(@Nonnull String string, Collection<Pair<Character, Character>> quoteCharacters) {
+	public static Map<String, String> asMap(@Nonnull String string, Collection<QuoteCharacter> quotes) {
 		Checks.notNull(string, "string");
 		
 		Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -243,21 +279,21 @@ public class StringUtility {
 			string = string.trim();
 			
 			String quotedKey = null;
-			for(Pair<Character, Character> quotes : quoteCharacters) {
-				quotedKey = StringUtility.parseWrapped(key, quotes.getLeft(), quotes.getRight());
+			for(QuoteCharacter quote : quotes) {
+				quotedKey = StringUtility.parseWrapped(key, quote.start, quote.end);
 				if(quotedKey != null) {
-					quotedKey = StringUtility.unwrap(quotedKey, quotes.getLeft(), quotes.getRight());
+					quotedKey = StringUtility.unwrap(quotedKey, quote.start, quote.end);
 					
 					break;
 				}
 			}
 			
 			String value = null;
-			for(Pair<Character, Character> quotes : quoteCharacters) {
-				value = StringUtility.parseWrapped(string, quotes.getLeft(), quotes.getRight());
+			for(QuoteCharacter quote : quotes) {
+				value = StringUtility.parseWrapped(string, quote.start, quote.end);
 				if(value != null) {
 					string = string.substring(value.length());
-					value = StringUtility.unwrap(value, quotes.getLeft(), quotes.getRight());
+					value = StringUtility.unwrap(value, quote.start, quote.end);
 					
 					break;
 				}

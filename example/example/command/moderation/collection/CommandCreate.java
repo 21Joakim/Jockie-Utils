@@ -53,9 +53,9 @@ public class CommandCreate extends CommandImpl {
 	}
 	
 	@Cooldown(value=30, cooldownScope=Scope.GUILD)
-	@Command(botPermissions=Permission.MANAGE_EMOTES_AND_STICKERS, authorPermissions=Permission.MANAGE_EMOTES_AND_STICKERS)
-	public void emote(CommandEvent event, String name, @Argument(value="emoteUrl", nullDefault=true) URL emoteUrl) {
-		if(emoteUrl == null) {
+	@Command(botPermissions=Permission.MANAGE_EMOJIS_AND_STICKERS, authorPermissions=Permission.MANAGE_EMOJIS_AND_STICKERS)
+	public void emoji(CommandEvent event, String name, @Argument(value="emojiUrl", nullDefault=true) URL emojiUrl) {
+		if(emojiUrl == null) {
 			List<Attachment> attachments = event.getMessage().getAttachments();
 			if(attachments.isEmpty()) {
 				event.reply("No url or attachment was provided").queue();
@@ -64,7 +64,7 @@ public class CommandCreate extends CommandImpl {
 			}
 			
 			try {
-				emoteUrl = new URL(attachments.get(0).getUrl());
+				emojiUrl = new URL(attachments.get(0).getUrl());
 			}catch(MalformedURLException unlikely) {
 				event.reply("Something went wrong").queue();
 				
@@ -74,7 +74,7 @@ public class CommandCreate extends CommandImpl {
 		
 		Icon icon;
 		try {
-			try(InputStream stream = emoteUrl.openStream()) {
+			try(InputStream stream = emojiUrl.openStream()) {
 				icon = Icon.from(stream);
 			}
 		}catch(IOException e) {
@@ -83,9 +83,9 @@ public class CommandCreate extends CommandImpl {
 			return;
 		}
 		
-		event.getGuild().createEmote(name, icon)
-			.flatMap((emote) -> event.replyFormat("%s has been created", emote.getAsMention()))
-			.onErrorFlatMap((failure) -> event.reply("Ops, that might not be an image or there are too many emotes on this server already!"))
+		event.getGuild().createEmoji(name, icon)
+			.flatMap((emoji) -> event.replyFormat("%s has been created", emoji.getAsMention()))
+			.onErrorFlatMap((failure) -> event.reply("Ops, that might not be an image or there are too many emojis in this server already!"))
 			.queue();
 	}
 }

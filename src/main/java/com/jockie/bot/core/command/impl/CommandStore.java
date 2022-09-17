@@ -1,5 +1,6 @@
 package com.jockie.bot.core.command.impl;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -83,10 +84,10 @@ public class CommandStore {
 	private static String getCommandLoadErrorMessage(Method method, Class<?> clazz, ICommand command) {
 		String message = "Failed to load";
 		
-		if(method != null && clazz != null) {
-			message += " method command " + clazz.getName() + "#" + method.getName();
-		}else if(clazz != null) {
-			if(clazz.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(clazz, IModule.class)) {
+		if(clazz != null) {
+			if(method != null) {
+				message += " method command " + clazz.getName() + "#" + method.getName();
+			}else if(clazz.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(clazz, IModule.class)) {
 				message += " module " + clazz.getName();
 			}else{
 				message += " command " + clazz.getName();
@@ -103,14 +104,12 @@ public class CommandStore {
 	private static IMethodCommand executeCreateCommandMethod(Method createCommandMethod, Method commandMethod, Object commandContainer) {
 		try {
 			Class<?>[] types = createCommandMethod.getParameterTypes();
-			if(types.length == 1) {
-				if(types[0].isAssignableFrom(Method.class)) {
-					return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod);
-				}
-			}else if(types.length == 2) {
-				if(types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
-					return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod, CommandUtility.getCommandName(commandMethod));
-				}
+			if(types.length == 1 && types[0].isAssignableFrom(Method.class)) {
+				return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod);
+			}
+			
+			if(types.length == 2 && types[0].isAssignableFrom(Method.class) && types[1].isAssignableFrom(String.class)) {
+				return (IMethodCommand) createCommandMethod.invoke(commandContainer, commandMethod, CommandUtility.getCommandName(commandMethod));
 			}
 		}catch(IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			LOG.error("Failed to create method command", e);
@@ -150,19 +149,12 @@ public class CommandStore {
 	public static List<ICommand> loadModule(@Nonnull Object module) throws Throwable {
 		Objects.requireNonNull(module);
 		
-		List<ICommand> commands = new ArrayList<>();
-		Class<?> moduleClass = module.getClass();
-		
-		Method[] methods = moduleClass.getDeclaredMethods();
-		Class<?>[] classes = moduleClass.getDeclaredClasses();
-		
-		Method createCommand = CommandUtility.findCommandCreateMethod(methods);
-		Method onCommandLoadMethod = CommandUtility.findCommandLoadMethod(methods);
-		Method onModuleLoad = CommandUtility.findModuleLoadMethod(methods);
-		
 		BiFunction<Method, Object, ? extends IMethodCommand> createFunction = DEFAULT_CREATE_FUNCTION;
-		if(createCommand != null) {
-			createFunction = CommandStore.createCommandFunction(createCommand);
+		
+		Method[] methods = module.getClass().getDeclaredMethods();
+		Method createCommandMethod = CommandUtility.find(methods, CommandUtility::isCommandCreateMethod);
+		if(createCommandMethod != null) {
+			createFunction = CommandStore.createCommandFunction(createCommandMethod);
 		}
 		
 		Map<String, List<ICommand>> moduleCommands = new HashMap<>();
@@ -180,6 +172,7 @@ public class CommandStore {
 		}
 		
 		/* Load class based commands */
+		Class<?>[] classes = module.getClass().getDeclaredClasses();
 		for(Class<ICommand> commandClass : CommandUtility.getClassesImplementing(classes, ICommand.class)) {
 			if(commandClass.isAnnotationPresent(Ignore.class)) {
 				continue;
@@ -190,7 +183,7 @@ public class CommandStore {
 				if(Modifier.isStatic(commandClass.getModifiers())) {
 					command = commandClass.getDeclaredConstructor().newInstance();
 				}else{
-					command = commandClass.getDeclaredConstructor(moduleClass).newInstance(module);
+					command = commandClass.getDeclaredConstructor(module.getClass()).newInstance(module);
 				}
 				
 				moduleCommands.computeIfAbsent(commandClass.getSimpleName(), (key) -> new ArrayList<>(1)).add(command);
@@ -258,12 +251,12 @@ public class CommandStore {
 		
 		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
 		for(Method method : methods) {
-			if(!method.isAnnotationPresent(Initialize.class)) {
+			Initialize initialize = method.getAnnotation(Initialize.class);
+			if(initialize == null) {
 				continue;
 			}
 			
 			Class<?> type = method.getParameters()[0].getType();
-			Initialize initialize = method.getAnnotation(Initialize.class);
 			
 			Consumer<ICommand> initializer = (command) -> {
 				if(!type.isInstance(command)) {
@@ -278,21 +271,22 @@ public class CommandStore {
 				String key = command.getCommand();
 				
 				try {
-					if(!initialize.subCommands()) {
-						method.invoke(module, command);
+					if(initialize.subCommands()) {
+						if(initialize.recursive()) {
+							CommandStore.invokeRecursive(command, module, method);
+						}else{
+							method.invoke(module, command);
+							
+							/* If it's not recursive we only do it on the top level sub-commands */
+							for(ICommand subCommand : command.getSubCommands()) {
+								method.invoke(module, subCommand);
+							}
+						}
 						
 						return;
 					}
 					
-					if(initialize.recursive()) {
-						CommandStore.invokeRecursive(command, module, method);
-					}else{
-						method.invoke(module, command);
-						
-						for(ICommand subCommand : command.getSubCommands()) {
-							method.invoke(module, subCommand);
-						}
-					}
+					method.invoke(module, command);
 				}catch(Throwable e) {
 					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, null, command), e);
 					
@@ -312,7 +306,8 @@ public class CommandStore {
 			};
 			
 			if(initialize.all()) {
-				for(List<ICommand> moduleCommandValues : moduleCommands.values()) {
+				/* ConcurrentModificationException */
+				for(List<ICommand> moduleCommandValues : new ArrayList<>(moduleCommands.values())) {
 					for(ICommand command : moduleCommandValues) {
 						initializer.accept(command);
 					}
@@ -321,30 +316,30 @@ public class CommandStore {
 				continue;
 			}
 			
-			if(initialize.value().length == 0) {
-				if(moduleCommands.containsKey(method.getName())) {
-					for(ICommand command : moduleCommands.get(method.getName())) {
-						initializer.accept(command);
-					}
-				}
-				
-				continue;
+			List<String> values = List.of(initialize.value());
+			if(values.isEmpty()) {
+				/* Default to the name of the initializer method if no method names were specified */
+				values = List.of(method.getName());
 			}
 			
-			for(String value : initialize.value()) {
-				if(moduleCommands.containsKey(value)) {
-					for(ICommand command : moduleCommands.get(method.getName())) {
-						initializer.accept(command);
-					}
+			for(String value : values) {
+				if(!moduleCommands.containsKey(value)) {
+					continue;
+				}
+				
+				for(ICommand command : moduleCommands.get(method.getName())) {
+					initializer.accept(command);
 				}
 			}
 		}
 		
+		List<ICommand> commands = new ArrayList<>();
 		for(List<ICommand> moduleCommandValues : moduleCommands.values()) {
 			commands.addAll(moduleCommandValues);
 		}
 		
 		/* TODO: Should this also be called for sub-commands, or should this be handled through its parent? */
+		Method onCommandLoadMethod = CommandUtility.find(methods, CommandUtility::isCommandLoadMethod);
 		if(onCommandLoadMethod != null) {
 			for(ICommand command : commands) {
 				Class<?> type = onCommandLoadMethod.getParameters()[0].getType();
@@ -364,8 +359,9 @@ public class CommandStore {
 			}
 		}
 		
-		if(onModuleLoad != null) {
-			onModuleLoad.invoke(module);
+		Method onModuleLoadMethod = CommandUtility.find(methods, CommandUtility::isModuleLoadMethod);
+		if(onModuleLoadMethod != null) {
+			onModuleLoadMethod.invoke(module);
 		}
 		
 		return commands;
@@ -398,6 +394,46 @@ public class CommandStore {
 		return this.loadFrom(ClassLoader.getSystemClassLoader(), packagePath, subPackages);
 	}
 	
+	private void loadFromPackage(ClassLoader classLoader, String packagePath, boolean subPackages) throws IOException, ClassNotFoundException {
+		List<ICommand> commands = new ArrayList<>();
+		
+		ImmutableSet<ClassInfo> classes;
+		if(subPackages) {
+			classes = ClassPath.from(classLoader).getTopLevelClassesRecursive(packagePath);
+		}else{
+			classes = ClassPath.from(classLoader).getTopLevelClasses(packagePath);
+		}
+		
+		for(ClassInfo info : classes) {
+			Class<?> loadedClass = classLoader.loadClass(info.toString());
+			if(loadedClass.isAnnotationPresent(Ignore.class)) {
+				continue;
+			}
+			
+			if(CommandUtility.isInstanceOf(loadedClass, ICommand.class)) {
+				try {
+					commands.add((ICommand) loadedClass.getConstructor().newInstance());
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
+				}
+				
+				continue;
+			}
+			
+			if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(loadedClass, IModule.class)) {
+				try {
+					commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
+				}catch(Throwable e) {
+					LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
+				}
+				
+				continue;
+			}
+		}
+		
+		this.addCommands(commands);
+	}
+	
 	/**
 	 * Load all commands from the provided package
 	 * 
@@ -409,47 +445,13 @@ public class CommandStore {
 	 */
 	@Nonnull
 	public CommandStore loadFrom(@Nonnull ClassLoader classLoader, @Nonnull String packagePath, boolean subPackages) {
-		List<ICommand> commands = new ArrayList<>();
-		
 		try {
-			ImmutableSet<ClassInfo> classes;
-			if(subPackages) {
-				classes = ClassPath.from(classLoader).getTopLevelClassesRecursive(packagePath);
-			}else{
-				classes = ClassPath.from(classLoader).getTopLevelClasses(packagePath);
-			}
-			
-			for(ClassInfo info : classes) {
-				Class<?> loadedClass = classLoader.loadClass(info.toString());
-				if(loadedClass.isAnnotationPresent(Ignore.class)) {
-					continue;
-				}
-				
-				if(CommandUtility.isInstanceOf(loadedClass, ICommand.class)) {
-					try {
-						commands.add((ICommand) loadedClass.getConstructor().newInstance());
-					}catch(Throwable e) {
-						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
-					}
-					
-					continue;
-				}
-				
-				if(loadedClass.isAnnotationPresent(Module.class) || CommandUtility.isInstanceOf(loadedClass, IModule.class)) {
-					try {
-						commands.addAll(CommandStore.loadModule(loadedClass.getConstructor().newInstance()));
-					}catch(Throwable e) {
-						LOG.warn(CommandStore.getCommandLoadErrorMessage(null, loadedClass, null), e);
-					}
-					
-					continue;
-				}
-			}
+			this.loadFromPackage(classLoader, packagePath, subPackages);
 		}catch(Throwable e) {
 			LOG.warn("Failed to load commands from package {}", packagePath, e);
 		}
 		
-		return this.addCommands(commands);
+		return this;
 	}
 	
 	/**

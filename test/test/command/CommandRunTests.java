@@ -23,11 +23,9 @@ public class CommandRunTests extends CommandImpl {
 	
 	public CommandRunTests() {
 		super("run tests");
-		
-		super.setDeveloper(true);
 	}
 	
-	private static Message modifyContent(AbstractMessage message, String newContent) throws Throwable {
+	private static Message modifyContent(AbstractMessage message, String newContent) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
 		Field field = AbstractMessage.class.getDeclaredField("content");
 		field.setAccessible(true);
 		

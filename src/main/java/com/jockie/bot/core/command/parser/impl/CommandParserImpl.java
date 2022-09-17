@@ -35,10 +35,10 @@ import com.jockie.bot.core.command.parser.ParseContext;
 import com.jockie.bot.core.option.IOption;
 import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.StringUtility;
+import com.jockie.bot.core.utility.StringUtility.QuoteCharacter;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.internal.utils.Checks;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
 
 public class CommandParserImpl implements ICommandParser {
 	
@@ -47,26 +47,26 @@ public class CommandParserImpl implements ICommandParser {
 	 * source code of <a href="https://github.com/Rapptz/discord.py/blob/fc5a2936dd9456f1489dc1125c12448a2af23e15/discord/ext/commands/view.py#L30-L48">discord.py</a> 
 	 * as they already had a list of quotes
 	 */
-	public static final List<Pair<Character, Character>> DEFAULT_QUOTE_CHARACTERS;
+	public static final List<QuoteCharacter> DEFAULT_QUOTE_CHARACTERS;
 	
 	static {
-		List<Pair<Character, Character>> defaultQuoteCharacters = new ArrayList<>();
-		defaultQuoteCharacters.add(Pair.of('"', '"'));
-		defaultQuoteCharacters.add(Pair.of('‘', '’'));
-		defaultQuoteCharacters.add(Pair.of('‚', '‛'));
-		defaultQuoteCharacters.add(Pair.of('“', '”'));
-		defaultQuoteCharacters.add(Pair.of('„', '‟'));
-		defaultQuoteCharacters.add(Pair.of('「', '」'));
-		defaultQuoteCharacters.add(Pair.of('『', '』'));
-		defaultQuoteCharacters.add(Pair.of('〝', '〞'));
-		defaultQuoteCharacters.add(Pair.of('﹁', '﹂'));
-		defaultQuoteCharacters.add(Pair.of('﹃', '﹄'));
-		defaultQuoteCharacters.add(Pair.of('＂', '＂'));
-		defaultQuoteCharacters.add(Pair.of('｢', '｣'));
-		defaultQuoteCharacters.add(Pair.of('«', '»'));
-		defaultQuoteCharacters.add(Pair.of('‹', '›'));
-		defaultQuoteCharacters.add(Pair.of('《', '》'));
-		defaultQuoteCharacters.add(Pair.of('〈', '〉'));
+		List<QuoteCharacter> defaultQuoteCharacters = new ArrayList<>();
+		defaultQuoteCharacters.add(new QuoteCharacter('"'));
+		defaultQuoteCharacters.add(new QuoteCharacter('‘', '’'));
+		defaultQuoteCharacters.add(new QuoteCharacter('‚', '‛'));
+		defaultQuoteCharacters.add(new QuoteCharacter('“', '”'));
+		defaultQuoteCharacters.add(new QuoteCharacter('„', '‟'));
+		defaultQuoteCharacters.add(new QuoteCharacter('「', '」'));
+		defaultQuoteCharacters.add(new QuoteCharacter('『', '』'));
+		defaultQuoteCharacters.add(new QuoteCharacter('〝', '〞'));
+		defaultQuoteCharacters.add(new QuoteCharacter('﹁', '﹂'));
+		defaultQuoteCharacters.add(new QuoteCharacter('﹃', '﹄'));
+		defaultQuoteCharacters.add(new QuoteCharacter('＂'));
+		defaultQuoteCharacters.add(new QuoteCharacter('｢', '｣'));
+		defaultQuoteCharacters.add(new QuoteCharacter('«', '»'));
+		defaultQuoteCharacters.add(new QuoteCharacter('‹', '›'));
+		defaultQuoteCharacters.add(new QuoteCharacter('《', '》'));
+		defaultQuoteCharacters.add(new QuoteCharacter('〈', '〉'));
 		
 		DEFAULT_QUOTE_CHARACTERS = Collections.unmodifiableList(defaultQuoteCharacters);
 	}
@@ -76,12 +76,17 @@ public class CommandParserImpl implements ICommandParser {
 	static {
 		List<String> defaultOptionPrefixes = new ArrayList<>();
 		defaultOptionPrefixes.add("--");
+		/* 
+		 * "--" automatically gets converted to "—" on apple devices,
+		 * or something like that, I don't have one myself so can't
+		 * confirm.
+		 */
+		defaultOptionPrefixes.add("—");
 		
 		DEFAULT_OPTION_PREFIXES = Collections.unmodifiableList(defaultOptionPrefixes);
 	}
 	
-	protected Set<Pair<Character, Character>> quoteCharacters = new LinkedHashSet<>();
-	
+	protected Set<QuoteCharacter> quoteCharacters = new LinkedHashSet<>();
 	protected Set<String> optionPrefixes = new LinkedHashSet<>();
 	
 	public CommandParserImpl() {
@@ -146,10 +151,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandParserImpl setQuoteCharacters(@Nonnull Collection<Pair<Character, Character>> characters) {
-		Checks.noneNull(characters, "characters");
+	public CommandParserImpl setQuoteCharacters(@Nonnull Collection<QuoteCharacter> quoteCharacters) {
+		Checks.noneNull(quoteCharacters, "quoteCharacters");
 		
-		this.quoteCharacters = new LinkedHashSet<>(characters);
+		this.quoteCharacters = new LinkedHashSet<>(quoteCharacters);
 		
 		return this;
 	}
@@ -172,7 +177,7 @@ public class CommandParserImpl implements ICommandParser {
 	 */
 	@Nonnull
 	public CommandParserImpl addQuoteCharacter(char start, char end) {
-		return this.addQuoteCharacter(Pair.of(start, end));
+		return this.addQuoteCharacter(new QuoteCharacter(start, end));
 	}
 	
 	/**
@@ -181,12 +186,10 @@ public class CommandParserImpl implements ICommandParser {
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandParserImpl addQuoteCharacter(@Nonnull Pair<Character, Character> quotePair) {
-		Checks.notNull(quotePair, "quotePair");
-		Checks.notNull(quotePair.getLeft(), "leftQuote");
-		Checks.notNull(quotePair.getRight(), "rightQuote");
+	public CommandParserImpl addQuoteCharacter(@Nonnull QuoteCharacter quote) {
+		Checks.notNull(quote, "quote");
 		
-		this.quoteCharacters.add(quotePair);
+		this.quoteCharacters.add(quote);
 		
 		return this;
 	}
@@ -198,9 +201,7 @@ public class CommandParserImpl implements ICommandParser {
 	 */
 	@Nonnull
 	public CommandParserImpl removeQuoteCharacter(char character) {
-		this.quoteCharacters.remove(Pair.of(character, character));
-		
-		return this;
+		return this.removeQuoteCharacter(character, character);
 	}
 	
 	/**
@@ -211,7 +212,7 @@ public class CommandParserImpl implements ICommandParser {
 	 */
 	@Nonnull
 	public CommandParserImpl removeQuoteCharacter(char start, char end) {
-		this.quoteCharacters.remove(Pair.of(start, end));
+		this.quoteCharacters.remove(new QuoteCharacter(start, end));
 		
 		return this;
 	}
@@ -222,8 +223,8 @@ public class CommandParserImpl implements ICommandParser {
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandParserImpl removeQuoteCharacter(@Nullable Pair<Character, Character> character) {
-		this.quoteCharacters.remove(character);
+	public CommandParserImpl removeQuoteCharacter(@Nullable QuoteCharacter quote) {
+		this.quoteCharacters.remove(quote);
 		
 		return this;
 	}
@@ -232,7 +233,7 @@ public class CommandParserImpl implements ICommandParser {
 	 * @return the characters which are allowed to be used as quotes
 	 */
 	@Nonnull
-	public Set<Pair<Character, Character>> getQuoteCharacters() {
+	public Set<QuoteCharacter> getQuoteCharacters() {
 		return Collections.unmodifiableSet(this.quoteCharacters);
 	}
 	
@@ -323,13 +324,13 @@ public class CommandParserImpl implements ICommandParser {
 				String valueContent = content.substring(equalIndex + 1, content.length());
 				
 				String temp = null;
-				for(Pair<Character, Character> quotes : this.quoteCharacters) {
-					temp = StringUtility.parseWrapped(valueContent, quotes.getLeft(), quotes.getRight());
+				for(QuoteCharacter quote : this.quoteCharacters) {
+					temp = StringUtility.parseWrapped(valueContent, quote.start, quote.end);
 					if(temp != null) {
 						length += equalIndex + 1 + temp.length();
 						
 						stringOption = optionContent;
-						stringValue = StringUtility.unwrap(temp, quotes.getLeft(), quotes.getRight());
+						stringValue = StringUtility.unwrap(temp, quote.start, quote.end);
 						
 						break;
 					}
@@ -443,6 +444,198 @@ public class CommandParserImpl implements ICommandParser {
 	}
 	
 	@Nullable
+	protected CommandEvent parseNamed(ICommand command, List<IArgument<?>> arguments, ParseContext context, String messageContent, Map<String, Object> options) throws ParseException {
+		if(messageContent.isEmpty()) {
+			return null;
+		}
+		
+		/* 
+		 * Handle command as key-value, this is null if it could not parse the entire
+		 * string as a key-value map
+		 */
+		Map<String, String> map = StringUtility.asMap(messageContent, this.quoteCharacters);
+		if(map == null) {
+			return null;
+		}
+		
+		Object[] parsedArguments = new Object[arguments.size()];
+		String[] parsedArgumentsAsString = new String[parsedArguments.length];
+		
+		int argumentCount = 0;
+		
+		for(int i = 0; i < arguments.size(); i++) {
+			IArgument<?> argument = arguments.get(i);
+			
+			/* Missing argument */
+			if(!map.containsKey(argument.getName())) {
+				throw new MissingRequiredArgumentException(context, argument);
+			}
+			
+			String value = map.get(argument.getName());
+			
+			ParsedResult<?> parsedArgument = argument.parse(context, value);
+			if(!parsedArgument.isValid()) {
+				/* The content does not make for a valid argument */
+				throw new ArgumentParseException(context, argument, value);
+			}
+			
+			String contentLeft = parsedArgument.getContentLeft();
+			if(contentLeft != null && !contentLeft.isEmpty()) {
+				/* When would this happen? */
+				throw new ArgumentParseException(context, argument, value);
+			}
+			
+			parsedArguments[argumentCount] = parsedArgument.getObject();
+			parsedArgumentsAsString[argumentCount] = value;
+			
+			argumentCount += 1;
+			
+			map.remove(argument.getName());
+		}
+		
+		/* Contains keys which could not be mapped to arguments */
+		if(!map.isEmpty()) {
+			return null;
+		}
+		
+		return this.createCommandEvent(context, options, parsedArguments, parsedArgumentsAsString, ArgumentParsingType.NAMED, messageContent);
+	}
+	
+	@Nullable
+	protected CommandEvent parsePositional(ICommand command, List<IArgument<?>> arguments, ParseContext context, String messageContent, Map<String, Object> options) throws ParseException {
+		Object[] parsedArguments = new Object[arguments.size()];
+		String[] parsedArgumentsAsString = new String[parsedArguments.length];
+		
+		int argumentCount = 0;
+		
+		for(int i = 0; i < arguments.size(); i++) {
+			IArgument<?> argument = arguments.get(i);
+			
+			if(!messageContent.isEmpty()) {
+				if(messageContent.charAt(0) == ' ') {
+					ArgumentTrimType trimType = command.getArgumentTrimType();
+					if(trimType != ArgumentTrimType.NONE && !(argument.isEndless() && trimType != ArgumentTrimType.STRICT)) {
+						messageContent = StringUtility.stripLeading(messageContent);
+					}else{
+						messageContent = messageContent.substring(1);
+					}
+				}else{
+					/* 
+					 * It gets here if an argument is parsed with quotes and there is a 
+					 * value directly after the quotes without any spacing, like !add "15"5
+					 */
+					
+					/* The argument for some reason does not start with a space */
+					throw new ArgumentParseException(context, argument, messageContent);
+				}
+			}
+			
+			ParsedResult<?> parsedArgument;
+			String content = null;
+			if(argument.getParser().isHandleAll()) {
+				parsedArgument = argument.parse(context, content = messageContent);
+				
+				String contentLeft = parsedArgument.getContentLeft();
+				if(contentLeft != null) {
+					messageContent = contentLeft;
+				}else{
+					messageContent = "";
+				}
+			}else if(argument.isEndless()) {
+				if(messageContent.length() == 0 && !argument.acceptEmpty()) {
+					/* There is no more content and the argument does not accept no content */
+					throw new OutOfContentException(context, argument);
+				}
+				
+				parsedArgument = argument.parse(context, content = messageContent);
+				messageContent = "";
+			}else{
+				if(!messageContent.isEmpty()) {
+					/* TODO: Is this even worth having? Not quite sure if I like the implementation */
+					if(argument instanceof IEndlessArgument) {
+						content = StringUtility.parseWrapped(messageContent, '[', ']');
+						if(content != null) {
+							messageContent = messageContent.substring(content.length());
+							content = StringUtility.unwrap(content, '[', ']');
+							
+							if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
+								content = StringUtility.strip(content);
+							}
+						}
+					}else if(argument.acceptQuote()) {
+						for(QuoteCharacter quote : this.quoteCharacters) {
+							content = StringUtility.parseWrapped(messageContent, quote.start, quote.end);
+							if(content != null) {
+								messageContent = messageContent.substring(content.length());
+								content = StringUtility.unwrap(content, quote.start, quote.end);
+								
+								if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
+									content = StringUtility.strip(content);
+								}
+								
+								break;
+							}
+						}
+					}
+				}
+				
+				if(content == null) {
+					int index = messageContent.indexOf(' ');
+					content = messageContent.substring(0, index != -1 ? index : messageContent.length());
+					
+					messageContent = messageContent.substring(content.length());
+				}
+				
+				/* There is no more content and the argument does not accept no content */
+				if(content.isEmpty() && !argument.acceptEmpty()) {
+					throw new OutOfContentException(context, argument);
+				}
+				
+				parsedArgument = argument.parse(context, content);
+			}
+			
+			if(parsedArgument.isValid()) {
+				parsedArguments[argumentCount] = parsedArgument.getObject();
+				parsedArgumentsAsString[argumentCount] = content;
+				
+				argumentCount += 1;
+			}else{
+				/* The content does not make for a valid argument */
+				throw new ArgumentParseException(context, argument, content);
+			}
+		}
+		
+		/* There is more content than the arguments could handle */
+		if(!messageContent.isEmpty()) {
+			if(command.getContentOverflowPolicy() == ContentOverflowPolicy.FAIL) {
+				throw new ContentOverflowException(context, messageContent);
+			}
+		}
+		
+		/* Not the correct amount of arguments for the command */
+		if(arguments.size() != argumentCount) {
+			Object[] temp = new Object[argumentCount];
+			System.arraycopy(parsedArguments, 0, temp, 0, temp.length);
+			
+			throw new InvalidArgumentCountException(context, arguments.toArray(new IArgument<?>[0]), temp);
+		}
+		
+		return this.createCommandEvent(context, options, parsedArguments, parsedArgumentsAsString, ArgumentParsingType.POSITIONAL, messageContent);
+	}
+	
+	protected CommandEvent createCommandEvent(ParseContext context, Map<String, Object> options, Object[] parsedArguments, String[] parsedArgumentsAsString, ArgumentParsingType parsingType, String contentOverflow) {
+		CommandListener listener = context.getCommandListener();
+		Message message = context.getMessage();
+		ICommand command = context.getCommand();
+		String prefix = context.getPrefix();
+		String trigger = context.getTrigger();
+		long timeStarted = context.getTimeStarted();
+		
+		return listener.getCommandEventFactory()
+			.create(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, contentOverflow, timeStarted);
+	}
+	
+	@Nullable
 	public CommandEvent parse(CommandListener listener, ICommand command, Message message, String prefix, String trigger, String contentToParse, long timeStarted) throws ParseException {
 		ParseContext context = new ParseContext(listener, this, command, message, prefix, trigger, contentToParse, timeStarted);
 		
@@ -452,13 +645,6 @@ public class CommandParserImpl implements ICommandParser {
 		
 		String messageContent = contentToParse;
 		
-		int argumentCount = 0;
-		
-		List<IArgument<?>> arguments = command.getArguments();
-		
-		Object[] parsedArguments = new Object[arguments.size()];
-		String[] parsedArgumentsAsString = new String[parsedArguments.length];
-		
 		/* Pre-processing */
 		StringBuilder builder = new StringBuilder();
 		
@@ -467,194 +653,24 @@ public class CommandParserImpl implements ICommandParser {
 		messageContent = builder.toString();
 		/* End pre-processing */
 		
-		ArgumentParsingType parsingType;
-		ARGUMENT_PARSING:
-		{
-			Set<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
-			
-			NAMED:
-			if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
-				if(messageContent.isEmpty()) {
-					break NAMED;
-				}
-				
-				/* Handle command as key-value */
-				Map<String, String> map = StringUtility.asMap(messageContent, this.quoteCharacters);
-				if(map == null) {
-					break NAMED;
-				}
-				
-				for(int i = 0; i < arguments.size(); i++) {
-					IArgument<?> argument = arguments.get(i);
-					
-					/* Missing argument */
-					if(!map.containsKey(argument.getName())) {
-						throw new MissingRequiredArgumentException(context, argument);
-					}
-					
-					String value = map.get(argument.getName());
-					
-					ParsedResult<?> parsedArgument = argument.parse(context, value);
-					if(!parsedArgument.isValid()) {
-						/* The content does not make for a valid argument */
-						throw new ArgumentParseException(context, argument, value);
-					}
-					
-					String contentLeft = parsedArgument.getContentLeft();
-					if(contentLeft != null && !contentLeft.isEmpty()) {
-						/* When would this happen? */
-						throw new ArgumentParseException(context, argument, value);
-					}
-					
-					parsedArguments[argumentCount] = parsedArgument.getObject();
-					parsedArgumentsAsString[argumentCount] = value;
-					
-					argumentCount += 1;
-					
-					map.remove(argument.getName());
-				}
-				
-				/* If it does not contain any invalid keys */
-				if(map.size() == 0) {
-					parsingType = ArgumentParsingType.NAMED;
-					
-					break ARGUMENT_PARSING;
-				}
-				
-				/* 
-				 * Reset the state, I assume it is possible
-				 * for any of these values to have been changed
-				 * in which case not resetting it would cause
-				 * problems for the next parsing type.
-				 */
-				argumentCount = 0;
-				parsedArguments = new Object[arguments.size()];
-				parsedArgumentsAsString = new String[parsedArguments.length];
+		List<IArgument<?>> arguments = command.getArguments();
+		
+		Set<ArgumentParsingType> argumentParsingTypes = command.getAllowedArgumentParsingTypes();
+		if(argumentParsingTypes.contains(ArgumentParsingType.NAMED)) {
+			CommandEvent event = this.parseNamed(command, arguments, context, messageContent, options);
+			if(event != null) {
+				return event;
 			}
-			
-			if(argumentParsingTypes.contains(ArgumentParsingType.POSITIONAL)) {
-				for(int i = 0; i < parsedArguments.length; i++) {
-					IArgument<?> argument = arguments.get(i);
-					
-					if(messageContent.length() > 0) {
-						if(messageContent.startsWith(" ")) {
-							ArgumentTrimType trimType = command.getArgumentTrimType();
-							if(trimType != ArgumentTrimType.NONE && !(argument.isEndless() && trimType != ArgumentTrimType.STRICT)) {
-								messageContent = StringUtility.stripLeading(messageContent);
-							}else{
-								messageContent = messageContent.substring(1);
-							}
-						}else{
-							/* 
-							 * It gets here if an argument is parsed with quotes and there is a 
-							 * value directly after the quotes without any spacing, like !add "15"5
-							 */
-							
-							/* The argument for some reason does not start with a space */
-							throw new ArgumentParseException(context, argument, messageContent);
-						}
-					}
-					
-					ParsedResult<?> parsedArgument;
-					String content = null;
-					if(argument.getParser().isHandleAll()) {
-						parsedArgument = argument.parse(context, content = messageContent);
-						
-						if(parsedArgument.getContentLeft() != null) {
-							messageContent = parsedArgument.getContentLeft();
-						}else{
-							messageContent = "";
-						}
-					}else if(argument.isEndless()) {
-						if(messageContent.length() == 0 && !argument.acceptEmpty()) {
-							/* There is no more content and the argument does not accept no content */
-							throw new OutOfContentException(context, argument);
-						}
-						
-						parsedArgument = argument.parse(context, content = messageContent);
-						messageContent = "";
-					}else{
-						if(messageContent.length() > 0) {
-							/* TODO: Is this even worth having? Not quite sure if I like the implementation */
-							if(argument instanceof IEndlessArgument) {
-								content = StringUtility.parseWrapped(messageContent, '[', ']');
-								if(content != null) {
-									messageContent = messageContent.substring(content.length());
-									content = StringUtility.unwrap(content, '[', ']');
-									
-									if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
-										content = StringUtility.strip(content);
-									}
-								}
-							}else if(argument.acceptQuote()) {
-								for(Pair<Character, Character> quotes : this.quoteCharacters) {
-									content = StringUtility.parseWrapped(messageContent, quotes.getLeft(), quotes.getRight());
-									if(content != null) {
-										messageContent = messageContent.substring(content.length());
-										content = StringUtility.unwrap(content, quotes.getLeft(), quotes.getRight());
-										
-										if(command.getArgumentTrimType() == ArgumentTrimType.STRICT) {
-											content = StringUtility.strip(content);
-										}
-										
-										break;
-									}
-								}
-							}
-							
-							if(content == null) {
-								content = messageContent.substring(0, (messageContent.contains(" ")) ? messageContent.indexOf(" ") : messageContent.length());
-								messageContent = messageContent.substring(content.length());
-							}
-						}else{
-							content = "";
-						}
-						
-						/* There is no more content and the argument does not accept no content */
-						if(content.length() == 0 && !argument.acceptEmpty()) {
-							throw new OutOfContentException(context, argument);
-						}
-						
-						parsedArgument = argument.parse(context, content);
-					}
-					
-					if(parsedArgument.isValid()) {
-						parsedArguments[argumentCount] = parsedArgument.getObject();
-						parsedArgumentsAsString[argumentCount] = content;
-						
-						argumentCount += 1;
-					}else{
-						/* The content does not make for a valid argument */
-						throw new ArgumentParseException(context, argument, content);
-					}
-				}
-				
-				/* There is more content than the arguments could handle */
-				if(messageContent.length() > 0) {
-					if(command.getContentOverflowPolicy() == ContentOverflowPolicy.FAIL) {
-						throw new ContentOverflowException(context, messageContent);
-					}
-				}
-				
-				/* Not the correct amount of arguments for the command */
-				if(arguments.size() != argumentCount) {
-					Object[] temp = new Object[argumentCount];
-					
-					System.arraycopy(parsedArguments, 0, temp, 0, temp.length);
-					
-					throw new InvalidArgumentCountException(context, command.getArguments().toArray(new IArgument<?>[0]), temp);
-				}
-				
-				parsingType = ArgumentParsingType.POSITIONAL;
-				
-				break ARGUMENT_PARSING;
-			}
-			
-			/* If the command for some reason does not have any allowed parsing types */
-			return null;
 		}
 		
-		return listener.getCommandEventFactory()
-			.create(message, listener, command, parsedArguments, parsedArgumentsAsString, prefix, trigger, options, parsingType, messageContent, timeStarted);
+		if(argumentParsingTypes.contains(ArgumentParsingType.POSITIONAL)) {
+			CommandEvent event = this.parsePositional(command, arguments, context, messageContent, options);
+			if(event != null) {
+				return event;
+			}
+		}
+		
+		/* If the command for some reason does not have any allowed parsing types */
+		return null;
 	}
 }

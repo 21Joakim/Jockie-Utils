@@ -12,9 +12,9 @@ public class DoubleParser<Component> implements IParser<Double, Component> {
 	@Nonnull
 	public ParsedResult<Double> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Double.parseDouble(content));
+			return ParsedResult.valid(Double.parseDouble(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

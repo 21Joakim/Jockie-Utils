@@ -18,9 +18,9 @@ public class TextChannelParser<Component> implements IParser<TextChannel, Compon
 	public ParsedResult<TextChannel> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<TextChannel> channels = ArgumentUtility.getTextChannelsByIdOrName(context.getMessage().getGuild(), content, true);
 		if(channels.size() == 1) {
-			return new ParsedResult<>(true, channels.get(0));
+			return ParsedResult.valid(channels.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

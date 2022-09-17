@@ -12,13 +12,13 @@ public class ExtendedCommand extends CommandImpl {
 	public ExtendedCommand(String name) {
 		super(name, true);
 		
-		this.doAnnotations();
+		this.applyExtendedAnnotations();
 	}
 	
 	public ExtendedCommand(String name, Method method, Object invoker) {
 		super(name, method, invoker);
 		
-		this.doAnnotations();
+		this.applyExtendedAnnotations();
 	}
 	
 	public ExtendedCommand setCategory(CommandCategory category) {
@@ -27,14 +27,13 @@ public class ExtendedCommand extends CommandImpl {
 		return this;
 	}
 	
-	public void doAnnotations() {
+	private final void applyExtendedAnnotations() {
 		if(this.method == null) {
 			return;
 		}
 		
 		if(this.method.isAnnotationPresent(Category.class)) {
 			Category categoryAnnotation = this.method.getAnnotation(Category.class);
-			
 			this.setCategory(categoryAnnotation.value());
 		}
 	}

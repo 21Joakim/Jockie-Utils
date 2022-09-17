@@ -10,11 +10,11 @@ import com.jockie.bot.core.command.impl.CommandEvent;
 import com.jockie.bot.core.command.impl.CommandImpl;
 
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.ICopyableChannel;
 import net.dv8tion.jda.api.entities.Icon;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
 
 public class CommandCopy extends CommandImpl {
 	
@@ -32,11 +32,11 @@ public class CommandCopy extends CommandImpl {
 		channel.createCopy().flatMap((copy) -> event.replyFormat("Created copy of channel %s", channel.getName())).queue();
 	}
 	
-	@Command(value="emote", authorPermissions=Permission.MANAGE_EMOTES_AND_STICKERS, botPermissions=Permission.MANAGE_EMOTES_AND_STICKERS)
-	public void onCommand(CommandEvent event, @Argument("emote") Emote emote) {
+	@Command(value="emoji", authorPermissions=Permission.MANAGE_EMOJIS_AND_STICKERS, botPermissions=Permission.MANAGE_EMOJIS_AND_STICKERS)
+	public void onCommand(CommandEvent event, @Argument("emoji") CustomEmoji emoji) {
 		Icon icon;
 		try {
-			try(InputStream stream = new URL(emote.getImageUrl()).openStream()) {
+			try(InputStream stream = new URL(emoji.getImageUrl()).openStream()) {
 				icon = Icon.from(stream);
 			}
 		}catch(IOException e) {
@@ -45,9 +45,9 @@ public class CommandCopy extends CommandImpl {
 			return;
 		}
 		
-		event.getGuild().createEmote(emote.getName(), icon)
-			.flatMap((copy) -> event.replyFormat("Created copy of %s (%s)", emote.getName(), copy.getAsMention()))
-			.onErrorFlatMap((failure) -> event.reply("Ops, that might not be an image or there are too many emotes on this server already!"))
+		event.getGuild().createEmoji(emoji.getName(), icon)
+			.flatMap((copy) -> event.replyFormat("Created copy of %s (%s)", emoji.getName(), copy.getAsMention()))
+			.onErrorFlatMap((failure) -> event.reply("Ops, that might not be an image or there are too many emojis in this server already!"))
 			.queue();
 	}
 }

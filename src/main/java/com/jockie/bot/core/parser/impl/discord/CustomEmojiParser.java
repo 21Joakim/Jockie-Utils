@@ -18,9 +18,9 @@ public class CustomEmojiParser<Component> implements IParser<CustomEmoji, Compon
 	public ParsedResult<CustomEmoji> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<CustomEmoji> emojis = ArgumentUtility.getEmojisByIdOrName(context.getMessage().getGuild(), content, true);
 		if(emojis.size() == 1) {
-			return new ParsedResult<>(true, emojis.get(0));
+			return ParsedResult.valid(emojis.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

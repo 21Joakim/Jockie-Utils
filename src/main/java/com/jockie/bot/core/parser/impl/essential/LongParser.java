@@ -12,9 +12,9 @@ public class LongParser<Component> implements IParser<Long, Component> {
 	@Nonnull
 	public ParsedResult<Long> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Long.parseLong(content));
+			return ParsedResult.valid(Long.parseLong(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

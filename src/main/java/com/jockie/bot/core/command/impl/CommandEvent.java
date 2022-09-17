@@ -33,12 +33,20 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.unions.GuildMessageChannelUnion;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.AttachmentOption;
 
+/* 
+ * TODO: Refactor to CommandEventImpl with a CommandEvent interface,
+ * this would break our current naming scheme of all interfaces starting
+ * with I, so not sure if we should opt for ICommandEvent instead, I just
+ * want the change to be as compatible with previous versions as possible.
+ */
 public class CommandEvent implements IPropertyContainer {
 	
 	protected Message message;
@@ -134,7 +142,6 @@ public class CommandEvent implements IPropertyContainer {
 	 */
 	public Member getSelfMember() {
 		Guild guild = this.getGuild();
-		
 		return guild != null ? guild.getSelfMember() : null;
 	}
 	
@@ -149,18 +156,33 @@ public class CommandEvent implements IPropertyContainer {
 	}
 	
 	/** Equivalent to {@link Message#getChannel()} */
-	public MessageChannel getChannel() {
+	public MessageChannelUnion getChannel() {
 		return this.message.getChannel();
 	}
 	
-	/** Equivalent to {@link Message#getTextChannel()} */
-	public TextChannel getTextChannel() {
-		return this.message.getTextChannel();
+	/** Equivalent to {@link Message#getGuildChannel()} */
+	public GuildMessageChannelUnion getGuildChannel() {
+		return this.message.getGuildChannel();
 	}
 	
-	/** Equivalent to {@link Message#getPrivateChannel()} */
+	/** 
+	 * Equivalent to {@link GuildMessageChannelUnion#asTextChannel()} called on {@link CommandEvent#getGuildChannel()}
+	 * 
+	 * @deprecated this serves as compatibility for earlier versions, prefer {@link CommandEvent#getGuildChannel()}
+	 */
+	@Deprecated
+	public TextChannel getTextChannel() {
+		return this.getGuildChannel().asTextChannel();
+	}
+	
+	/** 
+	 * Equivalent to {@link MessageChannelUnion#asPrivateChannel()} called on {@link CommandEvent#getChannel()}
+	 * 
+	 * @deprecated this serves as compatibility for earlier versions, prefer {@link CommandEvent#getChannel()}
+	 */
+	@Deprecated
 	public PrivateChannel getPrivateChannel() {
-		return this.message.getPrivateChannel();
+		return this.getChannel().asPrivateChannel();
 	}
 	
 	/** Equivalent to {@link Message#getChannelType()} */
@@ -230,7 +252,6 @@ public class CommandEvent implements IPropertyContainer {
 	/** @return true if the prefix is a mention of the current bot, &lt;@bot_id&gt; or &lt;@!bot_id&gt; bot_id being the value of {@link User#getIdLong()} */
 	public boolean isPrefixMention() {
 		long id = this.getSelfUser().getIdLong();
-		
 		return this.prefix.equals("<@" + id + "> ") || this.prefix.equals("<@!" + id + "> ");
 	}
 	

@@ -18,9 +18,9 @@ public class RichCustomEmojiParser<Component> implements IParser<RichCustomEmoji
 	public ParsedResult<RichCustomEmoji> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<RichCustomEmoji> emojis = ArgumentUtility.getRichEmojisByIdOrName(context.getMessage().getGuild(), content, true);
 		if(emojis.size() == 1) {
-			return new ParsedResult<>(true, emojis.get(0));
+			return ParsedResult.valid(emojis.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

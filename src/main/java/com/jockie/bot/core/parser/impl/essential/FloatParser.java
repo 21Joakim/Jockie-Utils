@@ -12,9 +12,9 @@ public class FloatParser<Component> implements IParser<Float, Component> {
 	@Nonnull
 	public ParsedResult<Float> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Float.parseFloat(content));
+			return ParsedResult.valid(Float.parseFloat(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

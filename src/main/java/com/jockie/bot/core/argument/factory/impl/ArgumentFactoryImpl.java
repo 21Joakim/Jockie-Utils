@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -23,7 +22,6 @@ import com.jockie.bot.core.argument.Endless;
 import com.jockie.bot.core.argument.Error;
 import com.jockie.bot.core.argument.IArgument;
 import com.jockie.bot.core.argument.IArgument.Builder;
-import com.jockie.bot.core.argument.IEndlessArgument;
 import com.jockie.bot.core.argument.factory.IArgumentFactory;
 import com.jockie.bot.core.argument.impl.ArgumentImpl;
 import com.jockie.bot.core.argument.impl.EndlessArgumentImpl;
@@ -70,6 +68,13 @@ import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.internal.utils.Checks;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 
+/* 
+ * TODO: Merge this and OptionFactoryImpl
+ * into a more general implementation for components,
+ * they will still need to have seperate handling but
+ * the vast majority is shared or can be shared between
+ * the two.
+ */
 public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	protected Map<Class<?>, IGenericParser<?, ?>> genericParsers = new HashMap<>();
@@ -129,6 +134,13 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	protected Set<Class<?>> getExtendedClasses(Class<?> type) {
 		Set<Class<?>> classes = new LinkedHashSet<>();
+		/*
+		 * TODO: Figure out why this wasn't in the initial implementation,
+		 * I presume, because there was no comment or additional information
+		 * about it, that this was either a design choice or a bug
+		 */
+		classes.add(type);
+		
 		this.addExtendedClasses(classes, type);
 		
 		classes.add(Object.class);
@@ -295,6 +307,10 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 				builder.setName(info.value());
 			}
 			
+			if(!info.description().isEmpty()) {
+				builder.setDescription(info.description());
+			}
+			
 			if(info.nullDefault()) {
 				builder.setDefaultAsNull();
 			}
@@ -356,6 +372,41 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		return this.configureBuilder(parameter, builder, this.builderConfigureFunctions.get(type)).getRight();
 	}
 	
+	public <T> IArgument.Builder<T[], ?, ?> createArrayArgumentBuilder(Parameter parameter, Class<T> componentType) {
+		IParser<T, IArgument<T>> parser = this.getParser(componentType);
+		if(parser == null) {
+			parser = this.getGenericParser(componentType);
+		}
+		
+		if(parser == null) {
+			throw new IllegalArgumentException("There is no parser for the component type: " + componentType);
+		}
+		
+		ArgumentImpl.Builder<T> builder = new ArgumentImpl.Builder<>(componentType)
+			.setParser(parser);
+		
+		if(parameter.isNamePresent()) {
+			builder.setName(parameter.getName());
+		}
+		
+		this.applyArgumentAnnotation(builder, parameter);
+		
+		if(builder.isEndless()) {
+			throw new IllegalArgumentException("Not a valid candidate, candidate may not be endless");
+		}
+		
+		EndlessArgumentImpl.Builder<T> endlessBuilder = new EndlessArgumentImpl.Builder<>(componentType).setArgument(builder.build());
+		if(parameter.isAnnotationPresent(Endless.class)) {
+			Endless endless = parameter.getAnnotation(Endless.class);
+			
+			endlessBuilder.setMinArguments(endless.minArguments())
+				.setMaxArguments(endless.maxArguments())
+				.setEndless(endless.endless());
+		}
+		
+		return endlessBuilder;
+	}
+	
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Nonnull
@@ -381,7 +432,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		}
 		
 		if(builder == null) {
-			builder = new ArgumentImpl.Builder(type);
+			builder = new ArgumentImpl.Builder<>(type);
 		}
 		
 		if(builder.getParser() == null) {
@@ -407,38 +458,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 				throw new IllegalArgumentException("There is no parser for type: " + type);
 			}
 			
-			IParser<?, ?> parser = this.getParser(componentType);
-			if(parser == null) {
-				parser = this.getGenericParser(componentType);
-			}
-			
-			if(parser == null) {
-				throw new IllegalArgumentException("There is no parser for the component type : " + componentType);
-			}
-			
-			builder = new ArgumentImpl.Builder(componentType)
-				.setParser(parser);
-			
-			if(parameter.isNamePresent()) {
-				builder.setName(parameter.getName());
-			}
-			
-			this.applyArgumentAnnotation(builder, parameter);
-			
-			if(builder.isEndless()) {
-				throw new IllegalArgumentException("Not a valid candidate, candidate may not be endless");
-			}
-			
-			IEndlessArgument.Builder endlessBuilder = new EndlessArgumentImpl.Builder(componentType).setArgument(builder.build());
-			if(parameter.isAnnotationPresent(Endless.class)) {
-				Endless endless = parameter.getAnnotation(Endless.class);
-				
-				endlessBuilder.setMinArguments(endless.minArguments())
-					.setMaxArguments(endless.maxArguments())
-					.setEndless(endless.endless());
-			}
-			
-			builder = endlessBuilder;
+			builder = this.createArrayArgumentBuilder(parameter, componentType);
 		}
 		
 		if(isOptional) {
@@ -455,7 +475,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, IArgument<T>> parser) {
+	public <T> ArgumentFactoryImpl registerGenericParser(@Nonnull Class<T> type, @Nonnull IGenericParser<T, ? extends IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -474,7 +494,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, IArgument<T>> parser) {
+	public <T> ArgumentFactoryImpl registerParser(@Nonnull Class<T> type, @Nonnull IParser<T, ? extends IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -521,7 +541,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 			
 			Set<IAfterParser<T, IArgument<T>>> afterParsers = this.getAfterParsers(type);
 			if(beforeParsers.isEmpty() && afterParsers.isEmpty()) {
-				return (IGenericParser<T, IArgument<T>>) parser;
+				return parser;
 			}
 			
 			IGenericParser<T, IArgument<T>> newParser = new DelegateGenericParser<>(parser, beforeParsers, afterParsers);
@@ -552,10 +572,12 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		}
 		
 		Set<IBeforeParser<?>> parsers = this.beforeParsers.get(type);
-		if(parsers != null) {
-			for(IBeforeParser<?> beforeParser : parsers) {
-				beforeParsers.add((IBeforeParser<IArgument<T>>) beforeParser);
-			}
+		if(parsers == null) {
+			return beforeParsers;
+		}
+		
+		for(IBeforeParser<?> beforeParser : parsers) {
+			beforeParsers.add((IBeforeParser<IArgument<T>>) beforeParser);
 		}
 		
 		return beforeParsers;
@@ -566,12 +588,14 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	protected <T> Set<IAfterParser<T, IArgument<T>>> getAfterParsers(@Nullable Class<T> type) {
 		type = this.convertType(type);
 		
-		Set<IAfterParser<T, IArgument<T>>> afterParsers = new LinkedHashSet<>();
 		Set<IAfterParser<?, ?>> parsers = this.afterParsers.get(type);
-		if(parsers != null) {
-			for(IAfterParser<?, ?> afterParser : parsers) {
-				afterParsers.add((IAfterParser<T, IArgument<T>>) afterParser);
-			}
+		if(parsers == null) {
+			return Collections.emptySet();
+		}
+		
+		Set<IAfterParser<T, IArgument<T>>> afterParsers = new LinkedHashSet<>();
+		for(IAfterParser<?, ?> afterParser : parsers) {
+			afterParsers.add((IAfterParser<T, IArgument<T>>) afterParser);
 		}
 		
 		return afterParsers;
@@ -704,9 +728,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		Set<?> builders = this.builderConfigureFunctions.get(type);
 		if(builders != null) {
-			return builders.stream()
-				.map((builder) -> (BuilderConfigureFunction<T>) builder)
-				.collect(Collectors.toList());
+			return (List<BuilderConfigureFunction<T>>) new ArrayList<>(builders);
 		}
 		
 		return Collections.emptyList();
@@ -741,9 +763,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		Set<?> builders = this.genericBuilderConfigureFunctions.get(type);
 		if(builders != null) {
-			return builders.stream()
-				.map((builder) -> (BuilderConfigureFunction<T>) builder)
-				.collect(Collectors.toList());
+			return (List<BuilderConfigureFunction<T>>) new ArrayList<>(builders);
 		}
 		
 		return Collections.emptyList();
@@ -751,7 +771,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
+	public <T> ArgumentFactoryImpl addParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -781,9 +801,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		Set<?> parsers = this.beforeParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IBeforeParser<T>) parser)
-				.collect(Collectors.toList());
+			return (List<IBeforeParser<T>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();
@@ -791,7 +809,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<IArgument<T>> parser) {
+	public <T> ArgumentFactoryImpl addGenericParserBefore(@Nonnull Class<T> type, @Nonnull IBeforeParser<? extends IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -821,9 +839,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		Set<?> parsers = this.genericBeforeParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IBeforeParser<T>) parser)
-				.collect(Collectors.toList());
+			return (List<IBeforeParser<T>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();
@@ -831,7 +847,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	
 	@Override
 	@Nonnull
-	public <T> ArgumentFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, IArgument<T>> parser) {
+	public <T> ArgumentFactoryImpl addParserAfter(@Nonnull Class<T> type, @Nonnull IAfterParser<T, ? extends IArgument<T>> parser) {
 		Checks.notNull(type, "type");
 		Checks.notNull(parser, "parser");
 		
@@ -861,9 +877,7 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 		
 		Set<?> parsers = this.afterParsers.get(type);
 		if(parsers != null) {
-			return parsers.stream()
-				.map((parser) -> (IAfterParser<T, IArgument<T>>) parser)
-				.collect(Collectors.toList());
+			return (List<IAfterParser<T, IArgument<T>>>) new ArrayList<>(parsers);
 		}
 		
 		return Collections.emptyList();

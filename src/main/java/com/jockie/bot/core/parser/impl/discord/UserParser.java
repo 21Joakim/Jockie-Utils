@@ -60,9 +60,9 @@ public class UserParser<Component> implements IParser<User, Component> {
 	public ParsedResult<User> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		List<User> users = this.getUsers(context, content);
 		if(users.size() == 1) {
-			return new ParsedResult<>(true, users.get(0));
+			return ParsedResult.valid(users.get(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

@@ -132,7 +132,7 @@ public class ArgumentUtility {
 	/**
 	 * Get an emoji by id or mention
 	 * 
-	 * @param guild the guild to search for the emote in
+	 * @param guild the guild to search for the emoji in
 	 * @param value the mention or id of the emoji
 	 * 
 	 * @return the found emoji, may be null
@@ -142,11 +142,14 @@ public class ArgumentUtility {
 		Checks.notNull(guild, "guild");
 		Checks.notNull(value, "value");
 		
-		Matcher matcher = MentionType.EMOJI.getPattern().matcher(value);
+		if(ArgumentUtility.isSnowflake(value)) {
+			/* TODO: Should this check the entire JDA/ShardManager instance? */
+			return guild.getEmojiById(Long.parseLong(value));
+		}
 		
-		String id = matcher.matches() ? matcher.group(2) : null;
-		if(id != null || ArgumentUtility.isSnowflake(id = value)) {
-			long snowflake = Long.parseLong(id);
+		Matcher matcher = MentionType.EMOJI.getPattern().matcher(value);
+		if(matcher.matches()) {
+			long snowflake = Long.parseLong(matcher.group(2));
 			
 			RichCustomEmoji emoji = guild.getEmojiById(snowflake);
 			if(emoji == null && !rich) {
@@ -162,7 +165,7 @@ public class ArgumentUtility {
 	/**
 	 * Get an emoji by id or mention
 	 * 
-	 * @param guild the guild to search for the emote in
+	 * @param guild the guild to search for the emoji in
 	 * @param value the mention or id of the emoji
 	 * 
 	 * @return the found emoji, may be null
@@ -175,7 +178,7 @@ public class ArgumentUtility {
 	/**
 	 * Get a rich emoji by id or mention
 	 * 
-	 * @param guild the guild to search for the emote in
+	 * @param guild the guild to search for the emoji in
 	 * @param value the mention or id of the rich emoji
 	 * 
 	 * @return the found rich emoji, may be null
@@ -371,8 +374,8 @@ public class ArgumentUtility {
 	 * Get emojis by id, mention or name.
 	 * If an emoji was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the emotes in
-	 * @param value the mention, id or name of the emote to search for
+	 * @param guild the guild to search for the emojis in
+	 * @param value the mention, id or name of the emoji to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * @param rich whether the emoji needs to be rich or not (this effectively means it needs to be in the guild)
 	 * 
@@ -395,8 +398,8 @@ public class ArgumentUtility {
 	 * Get emojis by id, mention or name.
 	 * If an emoji was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the emotes in
-	 * @param value the mention, id or name of the emote to search for
+	 * @param guild the guild to search for the emojis in
+	 * @param value the mention, id or name of the emoji to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
 	 * @return the found emojis
@@ -411,8 +414,8 @@ public class ArgumentUtility {
 	 * Get rich emojis by id, mention or name.
 	 * If an emoji was found by id it will not check for names
 	 * 
-	 * @param guild the guild to search for the emotes in
-	 * @param value the mention, id or name of the emote to search for
+	 * @param guild the guild to search for the emojis in
+	 * @param value the mention, id or name of the emoji to search for
 	 * @param ignoreCase whether or not the name should be case sensitive
 	 * 
 	 * @return the found emojis

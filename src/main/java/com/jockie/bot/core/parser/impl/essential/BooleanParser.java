@@ -12,9 +12,9 @@ public class BooleanParser<Component> implements IParser<Boolean, Component> {
 	@Nonnull
 	public ParsedResult<Boolean> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		if(content.equalsIgnoreCase("true") || content.equalsIgnoreCase("false")) {
-			return new ParsedResult<>(true, Boolean.parseBoolean(content));
+			return ParsedResult.valid(Boolean.parseBoolean(content));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

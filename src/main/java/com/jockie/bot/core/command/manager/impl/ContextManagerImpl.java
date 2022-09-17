@@ -21,7 +21,10 @@ import com.jockie.bot.core.utility.function.TriFunction;
 
 import net.dv8tion.jda.api.entities.ChannelType;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.StandardGuildChannel;
+import net.dv8tion.jda.api.entities.StandardGuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.GuildMessageChannelUnion;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.internal.JDAImpl;
 import net.dv8tion.jda.internal.entities.GuildImpl;
 import net.dv8tion.jda.internal.entities.MemberImpl;
@@ -50,22 +53,51 @@ public class ContextManagerImpl implements IContextManager {
 		this.registerContext(UserImpl.class, (event, type) -> (UserImpl) event.getAuthor())
 			.setHandleInheritance(UserImpl.class, true);
 		
-		this.registerContext(MessageChannel.class, (event, type) -> event.getChannel())
-			.setHandleInheritance(MessageChannel.class, true);
-		
-		this.registerContext(Message.class, (event, type) -> event.getMessage())
-			.setHandleInheritance(Message.class, true);
+		this.registerContext(MemberImpl.class, (event, type) -> (MemberImpl) event.getMember())
+			.setHandleInheritance(MemberImpl.class, true);
 		
 		this.registerContext(GuildImpl.class, (event, type) -> (GuildImpl) event.getGuild())
 			.setHandleInheritance(GuildImpl.class, true);
 		
-		this.registerContext(TextChannelImpl.class, (event, type) -> (TextChannelImpl) event.getTextChannel())
+		this.registerContext(Message.class, (event, type) -> event.getMessage())
+			.setHandleInheritance(Message.class, true);
+		
+		this.registerContext(MessageChannelUnion.class, (event, type) -> event.getChannel())
+			.setHandleInheritance(MessageChannelUnion.class, true);
+		
+		this.registerContext(GuildMessageChannelUnion.class, (event, type) -> event.getGuildChannel())
+			.setHandleInheritance(GuildMessageChannelUnion.class, true);
+		
+		this.registerContext(StandardGuildChannel.class, (event, type) -> event.getGuildChannel().asStandardGuildChannel())
+			.setHandleInheritance(StandardGuildChannel.class, true);
+		
+		this.registerContext(StandardGuildMessageChannel.class, (event, type) -> event.getGuildChannel().asStandardGuildMessageChannel())
+			.setHandleInheritance(StandardGuildMessageChannel.class, true);
+		
+		/* TODO: Add DefaultGuildChannelUnion? */
+		
+		/* 
+		 * TODO: Do we want to support each type? or does it make more sense for the end user to use MessageChannel instead
+		 * 
+		 * MessageChannelUnion
+		 * 	PrivateChannelImpl
+		 * 
+		 * GuildMessageChannelUnion
+		 * 	TextChannelImpl
+		 * 	NewsChannelImpl
+		 * 	ThreadChannelImpl
+		 * 	VoiceChannelImpl
+		 * 	
+		 * 	IThreadContainer
+		 * 	StandardGuildChannel
+		 * 	StandardGuildMessageChannel
+		 */
+		
+		/* TODO: This is currently only kept for compatibility */
+		this.registerContext(TextChannelImpl.class, (event, type) -> (TextChannelImpl) event.getGuildChannel().asTextChannel())
 			.setHandleInheritance(TextChannelImpl.class, true);
 		
-		this.registerContext(MemberImpl.class, (event, type) -> (MemberImpl) event.getMember())
-			.setHandleInheritance(MemberImpl.class, true);
-		
-		this.registerContext(PrivateChannelImpl.class, (event, type) -> (PrivateChannelImpl) event.getPrivateChannel())
+		this.registerContext(PrivateChannelImpl.class, (event, type) -> (PrivateChannelImpl) event.getChannel().asPrivateChannel())
 			.setHandleInheritance(PrivateChannelImpl.class, true);
 	}
 	
@@ -75,11 +107,17 @@ public class ContextManagerImpl implements IContextManager {
 		this.unregisterContext(ChannelType.class);
 		this.unregisterContext(JDAImpl.class);
 		this.unregisterContext(UserImpl.class);
-		this.unregisterContext(MessageChannel.class);
-		this.unregisterContext(Message.class);
-		this.unregisterContext(GuildImpl.class);
-		this.unregisterContext(TextChannelImpl.class);
 		this.unregisterContext(MemberImpl.class);
+		this.unregisterContext(GuildImpl.class);
+		this.unregisterContext(Message.class);
+		
+		this.unregisterContext(MessageChannelUnion.class);
+		this.unregisterContext(GuildMessageChannelUnion.class);
+		
+		this.unregisterContext(StandardGuildChannel.class);
+		this.unregisterContext(StandardGuildMessageChannel.class);
+		
+		this.unregisterContext(TextChannelImpl.class);
 		this.unregisterContext(PrivateChannelImpl.class);
 	}
 	

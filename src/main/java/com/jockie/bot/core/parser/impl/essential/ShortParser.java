@@ -12,9 +12,9 @@ public class ShortParser<Component> implements IParser<Short, Component> {
 	@Nonnull
 	public ParsedResult<Short> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		try {
-			return new ParsedResult<>(true, Short.parseShort(content));
+			return ParsedResult.valid(Short.parseShort(content));
 		}catch(NumberFormatException e) {
-			return new ParsedResult<>(false, null);
+			return ParsedResult.invalid();
 		}
 	}
 }

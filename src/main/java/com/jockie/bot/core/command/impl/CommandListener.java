@@ -53,11 +53,12 @@ import com.jockie.bot.core.utility.function.TriConsumer;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.ISnowflake;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.attribute.IAgeRestrictedChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.PermissionException;
@@ -74,7 +75,7 @@ public class CommandListener implements EventListener {
 			StringUtility.concat(permissions, (permission) -> "**" + permission.getName() + "**"),
 			permissions.size() == 1 ? "" : "s");
 		
-		if(event.getGuild().getSelfMember().hasPermission(event.getTextChannel(), Permission.MESSAGE_SEND)) {
+		if(event.getGuild().getSelfMember().hasPermission(event.getGuildChannel(), Permission.MESSAGE_SEND)) {
 			event.getChannel().sendMessage(message).queue();
 			
 			return;
@@ -139,14 +140,17 @@ public class CommandListener implements EventListener {
 	}
 	
 	protected boolean checkDefaultPermissions(Message message) {
-		if(!message.getChannelType().isGuild()) {
+		if(!message.isFromGuild()) {
 			return true;
 		}
 		
-		Member bot = message.getGuild().getSelfMember();
-		if(!bot.hasPermission(message.getTextChannel(), Permission.MESSAGE_SEND)) {
+		if(!message.getGuildChannel().canTalk()) {
 			message.getAuthor().openPrivateChannel().queue((channel) -> {
-				channel.sendMessageFormat("I am missing the **%s** permission in %s, %s", Permission.MESSAGE_SEND.getName(), message.getChannel().getName(), message.getGuild().getName()).queue();
+				Permission permission = message.getChannelType().isThread()
+					? Permission.MESSAGE_SEND_IN_THREADS
+					: Permission.MESSAGE_SEND;
+				
+				channel.sendMessageFormat("I am missing the **%s** permission in %s, %s", permission.getName(), message.getChannel().getName(), message.getGuild().getName()).queue();
 			});
 			
 			return false;
@@ -156,7 +160,7 @@ public class CommandListener implements EventListener {
 		 * TODO: This permission may not always be required,
 		 * I think it is only required when sending the help response
 		 */
-		if(!bot.hasPermission(message.getTextChannel(), Permission.MESSAGE_EMBED_LINKS)) {
+		if(!message.getGuild().getSelfMember().hasPermission(message.getGuildChannel(), Permission.MESSAGE_EMBED_LINKS)) {
 			message.getChannel().sendMessageFormat("I am missing the **%s** permission", Permission.MESSAGE_EMBED_LINKS.getName()).queue();
 			
 			return false;
@@ -305,7 +309,7 @@ public class CommandListener implements EventListener {
 		}
 		
 		long neededPermissions = Permission.getRaw(command.getBotDiscordPermissions()) | Permission.MESSAGE_SEND.getRawValue();
-		long currentPermissions = Permission.getRaw(event.getSelfMember().getPermissions(event.getTextChannel()));
+		long currentPermissions = Permission.getRaw(event.getSelfMember().getPermissions(event.getGuildChannel()));
 		
 		long permissions = (neededPermissions & ~currentPermissions);
 		
@@ -328,7 +332,7 @@ public class CommandListener implements EventListener {
 		Set<Permission> authorPermissions = command.getAuthorDiscordPermissions();
 		if(authorPermissions.size() > 0) {
 			long neededPermissions = Permission.getRaw(authorPermissions);
-			long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getTextChannel()));
+			long currentPermissions = Permission.getRaw(event.getMember().getPermissions(event.getGuildChannel()));
 			
 			long permissions = (neededPermissions & ~currentPermissions);
 			
@@ -345,11 +349,29 @@ public class CommandListener implements EventListener {
 	};
 	
 	public final BiPredicate<CommandEvent, ICommand> defaultNsfwCheck = (event, command) -> {
+		if(!command.isNSFW()) {
+			return true;
+		}
+		
+		/* 
+		 * Only guilds can have NSFW channels, assume it's fine to send
+		 * a user NSFW when they execute the command, you may want to
+		 * add additional logic, like allowing a user to disable NSFW.
+		 */
 		if(!event.getChannelType().isGuild()) {
 			return true;
 		}
 		
-		if(command.isNSFW() && !event.getTextChannel().isNSFW()) {
+		GuildMessageChannel channel = event.getGuildChannel();
+		
+		boolean nsfw;
+		if(channel instanceof IAgeRestrictedChannel) {
+			nsfw = ((IAgeRestrictedChannel) channel).isNSFW();
+		}else{
+			nsfw = false;
+		}
+		
+		if(!nsfw) {
 			if(this.nsfwFunction != null) {
 				this.nsfwFunction.accept(event);
 			}
@@ -1646,7 +1668,7 @@ public class CommandListener implements EventListener {
 			}catch(Throwable e) {
 				this.forEachCommandEventListener((listener) -> listener.onCommandExecutionException(command, event, e));
 				
-				LOG.error("Attempted to execute command (" + event.getCommand().getCommandTrigger() + ") with arguments " + Arrays.deepToString(event.getArguments()) + " but failed", e);
+				LOG.error("Attempted to execute command \"{}\" with arguments {} but failed due to a pre-execute check", event.getCommand().getCommandTrigger(), Arrays.deepToString(event.getArguments()), e);
 				
 				/* Better to return if a pre-execute check fails than to continue to the command */
 				return;
@@ -1683,9 +1705,8 @@ public class CommandListener implements EventListener {
 			}
 			
 			if(e instanceof PermissionException) {
-				LOG.warn("Attempted to execute command (" + event.getCommandTrigger() + ") with arguments " + Arrays.deepToString(arguments) + 
-					", though it failed due to missing permissions, time elapsed " + (System.nanoTime() - timeStarted) + 
-					", error message (" + e.getMessage() + ")");
+				LOG.warn("Attempted to execute command \"{}\" with arguments {} but failed due to missing permissions, time elapsed {}, permission {}",
+					event.getCommandTrigger(), Arrays.deepToString(arguments), System.nanoTime() - timeStarted, ((PermissionException) e).getPermission());
 				
 				this.forEachCommandEventListener((listener) -> listener.onCommandExecutionException(command, event, (PermissionException) e));
 				
@@ -1698,11 +1719,11 @@ public class CommandListener implements EventListener {
 			
 			this.forEachCommandEventListener((listener) -> listener.onCommandExecutionException(command, event, e));
 			
-			LOG.error("Attempted to execute command (" + event.getCommand().getCommandTrigger() + ") with arguments " + Arrays.deepToString(event.getArguments()) + " but failed", e);
+			LOG.error("Attempted to execute command \"{}\" with arguments {} but failed", event.getCommand().getCommandTrigger(), Arrays.deepToString(event.getArguments()), e);
 			
 			return;
 		}
 		
-		LOG.info("Executed command (" + event.getCommandTrigger() + ") with the arguments " + Arrays.deepToString(arguments) + ", time elapsed " + (System.nanoTime() - timeStarted));
+		LOG.info("Executed command \"{}\" with the arguments {}, time elapsed {}", event.getCommandTrigger(), Arrays.deepToString(arguments), System.nanoTime() - timeStarted);
 	}
 }

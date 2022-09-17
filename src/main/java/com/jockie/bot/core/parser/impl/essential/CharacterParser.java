@@ -12,9 +12,9 @@ public class CharacterParser<Component> implements IParser<Character, Component>
 	@Nonnull
 	public ParsedResult<Character> parse(@Nonnull ParseContext context, @Nonnull Component component, @Nonnull String content) {
 		if(content.length() == 1) {
-			return new ParsedResult<>(true, content.charAt(0));
+			return ParsedResult.valid(content.charAt(0));
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }

@@ -15,10 +15,10 @@ public class EnumParser<Type extends Enum<?>, Component extends IParsableCompone
 		for(Type enumEntry : type.getEnumConstants()) {
 			String name = enumEntry.name();
 			if(name.equalsIgnoreCase(content) || name.replace("_", " ").equalsIgnoreCase(content)) {
-				return new ParsedResult<>(true, enumEntry);
+				return ParsedResult.valid(enumEntry);
 			}
 		}
 		
-		return new ParsedResult<>(false, null);
+		return ParsedResult.invalid();
 	}
 }
