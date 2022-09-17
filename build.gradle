@@ -19,7 +19,7 @@ dependencies {
 	api 'net.dv8tion:JDA'
 	
 	constraints {
-		api('net.dv8tion:JDA:5.0.0-alpha.17') {
+		api('net.dv8tion:JDA:5.0.0-alpha.19') {
 			because 'there are breaking changes above and below this version'
 		}
 	}
