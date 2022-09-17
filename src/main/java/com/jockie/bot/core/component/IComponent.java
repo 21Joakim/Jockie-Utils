@@ -42,7 +42,7 @@ public interface IComponent<Type, Component extends IComponent<Type, Component>>
 	public boolean hasDefault();
 	
 	/**
-	 * @param event the context to the default from
+	 * @param commandEvent the context to the default from
 	 * 
 	 * @return the default component value
 	 */

@@ -259,7 +259,7 @@ public class StringUtility {
 	 * @return the map containing the parsed values
 	 */
 	@Nullable
-	public static Map<String, String> asMap(@Nonnull String string, Collection<QuoteCharacter> quotes) {
+	public static Map<String, String> asMap(@Nonnull String string, Collection<QuoteCharacter> quoteCharacters) {
 		Checks.notNull(string, "string");
 		
 		Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -279,7 +279,7 @@ public class StringUtility {
 			string = string.trim();
 			
 			String quotedKey = null;
-			for(QuoteCharacter quote : quotes) {
+			for(QuoteCharacter quote : quoteCharacters) {
 				quotedKey = StringUtility.parseWrapped(key, quote.start, quote.end);
 				if(quotedKey != null) {
 					quotedKey = StringUtility.unwrap(quotedKey, quote.start, quote.end);
@@ -289,7 +289,7 @@ public class StringUtility {
 			}
 			
 			String value = null;
-			for(QuoteCharacter quote : quotes) {
+			for(QuoteCharacter quote : quoteCharacters) {
 				value = StringUtility.parseWrapped(string, quote.start, quote.end);
 				if(value != null) {
 					string = string.substring(value.length());

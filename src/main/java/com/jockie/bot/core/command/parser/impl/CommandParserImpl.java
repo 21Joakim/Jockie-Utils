@@ -146,7 +146,7 @@ public class CommandParserImpl implements ICommandParser {
 	/**
 	 * Set the characters which should be allowed to be used as quotes.
 	 * 
-	 * @param characters the characters which are allowed to be used as quotes
+	 * @param quoteCharacters the characters which are allowed to be used as quotes
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
@@ -181,15 +181,15 @@ public class CommandParserImpl implements ICommandParser {
 	}
 	
 	/**
-	 * @param quotePair the quote characters to allow
+	 * @param quoteCharacter the quote character to allow
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandParserImpl addQuoteCharacter(@Nonnull QuoteCharacter quote) {
-		Checks.notNull(quote, "quote");
+	public CommandParserImpl addQuoteCharacter(@Nonnull QuoteCharacter quoteCharacter) {
+		Checks.notNull(quoteCharacter, "quote");
 		
-		this.quoteCharacters.add(quote);
+		this.quoteCharacters.add(quoteCharacter);
 		
 		return this;
 	}
@@ -218,13 +218,13 @@ public class CommandParserImpl implements ICommandParser {
 	}
 	
 	/**
-	 * @param character the allowed quote character to remove
+	 * @param quoteCharacter the allowed quote character to remove
 	 * 
 	 * @return the {@link CommandParserImpl} instance, useful for chaining
 	 */
 	@Nonnull
-	public CommandParserImpl removeQuoteCharacter(@Nullable QuoteCharacter quote) {
-		this.quoteCharacters.remove(quote);
+	public CommandParserImpl removeQuoteCharacter(@Nullable QuoteCharacter quoteCharacter) {
+		this.quoteCharacters.remove(quoteCharacter);
 		
 		return this;
 	}
