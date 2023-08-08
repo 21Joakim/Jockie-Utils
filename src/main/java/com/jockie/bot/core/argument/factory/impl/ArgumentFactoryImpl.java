@@ -95,9 +95,15 @@ public class ArgumentFactoryImpl implements IArgumentFactory {
 	protected Map<Class<?>, IParser<?, ?>> parserCache = new HashMap<>();
 	
 	protected ArgumentFactoryImpl() {
-		this.registerEssentialParsers();
-		this.registerDiscordParsers(true);
-		this.registerJSONParsers();
+		this(true);
+	}
+	
+	protected ArgumentFactoryImpl(boolean registerDefaultParsers) {
+		if(registerDefaultParsers) {
+			this.registerEssentialParsers();
+			this.registerDiscordParsers(true);
+			this.registerJSONParsers();
+		}
 	}
 	
 	@SuppressWarnings("unchecked")

@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-version '1.42'
+version '1.43'
 
 sourceCompatibility = 1.9
 
@@ -15,14 +15,7 @@ repositories {
 dependencies {
 	implementation 'com.google.guava:guava:31.0-jre'
 	api 'org.json:json:20180813'
-	
-	api 'net.dv8tion:JDA'
-	
-	constraints {
-		api('net.dv8tion:JDA:5.0.0-alpha.19') {
-			because 'there are breaking changes above and below this version'
-		}
-	}
+	api 'net.dv8tion:JDA:5.0.0-beta.13'
 }
 
 compileJava {

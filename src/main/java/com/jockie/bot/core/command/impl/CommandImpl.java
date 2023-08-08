@@ -107,7 +107,7 @@ public class CommandImpl extends MethodCommandImpl {
 				
 				String[] path = subCommand.value();
 				if(path.length == 0) {
-					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a command path");
+					LOG.warn("[{}] Sub command ({}) does not have a command path", this.getClass().getSimpleName(), command.getCommand());
 					
 					continue;
 				}
@@ -126,13 +126,13 @@ public class CommandImpl extends MethodCommandImpl {
 				}
 				 
 				if(possibleParents.isEmpty()) {
-					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") does not have a valid command path");
+					LOG.warn("[{}] Sub command ({}) does not have a valid command path", this.getClass().getSimpleName(), command.getCommand());
 					
 					continue;
 				}
 				
 				if(possibleParents.size() > 1) {
-					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") has an ambiguous command path");
+					LOG.warn("[{}] Sub command ({}) has an ambiguous command path", this.getClass().getSimpleName(), command.getCommand());
 					
 					continue;
 				}
@@ -141,7 +141,7 @@ public class CommandImpl extends MethodCommandImpl {
 				
 				/* TODO: Implement a proper way of handling this, commands should not have to extend AbstractCommand */
 				if(!(parent instanceof AbstractCommand)) {
-					LOG.warn("[" + this.getClass().getSimpleName() + "] Sub command (" + command.getCommand() + ") parent does not implement AbstractCommand");
+					LOG.warn("[{}] Sub command ({}) parent does not implement AbstractCommand", this.getClass().getSimpleName(), command.getCommand());
 					
 					continue;
 				}

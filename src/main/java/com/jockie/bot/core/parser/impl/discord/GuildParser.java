@@ -9,7 +9,6 @@ import com.jockie.bot.core.parser.IParser;
 import com.jockie.bot.core.parser.ParsedResult;
 import com.jockie.bot.core.utility.ArgumentUtility;
 
-import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.sharding.ShardManager;
@@ -45,7 +44,7 @@ public class GuildParser<Component> implements IParser<Guild, Component> {
 	public List<Guild> getGuilds(ParseContext context, String content) {
 		JDA jda = context.getMessage().getJDA();
 		
-		if(this.useShardManager && jda.getAccountType() == AccountType.BOT) {
+		if(this.useShardManager) {
 			ShardManager shardManager = jda.getShardManager();
 			if(shardManager != null) {
 				return ArgumentUtility.getGuildsByIdOrName(shardManager, content, true);

@@ -57,12 +57,12 @@ public abstract class AbstractComponent<Type, Component extends IComponent<Type,
 	public IParser<Type, Component> getParser() {
 		return this.parser;
 	}
-
+	
 	@Override
 	public boolean hasDefault() {
 		return this.defaultValueFunction != null;
 	}
-
+	
 	@Override
 	@Nullable
 	public Type getDefault(@Nonnull CommandEvent event) {
@@ -72,14 +72,18 @@ public abstract class AbstractComponent<Type, Component extends IComponent<Type,
 		
 		return null;
 	}
-
+	
+	public Function<CommandEvent, Type> getDefaultValueFunction() {
+		return this.defaultValueFunction;
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	@Nullable
 	public <T> T getProperty(@Nonnull String key, @Nullable T defaultValue) {
 		return (T) this.properties.getOrDefault(key, defaultValue);
 	}
-
+	
 	@Override
 	@Nonnull
 	public Map<String, Object> getProperties() {
